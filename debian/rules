@@ -1,63 +1,32 @@
 #!/usr/bin/make -f
 # debian/rules for gxemul.
 
+export DH_VERBOSE=1
+
 CFLAGS = -g
 
-# Don't use -O2 on m68k because of an ICE in gcc 4.1.2 (see the build logs
-# referred to in #381039).
-ifneq (,$(findstring m68k,$(DEB_BUILD_ARCH)))
- CFLAGS += -O0
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+  CFLAGS += -O0
 else
- ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-   CFLAGS += -O0
- else
-   CFLAGS += -O2
- endif
+  CFLAGS += -O2
 endif
+
+include /usr/share/dpatch/dpatch.make
 
 configure: configure-stamp
 configure-stamp:
-	dh_testdir
+	dh build --before configure
 	# Configure the package
 	CFLAGS="${CFLAGS}" ./configure
 	touch configure-stamp
 
-build: configure-stamp build-stamp
+build: patch-stamp configure-stamp build-stamp
 build-stamp:
-	dh_testdir
-	$(MAKE)
+	dh build --after configure
 	touch build-stamp
 
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f build-stamp configure-stamp
-	-$(MAKE) -i clean_all
-	dh_clean
+clean: unpatch
+	dh clean
 
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean
-
-binary-indep:
-
-binary: binary-arch binary-indep
-
-binary-arch: install
-	dh_testdir
-	dh_testroot
-	dh_install
-	dh_installdocs
-	dh_installman
-	dh_installchangelogs HISTORY
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-.PHONY: build clean binary-indep binary-arch binary install configure
+%:
+	dh $@

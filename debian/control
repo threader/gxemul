@@ -1,9 +1,10 @@
 Source: gxemul
 Section: misc
 Priority: extra
-Maintainer: Göran Weinholt <weinholt@debian.org>
-Build-Depends: debhelper (>= 4.1.0), libx11-dev
-Standards-Version: 3.7.2.0
+Maintainer: Jonathan Wiltshire <debian@jwiltshire.org.uk>
+Build-Depends: debhelper (>= 7), libx11-dev, dpatch
+Standards-Version: 3.8.0.0
+Homepage: http://gavare.se/gxemul/
 
 Package: gxemul
 Architecture: any
@@ -35,10 +36,9 @@ Description: machine emulator for multiple architectures
  Other machine types and architectures are emulated less completely.
  See the documentation in the gxemul-doc package for the exact details
  and guides to installing guest operating systems.
- .
-  Homepage: http://gavare.se/gxemul/
 
 Package: gxemul-doc
+Section: doc
 Architecture: all
 Description: gxemul documentation
  This package contains the documentation for gxemul, the machine
