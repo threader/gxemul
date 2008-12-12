@@ -1,0 +1,195 @@
+gxemul (0.4.6.3-1+lenny1) testing-proposed-updates; urgency=low
+
+  * Patch against segmentation fault when called with invalid parameters
+  * New maintainer
+
+ -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Fri, 12 Dec 2008 21:59:57 +0000
+
+gxemul (0.4.6.3-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Mon, 25 Feb 2008 07:59:42 +0100
+
+gxemul (0.4.6.2-1) unstable; urgency=low
+
+  * New upstream release (closes: #462350).
+  * debian/control: Upgraded to Standards-Version 3.7.3 (no changes).
+
+ -- Göran Weinholt <weinholt@debian.org>  Thu, 24 Jan 2008 19:49:32 +0100
+
+gxemul (0.4.6.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Thu, 03 Jan 2008 18:32:27 +0100
+
+gxemul (0.4.6-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 17 Jun 2007 08:58:45 +0200
+
+gxemul (0.4.5.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Tue, 01 May 2007 12:39:20 +0200
+
+gxemul (0.4.5-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 15 Apr 2007 11:36:41 +0200
+
+gxemul (0.4.4.1-1) experimental; urgency=low
+
+  * New upstream release.
+  * Build with -O2 on m68k (closes: #398659).
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 18 Mar 2007 14:28:35 +0100
+
+gxemul (0.4.4-1) experimental; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Mon, 19 Feb 2007 09:09:45 +0100
+
+gxemul (0.4.3-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control: Drop the mips64emul dummy package.
+  * Split the package into gxemul and gxemul-doc and move the
+    documentation to the latter.
+  * debian/copyright: Update from upstream's LICENSE file.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sat, 11 Nov 2006 20:24:01 +0100
+
+gxemul (0.4.2-2) unstable; urgency=low
+
+  * debian/rules: Use -O0 on m68k to avoid a gcc ICE (closes: #381039).
+
+ -- Göran Weinholt <weinholt@debian.org>  Sat, 26 Aug 2006 20:41:20 +0200
+
+gxemul (0.4.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Fri, 18 Aug 2006 20:01:07 +0200
+
+gxemul (0.4.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 23 Jul 2006 21:21:30 +0200
+
+gxemul (0.4.0-1) experimental; urgency=low
+
+  * New upstream release. Uploading to experimental because this release
+    is instable and the next release will have cleanups and bug fixes.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sat, 24 Jun 2006 14:23:24 +0200
+
+gxemul (0.3.8-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control: Add IQ80321 (ARM-based) and IBM 6050 (PowerPC-based)
+    to the list of emulated machines.
+
+ -- Göran Weinholt <weinholt@debian.org>  Mon, 20 Feb 2006 16:02:32 +0100
+
+gxemul (0.3.7-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 27 Nov 2005 01:01:12 +0100
+
+gxemul (0.3.6.2-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control: 
+    + Add CATS (an ARM-based machine) to the list of emulated machines.
+    + debian/control: Add upstream's homepage to the package description.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sat,  5 Nov 2005 01:34:30 +0100
+
+gxemul (0.3.6-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun,  9 Oct 2005 06:29:21 +0200
+
+gxemul (0.3.5-1) unstable; urgency=low
+
+  * New upstream release
+  * debian/rules: Don't use -g on m68k because of an ICE in gcc-4.0.
+
+ -- Göran Weinholt <weinholt@debian.org>  Thu,  8 Sep 2005 19:16:01 +0200
+
+gxemul (0.3.4-1) unstable; urgency=low
+
+  * New upstream release.
+  * Updated the package description.
+
+ -- Göran Weinholt <weinholt@debian.org>  Fri,  8 Jul 2005 03:59:38 +0200
+
+gxemul (0.3.3.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Tue, 14 Jun 2005 20:19:18 +0200
+
+gxemul (0.3.3.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * Upstream renamed from mips64emul to GXemul, updated debian/
+    accordingly and added a transitional package.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun,  5 Jun 2005 03:26:19 +0200
+
+mips64emul (0.3-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Wed,  2 Mar 2005 19:35:42 +0100
+
+mips64emul (0.2.4-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/mips64emul.docs: Install doc/ in its own directory.
+
+ -- Göran Weinholt <weinholt@debian.org>  Thu, 13 Jan 2005 02:54:17 +0100
+
+mips64emul (0.2.3-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/mips64emul.manpages: manpage moved from doc/ to man/.
+
+ -- Göran Weinholt <weinholt@debian.org>  Thu,  2 Dec 2004 10:22:23 +0100
+
+mips64emul (0.2.2-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/rules: Switched to dh_installman.
+  * debian/mips64emul.docs: Include doc/*.png also.
+  * debian/control: Refined and updated the description.
+
+ -- Göran Weinholt <weinholt@debian.org>  Wed,  3 Nov 2004 19:47:47 +0100
+
+mips64emul (0.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun,  1 Aug 2004 13:36:17 +0200
+
+mips64emul (0.1.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Göran Weinholt <weinholt@debian.org>  Fri,  2 Jul 2004 12:40:55 +0200
+
+mips64emul (0.1-1) unstable; urgency=low
+
+  * Initial release (closes: #256172).
+
+ -- Göran Weinholt <weinholt@debian.org>  Wed, 30 Jun 2004 11:22:00 +0200

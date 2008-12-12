@@ -35,6 +35,7 @@ dev_gc.c  Grand Central Interrupt controller (used by MacPPC)
 dev_gt.c  Galileo Technology GT-64xxx PCI controller
 dev_hammerhead.c  Hammerhead controller, for the secondary CPU on MacPPC machines
 dev_i80321.c  Intel i80321 (ARM) core functionality
+device.c  Device registry framework
 dev_igsfb.c  Integraphics Systems "igsfb" Framebuffer graphics card
 dev_iq80321_7seg.c  IQ80321 LED device
 dev_irqc.c  Generic IRQ controller for the test machines
@@ -97,5 +98,4 @@ dev_vr41xx.c  VR41xx (VR4122 and VR4131) misc functions
 dev_wdc.c  Standard "wdc" IDE controller
 dev_z8530.c  Zilog Z8530 "zs" serial controller
 dev_zero.c  A simple device which returns zero for reads, discards all writes
-device.c  Device registry framework
 lk201.c  LK201 keyboard and mouse, used by the dc7085 and scc controllers
