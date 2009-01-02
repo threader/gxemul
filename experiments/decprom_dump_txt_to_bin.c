@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: decprom_dump_txt_to_bin.c,v 1.4 2005/02/21 07:18:10 debug Exp $
+ *  $Id: decprom_dump_txt_to_bin.c,v 1.4 2005-02-21 07:18:10 debug Exp $
  *
  *  decprom_dump_txt_to_bin.c
  *

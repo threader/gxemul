@@ -1,4 +1,4 @@
-/*  gxemul: $Id: impactsr-bsd.h,v 1.2 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: impactsr-bsd.h,v 1.2 2005-03-05 12:34:02 debug Exp $  */
 
 #ifndef IMPACTSR_H
 #define IMPACTSR_H

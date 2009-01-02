@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ohci.c,v 1.8 2006/02/09 20:02:59 debug Exp $
+ *  $Id: dev_ohci.c,v 1.11.2.1 2008-01-18 19:12:29 debug Exp $
  *  
- *  USB OHCI (Open Host Controller Interface).
+ *  COMMENT: USB Open Host Controller Interface
  *
  *  TODO
  */
@@ -38,6 +38,7 @@
 
 #include "cpu.h"
 #include "device.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -53,15 +54,12 @@
 
 
 struct ohci_data {
-	int	irq_nr;
+	struct interrupt	irq;
 
-	int	port1reset;
+	int			port1reset;
 };
 
 
-/*
- *  dev_ohci_access():
- */
 DEVICE_ACCESS(ohci)
 {
 	struct ohci_data *d = extra;
@@ -81,8 +79,8 @@ DEVICE_ACCESS(ohci)
 	case OHCI_COMMAND_STATUS:
 		name = "COMMAND_STATUS";
 		if (idata == 0x2) {
-fatal("URK\n");
-			cpu_interrupt(cpu, d->irq_nr);
+			fatal("Hm... OHCI COMMAND STATUS\n");
+			INTERRUPT_ASSERT(d->irq);
 		}
 		break;
 	case OHCI_INTERRUPT_STATUS:
@@ -153,13 +151,10 @@ DEVINIT(ohci)
 {
 	struct ohci_data *d;
 
-	d = malloc(sizeof(struct ohci_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct ohci_data)));
 	memset(d, 0, sizeof(struct ohci_data));
-	d->irq_nr = devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	memory_device_register(devinit->machine->memory,
 	    devinit->name, devinit->addr,

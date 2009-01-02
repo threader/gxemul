@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: debugger_expr.c,v 1.9 2006/10/17 07:56:19 debug Exp $
+ *  $Id: debugger_expr.c,v 1.12.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Expression evaluator.
  *
@@ -53,7 +53,6 @@ extern struct settings *global_settings;
 
 extern int debugger_cur_cpu;
 extern int debugger_cur_machine;
-extern int debugger_cur_emul;
 
 
 /*
@@ -143,8 +142,7 @@ int debugger_parse_name(struct machine *m, char *name, int writeflag,
 
 		if (!match_settings) {
 			snprintf(setting_name, sizeof(setting_name),
-			    GLOBAL_SETTINGS_NAME".emul[%i].%s",
-			    debugger_cur_emul, name);
+			    GLOBAL_SETTINGS_NAME".emul.%s", name);
 			res = settings_access(global_settings, setting_name,
 			    writeflag, valuep);
 			if (res == SETTINGS_OK)
@@ -153,8 +151,8 @@ int debugger_parse_name(struct machine *m, char *name, int writeflag,
 
 		if (!match_settings) {
 			snprintf(setting_name, sizeof(setting_name),
-			    GLOBAL_SETTINGS_NAME".emul[%i].machine[%i].%s",
-			    debugger_cur_emul, debugger_cur_machine, name);
+			    GLOBAL_SETTINGS_NAME".emul.machine[%i].%s",
+			    debugger_cur_machine, name);
 			res = settings_access(global_settings, setting_name,
 			    writeflag, valuep);
 			if (res == SETTINGS_OK)
@@ -163,9 +161,9 @@ int debugger_parse_name(struct machine *m, char *name, int writeflag,
 
 		if (!match_settings) {
 			snprintf(setting_name, sizeof(setting_name),
-			    GLOBAL_SETTINGS_NAME".emul[%i].machine[%i]."
-			    "cpu[%i].%s", debugger_cur_emul,
-			    debugger_cur_machine, debugger_cur_cpu, name);
+			    GLOBAL_SETTINGS_NAME".emul.machine[%i]."
+			    "cpu[%i].%s", debugger_cur_machine,
+			    debugger_cur_cpu, name);
 			res = settings_access(global_settings, setting_name,
 			    writeflag, valuep);
 			if (res == SETTINGS_OK)
@@ -257,11 +255,7 @@ int debugger_parse_expression(struct machine *m, char *expr, int writeflag,
 	while (expr[0] == '\t' || expr[0] == ' ')
 		expr ++;
 
-	copy = strdup(expr);
-	if (copy == NULL) {
-		fprintf(stderr, "debugger_parse_expression(): out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(copy = strdup(expr));
 
 	while (copy[0] && copy[strlen(copy)-1] == ' ')
 		copy[strlen(copy)-1] = '\0';

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_bt431.c,v 1.11 2006/01/01 13:17:16 debug Exp $
+ *  $Id: dev_bt431.c,v 1.13.2.1 2008-01-18 19:12:28 debug Exp $
  *  
- *  Brooktree 431, used by TURBOchannel graphics cards.
+ *  COMMENT: Brooktree BT431, used by TURBOchannel graphics cards
  *
  *  TODO.
  */
@@ -60,12 +60,9 @@ struct bt431_data {
 };
 
 
-/*
- *  dev_bt431_access():
- */
 DEVICE_ACCESS(bt431)
 {
-	struct bt431_data *d = (struct bt431_data *) extra;
+	struct bt431_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int btaddr;
 #if 0
@@ -201,12 +198,11 @@ on = 1;
 void dev_bt431_init(struct memory *mem, uint64_t baseaddr,
 	struct vfb_data *vfb_data, int planes)
 {
-	struct bt431_data *d = malloc(sizeof(struct bt431_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct bt431_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct bt431_data)));
 	memset(d, 0, sizeof(struct bt431_data));
+
 	d->vfb_data     = vfb_data;
 	d->planes       = planes;
 	d->cursor_x     = -1;

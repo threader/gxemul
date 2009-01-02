@@ -2,7 +2,7 @@
 #define	CPU_SH_H
 
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,17 +28,23 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh.h,v 1.33 2006/10/27 15:51:37 debug Exp $
+ *  $Id: cpu_sh.h,v 1.50.2.1 2008-01-18 19:12:31 debug Exp $
  *
- *  Note: Many things here are SH4-specific, so it probably doesn't work
- *        for SH3 emulation.
+ *  Note 1: Many things here are SH4-specific, so it probably doesn't work
+ *          for SH3 emulation.
+ *
+ *  Note 2: The SuperH emulation in GXemul does not include SH5/SH64 at
+ *          this time. There doesn't seem to be that much interesting code
+ *          to run in the emulator for SH5. :-/
  */
 
+#include "interrupt.h"
 #include "misc.h"
 #include "sh4_cpu.h"
 
 
 struct cpu_family;
+
 
 /*  SH CPU types:  */
 struct sh_cpu_type_def {
@@ -49,20 +55,18 @@ struct sh_cpu_type_def {
 	uint32_t	prr;
 };
 
-#define	SH_CPU_TYPE_DEFS		{	    \
-	{ "SH7750", 32, 4, SH4_PVR_SH7750, 0	 }, \
-	{ "SH5",    64, 5, 0,              0	 }, \
-	{ NULL,      0, 0, 0,              0	 }  }
+#define	SH_CPU_TYPE_DEFS				{	    \
+	{ "SH7708R", 32, 3, 0,              0,                   }, \
+	{ "SH7750",  32, 4, SH4_PVR_SH7750, 0	                 }, \
+	{ "SH7750R", 32, 4, SH4_PVR_SH7750, SH4_PRR_7750R	 }, \
+	{ "SH7751R", 32, 4, SH4_PVR_SH7751, SH4_PRR_7751R	 }, \
+	/* { "SH5",  64, 5, 0,              0	                 }, */ \
+	{ NULL,       0, 0, 0,              0	                 }  }
 
 
-/*
- *  TODO: Figure out how to nicely support multiple instruction encodings!
- *  For now, I'm reverting this to SH4. SH5 will have to wait until later.
- */
-
-#define	SH_N_IC_ARGS			2	/*  3 for SH5/SH64  */
-#define	SH_INSTR_ALIGNMENT_SHIFT	1	/*  2 for SH5/SH64  */
-#define	SH_IC_ENTRIES_SHIFT		11	/*  10 for SH5/SH64  */
+#define	SH_N_IC_ARGS			2
+#define	SH_INSTR_ALIGNMENT_SHIFT	1
+#define	SH_IC_ENTRIES_SHIFT		11
 #define	SH_IC_ENTRIES_PER_PAGE		(1 << SH_IC_ENTRIES_SHIFT)
 #define	SH_PC_TO_IC_ENTRY(a)		(((a)>>SH_INSTR_ALIGNMENT_SHIFT) \
 					& (SH_IC_ENTRIES_PER_PAGE-1))
@@ -81,12 +85,13 @@ DYNTRANS_MISC_DECLARATIONS(sh,SH,uint32_t)
 #define	SH_N_ITLB_ENTRIES	4
 #define	SH_N_UTLB_ENTRIES	64
 
+/*  An instruction with an invalid encoding; used for software
+    emulation of PROM calls within GXemul:  */
+#define	SH_INVALID_INSTR	0x00fb
+
 
 struct sh_cpu {
 	struct sh_cpu_type_def cpu_type;
-
-	/*  compact = 1 if currently executing 16-bit long opcodes  */
-	int		compact;
 
 	/*  General Purpose Registers:  */
 	uint32_t	r[SH_N_GPRS];
@@ -135,12 +140,31 @@ struct sh_cpu {
 	uint16_t	intc_ipra;	/*  Interrupt Priority Registers  */
 	uint16_t	intc_iprb;
 	uint16_t	intc_iprc;
+	uint16_t	intc_iprd;
+	uint32_t	intc_intpri00;
+	uint32_t	intc_intpri04;
+	uint32_t	intc_intpri08;
+	uint32_t	intc_intpri0c;
+	uint32_t	intc_intreq00;
+	uint32_t	intc_intreq04;
+	uint32_t	intc_intmsk00;
+	uint32_t	intc_intmsk04;
+	/*  Cached and calculated values:  */
+	uint8_t		int_prio_and_pending[0x1000 / 0x20];
 	int16_t		int_to_assert;	/*  Calculated int to assert  */
-	int		int_level;	/*  Calculated int level  */
-	uint32_t	int_pending[0x1000 / 0x20 / (sizeof(uint32_t)*8)];
+	unsigned int	int_level;	/*  Calculated int level  */
 
 	/*  Timer/clock functionality:  */
 	int		pclock;
+
+	/*  DMA Controller: (4 channels)  */
+	uint32_t	dmac_sar[4];
+	uint32_t	dmac_dar[4];
+	uint32_t	dmac_tcr[4];
+	uint32_t	dmac_chcr[4];
+
+	/*  PCI controller:  */
+	struct pci_data	*pcic_pcibus;
 
 
 	/*
@@ -149,7 +173,7 @@ struct sh_cpu {
 	 */
 	DYNTRANS_ITC(sh)
 	VPH_TLBS(sh,SH)
-	VPH32(sh,SH,uint64_t,uint8_t)
+	VPH32(sh,SH)
 };
 
 
@@ -191,23 +215,25 @@ struct sh_cpu {
 #define	SH_FPSCR_FR		0x00200000	/*  Register Bank Select  */
 
 
+/*  int_prio_and_pending bits:  */
+#define	SH_INT_ASSERTED		0x10
+#define	SH_INT_PRIO_MASK	0x0f
+
 /*  cpu_sh.c:  */
+void sh_cpu_interrupt_assert(struct interrupt *interrupt);
+void sh_cpu_interrupt_deassert(struct interrupt *interrupt);
 int sh_cpu_instruction_has_delayslot(struct cpu *cpu, unsigned char *ib);
 int sh_run_instr(struct cpu *cpu);
 void sh_update_translation_table(struct cpu *cpu, uint64_t vaddr_page,
 	unsigned char *host_page, int writeflag, uint64_t paddr_page);
 void sh_invalidate_translation_caches(struct cpu *cpu, uint64_t, int);
 void sh_invalidate_code_translation(struct cpu *cpu, uint64_t, int);
-int sh32_run_instr(struct cpu *cpu);
-void sh32_update_translation_table(struct cpu *cpu, uint64_t vaddr_page,
-	unsigned char *host_page, int writeflag, uint64_t paddr_page);
-void sh32_invalidate_translation_caches(struct cpu *cpu, uint64_t, int);
-void sh32_invalidate_code_translation(struct cpu *cpu, uint64_t, int);
 void sh_init_64bit_dummy_tables(struct cpu *cpu);
 int sh_memory_rw(struct cpu *cpu, struct memory *mem, uint64_t vaddr,
 	unsigned char *data, size_t len, int writeflag, int cache_flags);
 int sh_cpu_family_init(struct cpu_family *);
 
+void sh_update_interrupt_priorities(struct cpu *cpu);
 void sh_update_sr(struct cpu *cpu, uint32_t new_sr);
 void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr);
 

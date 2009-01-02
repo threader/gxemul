@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_adb.c,v 1.10 2006/07/21 16:55:41 debug Exp $
+ *  $Id: dev_adb.c,v 1.14.2.1 2008-01-18 19:12:28 debug Exp $
  *
- *  ADB (Apple Desktop Bus) controller.
+ *  COMMENT: Apple Desktop Bus (ADB) controller
  *
  *  Based on intuition from reverse-engineering NetBSD/macppc source code,
  *  so it probably only works with that OS.
@@ -48,6 +48,7 @@
 #include "console.h"
 #include "cpu.h"
 #include "device.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -75,7 +76,7 @@ static char *via_regname[N_VIA_REGS] = {
 	"vPCR",  "vIFR",  "vIER",  "(unknown)" };
 
 struct adb_data {
-	int		irq_nr;
+	struct interrupt irq;
 	int		int_asserted;
 
 	int		kbd_dev;
@@ -112,18 +113,18 @@ struct adb_data {
 DEVICE_TICK(adb)
 {
 	struct adb_data *d = extra;
-	int a;
+	int assert;
 
-	a = d->reg[vIFR >> VIA_REG_SHIFT] & IFR_ANY;
-	if (a == IFR_ANY && d->int_enable)
-		a = 1;
+	assert = d->reg[vIFR >> VIA_REG_SHIFT] & IFR_ANY;
+	if (assert == IFR_ANY && d->int_enable)
+		assert = 1;
 
-	if (a)
-		cpu_interrupt(cpu, d->irq_nr);
+	if (assert)
+		INTERRUPT_ASSERT(d->irq);
 	else if (d->int_asserted)
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 
-	d->int_asserted = a;
+	d->int_asserted = assert;
 }
 
 
@@ -437,21 +438,19 @@ DEVICE_ACCESS(adb)
 
 DEVINIT(adb)
 {
-	struct adb_data *d = malloc(sizeof(struct adb_data));
+	struct adb_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct adb_data)));
 	memset(d, 0, sizeof(struct adb_data));
-	d->irq_nr = devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	adb_reset(d);
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    devinit->addr, DEV_ADB_LENGTH, dev_adb_access, d, DM_DEFAULT, NULL);
 	machine_add_tickfunction(devinit->machine, dev_adb_tick, d,
-	    TICK_SHIFT, 0.0);
+	    TICK_SHIFT);
 
 	return 1;
 }

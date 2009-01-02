@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sfb.c,v 1.9 2006/01/01 13:17:17 debug Exp $
+ *  $Id: dev_sfb.c,v 1.11.2.1 2008-01-18 19:12:30 debug Exp $
  *  
- *  SFB TURBOchannel framebuffer.
+ *  COMMENT: SFB TURBOchannel framebuffer (graphics card)
  *
  *  See include/sfbreg.h (and NetBSD's arch/pmax/dev/sfb.c) for more info.
  *
@@ -64,9 +64,6 @@ struct sfb_data {
 };
 
 
-/*
- *  dev_sfb_access():
- */
 DEVICE_ACCESS(sfb)
 {
 	uint64_t idata = 0, odata = 0;
@@ -100,11 +97,7 @@ void dev_sfb_init(struct machine *machine, struct memory *mem,
 {
 	struct sfb_data *d;
 
-	d = malloc(sizeof(struct sfb_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sfb_data)));
 	memset(d, 0, sizeof(struct sfb_data));
 
 	d->vfb_data = fb;

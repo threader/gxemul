@@ -1,4 +1,4 @@
-/*  gxemul: $Id: pcireg.h,v 1.6 2005/11/17 13:53:43 debug Exp $  */
+/*  gxemul: $Id: pcireg.h,v 1.6 2005-11-17 13:53:43 debug Exp $  */
 /*	$NetBSD: pcireg.h,v 1.37 2002/03/22 20:03:20 drochner Exp $	*/
 
 #ifndef _DEV_PCI_PCIREG_H_

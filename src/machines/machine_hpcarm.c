@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_hpcarm.c,v 1.3 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_hpcarm.c,v 1.6.2.2 2008-06-10 00:17:49 debug Exp $
+ *
+ *  COMMENT: Handheld ARM-based machines
  */
 
 #include <stdio.h>
@@ -85,8 +87,11 @@ MACHINE_SETUP(hpcarm)
 		break;
 
 	case MACHINE_HPCARM_JORNADA720:
+	case MACHINE_HPCARM_JORNADA728:
 		/*  SA-1110 206MHz  */
-		machine->machine_name = "Jornada 720";
+		machine->machine_name = (machine->machine_subtype ==
+		    MACHINE_HPCARM_JORNADA720) ?
+		    "Jornada 720" : "Jornada 728";
 		hpc_fb_addr = 0x48200000;
 		hpc_fb_xsize = 640;
 		hpc_fb_ysize = 240;
@@ -177,17 +182,15 @@ MACHINE_SETUP(hpcarm)
 	store_16bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.fb_type,
 	    hpc_fb_encoding);
 	store_16bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.bi_cnuse,
-	    machine->use_x11? BI_CNUSE_BUILTIN : BI_CNUSE_SERIAL);
+	    machine->x11_md.in_use? BI_CNUSE_BUILTIN : BI_CNUSE_SERIAL);
 
 	store_32bit_word_in_host(cpu,(unsigned char *)&hpc_bootinfo.timezone,0);
 	store_buf(cpu, machine->physical_ram_in_mb * 1048576 - 256,
 	    (char *)&hpc_bootinfo, sizeof(hpc_bootinfo));
 
-	/*
-	 *  TODO: ugly hack, only works with small NetBSD
-	 *        kernels!
-	 */
-	cpu->cd.arm.r[ARM_SP] = 0xc02c0000;
+	/*  TODO: What is a good default stack pointer?  */
+	/*  I.e. what does hpcboot.exe for NetBSD/hpcarm usually use?  */
+	cpu->cd.arm.r[ARM_SP] = 0xc02dfff0;
 }
 
 
@@ -199,8 +202,15 @@ MACHINE_DEFAULT_CPU(hpcarm)
 
 MACHINE_DEFAULT_RAM(hpcarm)
 {
-	/*  Most have 32 MB by default.  */
-	machine->physical_ram_in_mb = 32;
+	switch (machine->machine_subtype) {
+	case MACHINE_HPCARM_JORNADA728:
+		/*  720 has 32 MB, 728 has 64 MB.  */
+		machine->physical_ram_in_mb = 64;
+		break;
+	default:
+		/*  Most have 32 MB by default.  */
+		machine->physical_ram_in_mb = 32;
+	}
 }
 
 
@@ -215,6 +225,9 @@ MACHINE_REGISTER(hpcarm)
 
 	machine_entry_add_subtype(me, "Jornada 720", MACHINE_HPCARM_JORNADA720,
 	    "jornada720", NULL);
+
+	machine_entry_add_subtype(me, "Jornada 728", MACHINE_HPCARM_JORNADA728,
+	    "jornada728", NULL);
 
 	me->set_default_ram = machine_default_ram_hpcarm;
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,26 +25,30 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_netwinder.c,v 1.5 2006/08/19 07:58:21 debug Exp $
+ *  $Id: machine_netwinder.c,v 1.17.2.1 2008-01-18 19:12:33 debug Exp $
+ *
+ *  COMMENT: NetWinder
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "bus_isa.h"
+#include "bus_pci.h"
 #include "cpu.h"
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
 
 MACHINE_SETUP(netwinder)
 {
+	char tmpstr[300];
+	struct pci_data *pci_bus;
+
 	machine->machine_name = "NetWinder";
-	machine->stable = 1;
 
 	if (machine->physical_ram_in_mb > 256)
 		fprintf(stderr, "WARNING! Real NetWinders cannot"
@@ -53,16 +57,13 @@ MACHINE_SETUP(netwinder)
 	/*  CPU at 63.75 MHz, according to NetBSD's netwinder_machdep.c.  */
 	machine->emulated_hz = 63750000;
 
-	machine->md_int.footbridge_data =
-	    device_add(machine, "footbridge addr=0x42000000");
-	machine->md_interrupt = isa32_interrupt;
-	machine->isa_pic_data.native_irq = 11;
+	snprintf(tmpstr, sizeof(tmpstr), "footbridge irq=%s.cpu[%i].irq"
+	    " addr=0x42000000", machine->path, machine->bootstrap_cpu);
+	pci_bus = device_add(machine, tmpstr);
 
-	bus_isa_init(machine, 0, 0x7c000000, 0x80000000, 32, 48);
-
-	if (machine->use_x11) {
-		bus_pci_add(machine, machine->md_int.footbridge_data->pcibus,
-		    machine->memory, 0xc0, 8, 0, "igsfb");
+	if (machine->x11_md.in_use) {
+		bus_pci_add(machine, pci_bus, machine->memory,
+		    0xc0, 8, 0, "igsfb");
 	}
 
 	if (!machine->prom_emulation)

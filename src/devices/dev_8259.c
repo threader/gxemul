@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_8259.c,v 1.27 2006/08/23 15:45:30 debug Exp $
+ *  $Id: dev_8259.c,v 1.30.2.1 2008-01-18 19:12:27 debug Exp $
  *  
- *  8259 Programmable Interrupt Controller.
+ *  COMMENT: Intel 8259 Programmable Interrupt Controller
  *
  *  See the following URL for more details:
  *	http://www.nondot.org/sabre/os/files/MiscHW/8259pic.txt
@@ -53,7 +53,7 @@
 
 DEVICE_ACCESS(8259)
 {
-	struct pic8259_data *d = (struct pic8259_data *) extra;
+	struct pic8259_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int i;
 
@@ -110,8 +110,12 @@ DEVICE_ACCESS(8259)
 				d->isr = 0;
 				/*  Recalculate interrupt assertions,
 				    if necessary:  */
-				if ((old_irr & ~d->ier) != (d->irr & ~d->ier))
-					cpu_interrupt(cpu, d->irq_nr);
+				if ((old_irr & ~d->ier) != (d->irr & ~d->ier)) {
+					if (d->irr & ~d->ier)
+						INTERRUPT_ASSERT(d->irq);
+					else
+						INTERRUPT_DEASSERT(d->irq);
+				}
 			} else if ((idata >= 0x21 && idata <= 0x27) ||
 			    (idata >= 0x60 && idata <= 0x67) ||
 			    (idata >= 0xe0 && idata <= 0xe7)) {
@@ -120,8 +124,12 @@ DEVICE_ACCESS(8259)
 				d->irr &= ~(1 << (idata & 7));
 				d->isr &= ~(1 << (idata & 7));
 				/*  Recalc. int assertions, if necessary:  */
-				if ((old_irr & ~d->ier) != (d->irr & ~d->ier))
-					cpu_interrupt(cpu, d->irq_nr);
+				if ((old_irr & ~d->ier) != (d->irr & ~d->ier)) {
+					if (d->irr & ~d->ier)
+						INTERRUPT_ASSERT(d->irq);
+					else
+						INTERRUPT_DEASSERT(d->irq);
+				}
 			} else if (idata == 0x68) {
 				/*  Set Special Mask Mode  */
 				/*  TODO  */
@@ -208,8 +216,12 @@ DEVICE_ACCESS(8259)
 
 			/*  Recalculate interrupt assertions,
 			    if necessary:  */
-			if ((d->irr & ~old_ier) != (d->irr & ~d->ier))
-				cpu_interrupt(cpu, d->irq_nr);
+			if ((d->irr & ~old_ier) != (d->irr & ~d->ier)) {
+				if (d->irr & ~d->ier)
+					INTERRUPT_ASSERT(d->irq);
+				else
+					INTERRUPT_DEASSERT(d->irq);
+			}
 		} else {
 			odata = d->ier;
 		}
@@ -248,18 +260,16 @@ DEVICE_ACCESS(8259)
  */
 DEVINIT(8259)
 {
-	struct pic8259_data *d = malloc(sizeof(struct pic8259_data));
+	struct pic8259_data *d;
 	char *name2;
 	size_t nlen = strlen(devinit->name) + 20;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pic8259_data)));
 	memset(d, 0, sizeof(struct pic8259_data));
-	d->irq_nr = devinit->irq_nr;
 
-	name2 = malloc(nlen);
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
+
+	CHECK_ALLOCATION(name2 = malloc(nlen));
 	snprintf(name2, nlen, "%s", devinit->name);
 	if ((devinit->addr & 0xfff) == 0xa0) {
 		strlcat(name2, " [secondary]", nlen);

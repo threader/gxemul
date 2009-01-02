@@ -1,7 +1,7 @@
 #!/bin/sh
 ###############################################################################
 #
-#  Copyright (C) 2005  Anders Gavare.  All rights reserved.
+#  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@
 #  SUCH DAMAGE.
 #
 #
-#  $Id: makeautodev.sh,v 1.6 2006/02/09 20:02:59 debug Exp $
+#  $Id: makeautodev.sh,v 1.8.2.1 2008-01-18 19:12:31 debug Exp $
 
 
 printf "Generating autodev.c... "
@@ -37,6 +37,16 @@ rm -f autodev.c
 printf "/*\n *  DO NOT EDIT. AUTOMATICALLY CREATED\n */\n\n" >> autodev.c
 
 cat autodev_head.c >> autodev.c
+
+printf "5"
+rm -f .index
+for a in *.c; do
+	B=`grep COMMENT $a`
+	if [ z"$B" != z ]; then
+		printf "$a " >> .index
+		echo "$B"|cut -d : -f 2- >> .index
+	fi
+done
 
 printf "4"
 for a in dev_*.c; do

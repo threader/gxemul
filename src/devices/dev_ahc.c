@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ahc.c,v 1.5 2006/07/21 16:55:41 debug Exp $
+ *  $Id: dev_ahc.c,v 1.8.2.1 2008-01-18 19:12:28 debug Exp $
  *
- *  Adaptec AHC SCSI controller.
+ *  COMMENT: Adaptec AHC SCSI controller
  *
  *  NetBSD should say something like this, on SGI-IP32:
  *	ahc0 at pci0 dev 1 function 0
@@ -164,10 +164,6 @@ DEVICE_ACCESS(ahc)
 			    (int)relative_addr);
 	}
 
-#if 0
-cpu_interrupt(cpu, 0x200);
-#endif
-
 #ifdef AHC_DEBUG
 	if (ok) {
 		if (name == NULL) {
@@ -197,11 +193,9 @@ cpu_interrupt(cpu, 0x200);
 
 DEVINIT(ahc)
 {
-	struct ahc_data *d = malloc(sizeof(struct ahc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct ahc_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct ahc_data)));
 	memset(d, 0, sizeof(struct ahc_data));
 
 	memory_device_register(devinit->machine->memory, devinit->name,

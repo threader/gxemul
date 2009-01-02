@@ -1,4 +1,4 @@
-/*  GXemul: $Id: armreg.h,v 1.3 2006/02/26 20:11:14 debug Exp $  */
+/*  GXemul: $Id: armreg.h,v 1.3 2006-02-26 20:11:14 debug Exp $  */
 /*	$NetBSD: armreg.h,v 1.33 2005/07/20 14:38:11 nonaka Exp $	*/
 
 /*

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,13 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_cats.c,v 1.5 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_cats.c,v 1.15.2.1 2008-01-18 19:12:32 debug Exp $
+ *
+ *  COMMENT: Simtec Electronics' CATS board
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "bus_isa.h"
@@ -37,7 +40,6 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -47,11 +49,11 @@
 MACHINE_SETUP(cats)
 {
 	struct ebsaboot ebsaboot;
-	char bs[300];
+	struct pci_data *pci_bus;
+	char bs[300], tmpstr[400];
 	int boot_id = machine->bootdev_id >= 0? machine->bootdev_id : 0;
 
 	machine->machine_name = "CATS evaluation board";
-	machine->stable = 1;
 
 	if (machine->emulated_hz == 0)
 		machine->emulated_hz = 50000000;
@@ -60,10 +62,9 @@ MACHINE_SETUP(cats)
 		fprintf(stderr, "WARNING! Real CATS machines cannot"
 		    " have more than 256 MB RAM. Continuing anyway.\n");
 
-	machine->md_int.footbridge_data =
-	    device_add(machine, "footbridge addr=0x42000000");
-	machine->md_interrupt = isa32_interrupt;
-	machine->isa_pic_data.native_irq = 10;
+	snprintf(tmpstr, sizeof(tmpstr), "footbridge irq=%s.cpu[%i].irq"
+	    " addr=0x42000000", machine->path, machine->bootstrap_cpu);
+	pci_bus = device_add(machine, tmpstr);
 
 	/*  DC21285_ROM_BASE (256 KB at 0x41000000)  */
 	dev_ram_init(machine, 0x41000000, 256 * 1024, DEV_RAM_RAM, 0);
@@ -80,11 +81,7 @@ MACHINE_SETUP(cats)
 	/*  OpenBSD reboot needs 0xf??????? to be mapped to phys.:  */
 	dev_ram_init(machine, 0xf0000000, 0x1000000, DEV_RAM_MIRROR, 0x0);
 
-	bus_isa_init(machine, BUS_ISA_PCKBC_FORCE_USE |
-	    BUS_ISA_PCKBC_NONPCSTYLE, 0x7c000000, 0x80000000, 32, 48);
-
-	bus_pci_add(machine, machine->md_int.footbridge_data->pcibus,
-	    machine->memory, 0xc0, 8, 0, "s3_virge");
+	bus_pci_add(machine, pci_bus, machine->memory, 0xc0, 8, 0, "s3_virge");
 
 	if (!machine->prom_emulation)
 		return;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_hpcsh.c,v 1.6 2006/10/19 10:15:57 debug Exp $
+ *  $Id: machine_hpcsh.c,v 1.9.2.1 2008-01-18 19:12:33 debug Exp $
+ *
+ *  COMMENT: Handheld SuperH-based machines
  */
 
 #include <stdio.h>
@@ -65,7 +67,7 @@ MACHINE_SETUP(hpcsh)
 	machine->machine_name = "HPCsh";
 	cpu->byte_order = EMUL_LITTLE_ENDIAN;
 
-	if (!machine->use_x11)
+	if (!machine->x11_md.in_use)
 		fprintf(stderr, "-------------------------------------"
 		    "------------------------------------------\n"
 		    "\n  WARNING!  You are emulating a Dreamcast without -X."

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_ppc_instr.c,v 1.71 2006/07/26 23:21:48 debug Exp $
+ *  $Id: cpu_ppc_instr.c,v 1.77.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  POWER/PowerPC instructions.
  *
@@ -190,7 +190,7 @@ X(bclr)
 		cpu->cd.ppc.spr[SPR_CTR] --;
 	ctr_ok = (bo >> 2) & 1;
 	tmp = cpu->cd.ppc.spr[SPR_CTR];
-	ctr_ok |= ( (tmp != 0) ^ ((bo >> 1) & 1) );
+	ctr_ok |= ( (tmp == 0) == ((bo >> 1) & 1) );
 	cond_ok = (bo >> 4) & 1;
 	cond_ok |= ( ((bo >> 3) & 1) == ((cpu->cd.ppc.cr >> bi31m) & 1) );
 	if (ctr_ok && cond_ok) {
@@ -228,7 +228,7 @@ X(bclr_l)
 		cpu->cd.ppc.spr[SPR_CTR] --;
 	ctr_ok = (bo >> 2) & 1;
 	tmp = cpu->cd.ppc.spr[SPR_CTR];
-	ctr_ok |= ( (tmp != 0) ^ ((bo >> 1) & 1) );
+	ctr_ok |= ( (tmp == 0) == ((bo >> 1) & 1) );
 	cond_ok = (bo >> 4) & 1;
 	cond_ok |= ( ((bo >> 3) & 1) == ((cpu->cd.ppc.cr >> bi31m) & 1) );
 
@@ -272,7 +272,7 @@ X(bclr_l)
  */
 X(bcctr)
 {
-	unsigned int bo = ic->arg[0], bi31m = ic->arg[1]  /*,bh = ic->arg[2]*/;
+	unsigned int bo = ic->arg[0], bi31m = ic->arg[1];
 	uint64_t old_pc = cpu->pc;
 	MODE_uint_t addr = cpu->cd.ppc.spr[SPR_CTR];
 	int cond_ok = (bo >> 4) & 1;
@@ -369,7 +369,7 @@ X(bc)
 		cpu->cd.ppc.spr[SPR_CTR] --;
 	ctr_ok = (bo >> 2) & 1;
 	tmp = cpu->cd.ppc.spr[SPR_CTR];
-	ctr_ok |= ( (tmp != 0) ^ ((bo >> 1) & 1) );
+	ctr_ok |= ( (tmp == 0) == ((bo >> 1) & 1) );
 	cond_ok = (bo >> 4) & 1;
 	cond_ok |= ( ((bo >> 3) & 1) ==
 	    ((cpu->cd.ppc.cr >> (bi31m)) & 1)  );
@@ -393,7 +393,7 @@ X(bcl)
 		cpu->cd.ppc.spr[SPR_CTR] --;
 	ctr_ok = (bo >> 2) & 1;
 	tmp = cpu->cd.ppc.spr[SPR_CTR];
-	ctr_ok |= ( (tmp != 0) ^ ((bo >> 1) & 1) );
+	ctr_ok |= ( (tmp == 0) == ((bo >> 1) & 1) );
 	cond_ok = (bo >> 4) & 1;
 	cond_ok |= ( ((bo >> 3) & 1) ==
 	    ((cpu->cd.ppc.cr >> bi31m) & 1)  );
@@ -428,7 +428,7 @@ X(bc_samepage)
 		cpu->cd.ppc.spr[SPR_CTR] --;
 	ctr_ok = (bo >> 2) & 1;
 	tmp = cpu->cd.ppc.spr[SPR_CTR];
-	ctr_ok |= ( (tmp != 0) ^ ((bo >> 1) & 1) );
+	ctr_ok |= ( (tmp == 0) == ((bo >> 1) & 1) );
 	cond_ok = (bo >> 4) & 1;
 	cond_ok |= ( ((bo >> 3) & 1) ==
 	    ((cpu->cd.ppc.cr >> bi31m) & 1)  );
@@ -464,7 +464,7 @@ X(bcl_samepage)
 		cpu->cd.ppc.spr[SPR_CTR] --;
 	ctr_ok = (bo >> 2) & 1;
 	tmp = cpu->cd.ppc.spr[SPR_CTR];
-	ctr_ok |= ( (tmp != 0) ^ ((bo >> 1) & 1) );
+	ctr_ok |= ( (tmp == 0) == ((bo >> 1) & 1) );
 	cond_ok = (bo >> 4) & 1;
 	cond_ok |= ( ((bo >> 3) & 1) ==
 	    ((cpu->cd.ppc.cr >> bi31m) & 1)  );
@@ -2473,6 +2473,90 @@ X(stfdx)
 
 
 /*
+ *  lvx, stvx:  Vector (16-byte) load/store  (slow implementation)
+ *
+ *  arg[0] = v-register nr of rs
+ *  arg[1] = pointer to ra
+ *  arg[2] = pointer to rb
+ */
+X(lvx)
+{
+	MODE_uint_t addr = reg(ic->arg[1]) + reg(ic->arg[2]);
+	uint8_t data[16];
+	uint64_t hi, lo;
+	int rs = ic->arg[0];
+
+	if (cpu->memory_rw(cpu, cpu->mem, addr, data, sizeof(data),
+	    MEM_READ, CACHE_DATA) != MEMORY_ACCESS_OK) {
+		/*  exception  */
+		return;
+	}
+
+	hi = ((uint64_t)data[0] << 56) +
+	     ((uint64_t)data[1] << 48) +
+	     ((uint64_t)data[2] << 40) +
+	     ((uint64_t)data[3] << 32) +
+	     ((uint64_t)data[4] << 24) +
+	     ((uint64_t)data[5] << 16) +
+	     ((uint64_t)data[6] << 8) +
+	     ((uint64_t)data[7]);
+	lo = ((uint64_t)data[8] << 56) +
+	     ((uint64_t)data[9] << 48) +
+	     ((uint64_t)data[10] << 40) +
+	     ((uint64_t)data[11] << 32) +
+	     ((uint64_t)data[12] << 24) +
+	     ((uint64_t)data[13] << 16) +
+	     ((uint64_t)data[14] << 8) +
+	     ((uint64_t)data[15]);
+
+	cpu->cd.ppc.vr_hi[rs] = hi; cpu->cd.ppc.vr_lo[rs] = lo;
+}
+X(stvx)
+{
+	uint8_t data[16];
+	MODE_uint_t addr = reg(ic->arg[1]) + reg(ic->arg[2]);
+	int rs = ic->arg[0];
+	uint64_t hi = cpu->cd.ppc.vr_hi[rs], lo = cpu->cd.ppc.vr_lo[rs];
+
+	data[0] = hi >> 56;
+	data[1] = hi >> 48;
+	data[2] = hi >> 40;
+	data[3] = hi >> 32;
+	data[4] = hi >> 24;
+	data[5] = hi >> 16;
+	data[6] = hi >> 8;
+	data[7] = hi;
+	data[8] = lo >> 56;
+	data[9] = lo >> 48;
+	data[10] = lo >> 40;
+	data[11] = lo >> 32;
+	data[12] = lo >> 24;
+	data[13] = lo >> 16;
+	data[14] = lo >> 8;
+	data[15] = lo;
+
+	cpu->memory_rw(cpu, cpu->mem, addr, data,
+	    sizeof(data), MEM_WRITE, CACHE_DATA);
+}
+
+
+/*
+ *  vxor:  Vector (16-byte) XOR
+ *
+ *  arg[0] = v-register nr of source 1
+ *  arg[1] = v-register nr of source 2
+ *  arg[2] = v-register nr of destination
+ */
+X(vxor)
+{
+	cpu->cd.ppc.vr_hi[ic->arg[2]] =
+	    cpu->cd.ppc.vr_hi[ic->arg[0]] ^ cpu->cd.ppc.vr_hi[ic->arg[1]];
+	cpu->cd.ppc.vr_lo[ic->arg[2]] =
+	    cpu->cd.ppc.vr_lo[ic->arg[0]] ^ cpu->cd.ppc.vr_lo[ic->arg[1]];
+}
+
+
+/*
  *  tlbia:  TLB invalidate all
  */
 X(tlbia)
@@ -2675,8 +2759,18 @@ X(to_be_translated)
 	switch (main_opcode) {
 
 	case 0x04:
-		fatal("[ TODO: ALTIVEC ]\n");
-		ic->f = instr(nop);
+		if (iword == 0x12739cc4) {
+			/*  vxor v19,v19,v19  */
+			ic->f = instr(vxor);
+			ic->arg[0] = 19;
+			ic->arg[1] = 19;
+			ic->arg[2] = 19;
+		} else {
+			if (!cpu->translation_readahead)
+				fatal("[ TODO: Unimplemented ALTIVEC, iword"
+				    " = 0x%08"PRIx32"x ]\n", iword);
+			goto bad;
+		}
 		break;
 
 	case PPC_HI6_MULLI:
@@ -2729,7 +2823,8 @@ X(to_be_translated)
 	case PPC_HI6_ADDIC:
 	case PPC_HI6_ADDIC_DOT:
 		if (cpu->cd.ppc.bits == 64) {
-			fatal("addic for 64-bit: TODO\n");
+			if (!cpu->translation_readahead)
+				fatal("addic for 64-bit: TODO\n");
 			goto bad;
 		}
 		rt = (iword >> 21) & 31;
@@ -2847,7 +2942,8 @@ X(to_be_translated)
 			    + 32*update];
 		}
 		if (ra == 0 && update) {
-			fatal("TODO: ra=0 && update?\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: ra=0 && update?\n");
 			goto bad;
 		}
 		if (fp)
@@ -2868,7 +2964,8 @@ X(to_be_translated)
 		bi = (iword >> 16) & 31;
 		tmp_addr = (int64_t)(int16_t)(iword & 0xfffc);
 		if (aa_bit) {
-			fatal("aa_bit: NOT YET\n");
+			if (!cpu->translation_readahead)
+				fatal("aa_bit: NOT YET\n");
 			goto bad;
 		}
 		if (lk_bit) {
@@ -2983,6 +3080,12 @@ X(to_be_translated)
 						ic->f = instr(bclr_20);
 				}
 			} else {
+				if (!(bo & 4)) {
+					if (!cpu->translation_readahead)
+						fatal("TODO: bclr/bcctr "
+						    "bo bit 2 clear!\n");
+					goto bad;
+				}
 				if (lk_bit)
 					ic->f = instr(bcctr_l);
 				else
@@ -3105,7 +3208,8 @@ X(to_be_translated)
 			}
 			ic->arg[0] = iword;
 			if (cpu->cd.ppc.bits == 32) {
-				fatal("TODO: rld* in 32-bit mode?\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: rld* in 32-bit mode?\n");
 				goto bad;
 			}
 			break;
@@ -3149,7 +3253,8 @@ X(to_be_translated)
 			ra = (iword >> 16) & 31;
 			rc = iword & 1;
 			if (rc) {
-				fatal("TODO: rc\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: rc\n");
 				goto bad;
 			}
 			ic->arg[0] = (size_t)(&cpu->cd.ppc.gpr[rs]);
@@ -3203,7 +3308,8 @@ X(to_be_translated)
 			rs = (iword >> 21) & 31;
 			l_bit = (iword >> 16) & 1;
 			if (l_bit) {
-				fatal("TODO: mtmsr l-bit\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: mtmsr l-bit\n");
 				goto bad;
 			}
 			ic->arg[0] = (size_t)(&cpu->cd.ppc.gpr[rs]);
@@ -3239,7 +3345,8 @@ X(to_be_translated)
 			case PPC_31_MTSRIN: ic->f = instr(mtsrin); break;
 			}
 			if (cpu->cd.ppc.bits == 64) {
-				fatal("Not yet for 64-bit mode\n");
+				if (!cpu->translation_readahead)
+					fatal("Not yet for 64-bit mode\n");
 				goto bad;
 			}
 			break;
@@ -3254,7 +3361,8 @@ X(to_be_translated)
 			case PPC_31_MTSR:   ic->f = instr(mtsr); break;
 			}
 			if (cpu->cd.ppc.bits == 64) {
-				fatal("Not yet for 64-bit mode\n");
+				if (!cpu->translation_readahead)
+					fatal("Not yet for 64-bit mode\n");
 				goto bad;
 			}
 			break;
@@ -3339,7 +3447,8 @@ X(to_be_translated)
 			switch (spr) {
 			case 268: ic->f = instr(mftb); break;
 			case 269: ic->f = instr(mftbu); break;
-			default:fatal("mftb spr=%i?\n", spr);
+			default:if (!cpu->translation_readahead)
+					fatal("mftb spr=%i?\n", spr);
 				goto bad;
 			}
 			break;
@@ -3474,7 +3583,8 @@ X(to_be_translated)
 				    [size + 4*zero + 8*load + 16*update];
 			}
 			if (ra == 0 && update) {
-				fatal("TODO: ra=0 && update?\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: ra=0 && update?\n");
 				goto bad;
 			}
 			break;
@@ -3560,7 +3670,8 @@ X(to_be_translated)
 			oe_bit = (iword >> 10) & 1;
 			rc = iword & 1;
 			if (oe_bit) {
-				fatal("oe_bit not yet implemented\n");
+				if (!cpu->translation_readahead)
+					fatal("oe_bit not yet implemented\n");
 				goto bad;
 			}
 			switch (xo) {
@@ -3610,7 +3721,9 @@ X(to_be_translated)
 					ic->f = instr(subfme_dot); break;
 				case PPC_31_SUBFZE:
 					ic->f = instr(subfze_dot); break;
-				default:fatal("RC bit not yet implemented\n");
+				default:if (!cpu->translation_readahead)
+						fatal("RC bit not yet "
+						    "implemented\n");
 					goto bad;
 				}
 			}
@@ -3618,7 +3731,8 @@ X(to_be_translated)
 			ic->arg[1] = (size_t)(&cpu->cd.ppc.gpr[rb]);
 			ic->arg[2] = (size_t)(&cpu->cd.ppc.gpr[rt]);
 			if (cpu->cd.ppc.bits == 64 && n64) {
-				fatal("Not yet for 64-bit mode\n");
+				if (!cpu->translation_readahead)
+					fatal("Not yet for 64-bit mode\n");
 				goto bad;
 			}
 			break;
@@ -3627,7 +3741,6 @@ X(to_be_translated)
 		case PPC_31_LVXL:
 		case PPC_31_STVX:
 		case PPC_31_STVXL:
-			fatal("[ TODO: altivec load/store ]\n");
 			load = 0;
 			switch (xo) {
 			case PPC_31_LVX:
@@ -3637,19 +3750,13 @@ X(to_be_translated)
 			rs = (iword >> 21) & 31;
 			ra = (iword >> 16) & 31;
 			rb = (iword >> 11) & 31;
-			ic->arg[0] = (size_t)(&cpu->cd.ppc.vr_hi[rs]);
+			ic->arg[0] = rs;
 			if (ra == 0)
 				ic->arg[1] = (size_t)(&cpu->cd.ppc.zero);
 			else
 				ic->arg[1] = (size_t)(&cpu->cd.ppc.gpr[ra]);
 			ic->arg[2] = (size_t)(&cpu->cd.ppc.gpr[rb]);
-			ic->f =
-#ifdef MODE32
-				    ppc32_loadstore_indexed
-#else
-				    ppc_loadstore_indexed
-#endif
-				    [3 + 4 * load];
+			ic->f = load? instr(lvx) : instr(stvx);
 			break;
 
 		default:goto bad;
@@ -3665,7 +3772,9 @@ X(to_be_translated)
 		rc = iword & 1;
 
 		if (rc) {
-			fatal("Floating point (59) with rc bit! TODO\n");
+			if (!cpu->translation_readahead)
+				fatal("Floating point (59) "
+				    "with rc bit! TODO\n");
 			goto bad;
 		}
 
@@ -3706,7 +3815,9 @@ X(to_be_translated)
 		rc = iword & 1;
 
 		if (rc) {
-			fatal("Floating point (63) with rc bit! TODO\n");
+			if (!cpu->translation_readahead)
+				fatal("Floating point (63) "
+				    "with rc bit! TODO\n");
 			goto bad;
 		}
 

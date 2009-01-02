@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,13 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_vr41xx.c,v 1.41 2006/10/02 09:26:53 debug Exp $
+ *  $Id: dev_vr41xx.c,v 1.47.2.1 2008-01-18 19:12:30 debug Exp $
  *  
- *  VR41xx (actually, VR4122 and VR4131) misc functions.
+ *  COMMENT: VR41xx (VR4122 and VR4131) misc functions
  *
- *  This is just a big hack. TODO: Fix.
+ *  This is just a big hack.
+ *
+ *  TODO: Implement more functionality some day.
  */
 
 #include <stdio.h>
@@ -40,6 +42,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "devices.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -51,17 +54,101 @@
 #include "vr_rtcreg.h"
 
 
+/*  #define debug fatal  */
+
 #define	DEV_VR41XX_TICKSHIFT		14
 
-/*  #define debug fatal  */
+#define	DEV_VR41XX_LENGTH		0x800	/*  TODO?  */
+struct vr41xx_data {
+	struct interrupt cpu_irq;		/*  Connected to MIPS irq 2  */
+	int		cpumodel;		/*  Model nr, e.g. 4121  */
+
+	/*  KIU:  */
+	int		kiu_console_handle;
+	uint32_t	kiu_offset;
+	struct interrupt kiu_irq;
+	int		kiu_int_assert;
+	int		old_kiu_int_assert;
+
+	int		d0, d1, d2, d3, d4, d5;
+	int		dont_clear_next;
+	int		escape_state;
+
+	/*  Timer:  */
+	int		pending_timer_interrupts;
+	struct interrupt timer_irq;
+	struct timer	*timer;
+
+	/*  See icureg.h in NetBSD for more info.  */
+	uint16_t	sysint1;
+	uint16_t	msysint1;
+	uint16_t	giuint;
+	uint16_t	giumask;
+	uint16_t	sysint2;
+	uint16_t	msysint2;
+	struct interrupt giu_irq;
+};
+
+
+/*
+ *  vr41xx_vrip_interrupt_assert():
+ *  vr41xx_vrip_interrupt_deassert():
+ */ 
+void vr41xx_vrip_interrupt_assert(struct interrupt *interrupt)
+{
+	struct vr41xx_data *d = interrupt->extra;
+	int line = interrupt->line;
+	if (line < 16)
+		d->sysint1 |= (1 << line);
+	else
+		d->sysint2 |= (1 << (line-16));
+	if ((d->sysint1 & d->msysint1) | (d->sysint2 & d->msysint2))
+                INTERRUPT_ASSERT(d->cpu_irq);
+}
+void vr41xx_vrip_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct vr41xx_data *d = interrupt->extra;
+	int line = interrupt->line;
+	if (line < 16)
+		d->sysint1 &= ~(1 << line);
+	else
+		d->sysint2 &= ~(1 << (line-16));
+	if (!(d->sysint1 & d->msysint1) && !(d->sysint2 & d->msysint2))
+                INTERRUPT_DEASSERT(d->cpu_irq);
+}
+
+
+/*
+ *  vr41xx_giu_interrupt_assert():
+ *  vr41xx_giu_interrupt_deassert():
+ */ 
+void vr41xx_giu_interrupt_assert(struct interrupt *interrupt)
+{
+	struct vr41xx_data *d = interrupt->extra;
+	int line = interrupt->line;
+	d->giuint |= (1 << line);
+	if (d->giuint & d->giumask)
+                INTERRUPT_ASSERT(d->giu_irq);
+}
+void vr41xx_giu_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct vr41xx_data *d = interrupt->extra;
+	int line = interrupt->line;
+	d->giuint &= ~(1 << line);
+	if (!(d->giuint & d->giumask))
+                INTERRUPT_DEASSERT(d->giu_irq);
+}
 
 
 static void recalc_kiu_int_assert(struct cpu *cpu, struct vr41xx_data *d)
 {
-	if (d->kiu_int_assert != 0)
-		cpu_interrupt(cpu, 8 + d->kiu_irq_nr);
-	else
-		cpu_interrupt_ack(cpu, 8 + d->kiu_irq_nr);
+	if (d->kiu_int_assert != d->old_kiu_int_assert) {
+		d->old_kiu_int_assert = d->kiu_int_assert;
+		if (d->kiu_int_assert != 0)
+			INTERRUPT_ASSERT(d->kiu_irq);
+		else
+			INTERRUPT_DEASSERT(d->kiu_irq);
+	}
 }
 
 
@@ -307,7 +394,7 @@ static void vr41xx_keytick(struct cpu *cpu, struct vr41xx_data *d)
  */
 static void timer_tick(struct timer *timer, void *extra)
 {
-	struct vr41xx_data *d = (struct vr41xx_data *) extra;
+	struct vr41xx_data *d = extra;
 	d->pending_timer_interrupts ++;
 }
 
@@ -316,14 +403,10 @@ DEVICE_TICK(vr41xx)
 {
 	struct vr41xx_data *d = extra;
 
-	if (d->pending_timer_interrupts > 0) {
-		if (d->cpumodel == 4121 || d->cpumodel == 4181)
-			cpu_interrupt(cpu, 3);
-		else
-			cpu_interrupt(cpu, 8 + VRIP_INTR_ETIMER);
-	}
+	if (d->pending_timer_interrupts > 0)
+		INTERRUPT_ASSERT(d->timer_irq);
 
-	if (cpu->machine->use_x11)
+	if (cpu->machine->x11_md.in_use)
 		vr41xx_keytick(cpu, d);
 }
 
@@ -398,7 +481,7 @@ static uint64_t vr41xx_kiu(struct cpu *cpu, int ofs, uint64_t idata,
 
 DEVICE_ACCESS(vr41xx)
 {
-	struct vr41xx_data *d = (struct vr41xx_data *) extra;
+	struct vr41xx_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int regnr;
 	int revision = 0;
@@ -545,17 +628,10 @@ DEVICE_ACCESS(vr41xx)
 	*/
 
 	case 0x13e:	/*  on 4181?  */
-		/*  RTC interrupt register...  */
-		/*  Ack. timer interrupts?  */
-		cpu_interrupt_ack(cpu, 8 + VRIP_INTR_ETIMER);
-		if (d->pending_timer_interrupts > 0)
-			d->pending_timer_interrupts --;
-		break;
-
 	case 0x1de:	/*  on 4121?  */
 		/*  RTC interrupt register...  */
 		/*  Ack. timer interrupts?  */
-		cpu_interrupt_ack(cpu, 3);
+		INTERRUPT_DEASSERT(d->timer_irq);
 		if (d->pending_timer_interrupts > 0)
 			d->pending_timer_interrupts --;
 		break;
@@ -571,10 +647,17 @@ DEVICE_ACCESS(vr41xx)
 	}
 
 ret:
-	/*  Recalculate interrupt assertions:  */
-	cpu_interrupt_ack(cpu, 8 + 31);		/*  TODO: hopefully nothing
-						useful at irq 15 in
-						sysint2  */
+	/*
+	 *  Recalculate interrupt assertions:
+	 */
+	if (d->giuint & d->giumask)
+                INTERRUPT_ASSERT(d->giu_irq);
+	else
+                INTERRUPT_DEASSERT(d->giu_irq);
+	if ((d->sysint1 & d->msysint1) | (d->sysint2 & d->msysint2))
+                INTERRUPT_ASSERT(d->cpu_irq);
+	else
+                INTERRUPT_DEASSERT(d->cpu_irq);
 
 	if (writeflag == MEM_READ)
 		memory_writemax64(cpu, data, len, odata);
@@ -585,19 +668,56 @@ ret:
 
 /*
  *  dev_vr41xx_init():
+ *
+ *  machine->path is something like "machine[0]".
  */
 struct vr41xx_data *dev_vr41xx_init(struct machine *machine,
 	struct memory *mem, int cpumodel)
 {
+	struct vr41xx_data *d;
 	uint64_t baseaddr = 0;
-	char tmps[100];
-	struct vr41xx_data *d = malloc(sizeof(struct vr41xx_data));
+	char tmps[300];
+	int i;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct vr41xx_data)));
 	memset(d, 0, sizeof(struct vr41xx_data));
+
+	/*  Connect to MIPS irq 2:  */
+	snprintf(tmps, sizeof(tmps), "%s.cpu[%i].2",
+	    machine->path, machine->bootstrap_cpu);
+	INTERRUPT_CONNECT(tmps, d->cpu_irq);
+
+	/*
+	 *  Register VRIP interrupt lines 0..25:
+	 */
+	for (i=0; i<=25; i++) {
+		struct interrupt template;
+		snprintf(tmps, sizeof(tmps), "%s.cpu[%i].vrip.%i",
+		    machine->path, machine->bootstrap_cpu, i);
+		memset(&template, 0, sizeof(template));
+		template.line = i;
+		template.name = tmps;
+		template.extra = d;
+		template.interrupt_assert = vr41xx_vrip_interrupt_assert;
+		template.interrupt_deassert = vr41xx_vrip_interrupt_deassert;
+		interrupt_handler_register(&template);
+	}
+
+	/*
+	 *  Register GIU interrupt lines 0..31:
+	 */
+	for (i=0; i<32; i++) {
+		struct interrupt template;
+		snprintf(tmps, sizeof(tmps), "%s.cpu[%i].vrip.%i.giu.%i",
+		    machine->path, machine->bootstrap_cpu, VRIP_INTR_GIU, i);
+		memset(&template, 0, sizeof(template));
+		template.line = i;
+		template.name = tmps;
+		template.extra = d;
+		template.interrupt_assert = vr41xx_giu_interrupt_assert;
+		template.interrupt_deassert = vr41xx_giu_interrupt_deassert;
+		interrupt_handler_register(&template);
+	}
 
 	d->cpumodel = cpumodel;
 
@@ -605,7 +725,17 @@ struct vr41xx_data *dev_vr41xx_init(struct machine *machine,
 	d->kiu_offset = 0x180;
 	d->kiu_console_handle = console_start_slave_inputonly(
 	    machine, "kiu", 1);
-	d->kiu_irq_nr = VRIP_INTR_KIU;
+
+	/*  Connect to the KIU and GIU interrupts:  */
+	snprintf(tmps, sizeof(tmps), "%s.cpu[%i].vrip.%i",
+	    machine->path, machine->bootstrap_cpu, VRIP_INTR_GIU);
+	INTERRUPT_CONNECT(tmps, d->giu_irq);
+	snprintf(tmps, sizeof(tmps), "%s.cpu[%i].vrip.%i",
+	    machine->path, machine->bootstrap_cpu, VRIP_INTR_KIU);
+	INTERRUPT_CONNECT(tmps, d->kiu_irq);
+
+	if (machine->x11_md.in_use)
+		machine->main_console_handle = d->kiu_console_handle;  
 
 	switch (cpumodel) {
 	case 4101:
@@ -628,6 +758,14 @@ struct vr41xx_data *dev_vr41xx_init(struct machine *machine,
 		exit(1);
 	}
 
+	if (d->cpumodel == 4121 || d->cpumodel == 4181)
+		snprintf(tmps, sizeof(tmps), "%s.cpu[%i].3",
+		    machine->path, machine->bootstrap_cpu);
+	else
+		snprintf(tmps, sizeof(tmps), "%s.cpu[%i].vrip.%i",
+		    machine->path, machine->bootstrap_cpu, VRIP_INTR_ETIMER);
+	INTERRUPT_CONNECT(tmps, d->timer_irq);
+
 	memory_device_register(mem, "vr41xx", baseaddr, DEV_VR41XX_LENGTH,
 	    dev_vr41xx_access, (void *)d, DM_DEFAULT, NULL);
 
@@ -636,21 +774,27 @@ struct vr41xx_data *dev_vr41xx_init(struct machine *machine,
 	 *  which chips.
 	 */
 	if (cpumodel == 4131) {
-		snprintf(tmps, sizeof(tmps), "ns16550 irq=%i addr=0x%"PRIx64" "
-		    "name2=siu", 8+VRIP_INTR_SIU, (uint64_t) (baseaddr+0x800));
+		snprintf(tmps, sizeof(tmps), "ns16550 irq=%s.cpu[%i].vrip.%i "
+		    "addr=0x%"PRIx64" name2=siu", machine->path,
+		    machine->bootstrap_cpu, VRIP_INTR_SIU,
+		    (uint64_t) (baseaddr+0x800));
 		device_add(machine, tmps);
 	} else {
 		/*  This is used by Linux and NetBSD:  */
-		snprintf(tmps, sizeof(tmps), "ns16550 irq=%i addr=0x%x "
-		    "name2=serial", 8+VRIP_INTR_SIU, 0xc000000);
+		snprintf(tmps, sizeof(tmps), "ns16550 irq=%s.cpu[%i]."
+		    "vrip.%i addr=0x%x name2=serial", machine->path,
+		    machine->bootstrap_cpu, VRIP_INTR_SIU, 0xc000000);
 		device_add(machine, tmps);
 	}
 
 	/*  Hm... maybe this should not be here.  TODO  */
-	device_add(machine, "pcic addr=0x140003e0");
+	snprintf(tmps, sizeof(tmps), "pcic irq=%s.cpu[%i].vrip.%i addr="
+	    "0x140003e0", machine->path, machine->bootstrap_cpu,
+	    VRIP_INTR_GIU);
+	device_add(machine, tmps);
 
 	machine_add_tickfunction(machine, dev_vr41xx_tick, d,
-	    DEV_VR41XX_TICKSHIFT, 0.0);
+	    DEV_VR41XX_TICKSHIFT);
 
 	/*  Some machines (?) use ISA space at 0x15000000 instead of
 	    0x14000000, eg IBM WorkPad Z50.  */

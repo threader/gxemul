@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh_instr.c,v 1.44 2006/11/02 05:43:43 debug Exp $
+ *  $Id: cpu_sh_instr.c,v 1.64.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  SH instructions.
  *
@@ -102,10 +102,12 @@ X(sleep)
 
 	if (cpu->machine->ncpus == 1) {
 		static int x = 0;
+
 		if ((++x) == 600) {
 			usleep(10);
 			x = 0;
 		}
+
 		cpu->n_translated_instrs += N_SAFE_DYNTRANS_LIMIT / 6;
 	}
 }
@@ -173,6 +175,9 @@ X(exts_b_rm_rn) { reg(ic->arg[1]) = (int8_t)reg(ic->arg[0]); }
 X(extu_b_rm_rn) { reg(ic->arg[1]) = (uint8_t)reg(ic->arg[0]); }
 X(exts_w_rm_rn) { reg(ic->arg[1]) = (int16_t)reg(ic->arg[0]); }
 X(extu_w_rm_rn) { reg(ic->arg[1]) = (uint16_t)reg(ic->arg[0]); }
+/*  Note: rm and rn are the same on these:  */
+X(extu_b_rm)    { reg(ic->arg[1]) = (uint8_t)reg(ic->arg[1]); }
+X(extu_w_rm)    { reg(ic->arg[1]) = (uint16_t)reg(ic->arg[1]); }
 
 
 /*
@@ -196,21 +201,104 @@ X(tst_imm_r0)
 
 
 /*
+ *  xor_b_imm_r0_gbr:  mem[r0+gbr] |= imm
+ *  or_b_imm_r0_gbr:   mem[r0+gbr] ^= imm
+ *  and_b_imm_r0_gbr:  mem[r0+gbr] &= imm
+ *
+ *  arg[0] = imm
+ */
+X(xor_b_imm_r0_gbr)
+{
+	uint32_t addr = cpu->cd.sh.gbr + cpu->cd.sh.r[0];
+	uint8_t *p = (uint8_t *) cpu->cd.sh.host_store[addr >> 12];
+
+	if (p != NULL) {
+		p[addr & 0xfff] ^= ic->arg[0];
+	} else {
+		uint8_t data;
+		SYNCH_PC;
+		if (!cpu->memory_rw(cpu, cpu->mem, addr, (unsigned char *)&data,
+		   sizeof(data), MEM_READ, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+		data ^= ic->arg[0];
+		if (!cpu->memory_rw(cpu, cpu->mem, addr, (unsigned char *)&data,
+		   sizeof(data), MEM_WRITE, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+	}
+}
+X(or_b_imm_r0_gbr)
+{
+	uint32_t addr = cpu->cd.sh.gbr + cpu->cd.sh.r[0];
+	uint8_t *p = (uint8_t *) cpu->cd.sh.host_store[addr >> 12];
+
+	if (p != NULL) {
+		p[addr & 0xfff] |= ic->arg[0];
+	} else {
+		uint8_t data;
+		SYNCH_PC;
+		if (!cpu->memory_rw(cpu, cpu->mem, addr, (unsigned char *)&data,
+		   sizeof(data), MEM_READ, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+		data |= ic->arg[0];
+		if (!cpu->memory_rw(cpu, cpu->mem, addr, (unsigned char *)&data,
+		   sizeof(data), MEM_WRITE, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+	}
+}
+X(and_b_imm_r0_gbr)
+{
+	uint32_t addr = cpu->cd.sh.gbr + cpu->cd.sh.r[0];
+	uint8_t *p = (uint8_t *) cpu->cd.sh.host_store[addr >> 12];
+
+	if (p != NULL) {
+		p[addr & 0xfff] &= ic->arg[0];
+	} else {
+		uint8_t data;
+		SYNCH_PC;
+		if (!cpu->memory_rw(cpu, cpu->mem, addr, (unsigned char *)&data,
+		   sizeof(data), MEM_READ, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+		data &= ic->arg[0];
+		if (!cpu->memory_rw(cpu, cpu->mem, addr, (unsigned char *)&data,
+		   sizeof(data), MEM_WRITE, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+	}
+}
+
+
+/*
  *  mov_imm_rn:  Set rn to a signed 8-bit value
  *  add_imm_rn:  Add a signed 8-bit value to Rn
  *
  *  arg[0] = int8_t imm, extended to at least int32_t
  *  arg[1] = ptr to rn
  */
-X(mov_imm_rn) { reg(ic->arg[1]) = (int32_t)ic->arg[0]; }
-X(add_imm_rn) { reg(ic->arg[1]) += (int32_t)ic->arg[0]; }
+X(mov_imm_rn) { reg(ic->arg[1]) = ic->arg[0]; }
+X(mov_0_rn)   { reg(ic->arg[1]) = 0; }
+X(add_imm_rn) { reg(ic->arg[1]) += ic->arg[0]; }
+X(inc_rn)     { reg(ic->arg[1]) ++; }
+X(add_4_rn)   { reg(ic->arg[1]) += 4; }
+X(sub_4_rn)   { reg(ic->arg[1]) -= 4; }
+X(dec_rn)     { reg(ic->arg[1]) --; }
 
 
 /*
- *  mov_b_rm_predec_rn:  mov.b reg,@-Rn
- *  mov_w_rm_predec_rn:  mov.w reg,@-Rn
- *  mov_l_rm_predec_rn:  mov.l reg,@-Rn
- *  stc_l_rm_predec_rn:  mov.l reg,@-Rn, with MD status bit check
+ *  mov_b_rm_predec_rn:     mov.b reg,@-Rn
+ *  mov_w_rm_predec_rn:     mov.w reg,@-Rn
+ *  mov_l_rm_predec_rn:     mov.l reg,@-Rn
+ *  stc_l_rm_predec_rn_md:  mov.l reg,@-Rn, with MD status bit check
  *
  *  arg[0] = ptr to rm  (or other register)
  *  arg[1] = ptr to rn
@@ -284,7 +372,7 @@ X(mov_l_rm_predec_rn)
 		reg(ic->arg[1]) = addr;
 	}
 }
-X(stc_l_rm_predec_rn)
+X(stc_l_rm_predec_rn_md)
 {
 	uint32_t addr = reg(ic->arg[1]) - sizeof(uint32_t);
 	uint32_t *p = (uint32_t *) cpu->cd.sh.host_store[addr >> 12];
@@ -740,7 +828,12 @@ X(mov_l_arg1_postinc_to_arg0_md)
 	else
 		data = BE32_TO_HOST(data);
 	reg(ic->arg[1]) = addr + sizeof(data);
-	reg(ic->arg[0]) = data;
+
+	/*  Special case when loading into the SR register:  */
+	if (ic->arg[0] == (size_t)&cpu->cd.sh.sr)
+		sh_update_sr(cpu, data);
+	else
+		reg(ic->arg[0]) = data;
 }
 X(mov_l_arg1_postinc_to_arg0_fp)
 {
@@ -767,7 +860,8 @@ X(mov_l_arg1_postinc_to_arg0_fp)
 		data = BE32_TO_HOST(data);
 	reg(ic->arg[1]) = addr + sizeof(data);
 
-	if (ic->arg[0] == (size_t)cpu->cd.sh.fpscr)
+	/*  Ugly special case for FPSCR:  */
+	if (ic->arg[0] == (size_t)&cpu->cd.sh.fpscr)
 		sh_update_fpscr(cpu, data);
 	else
 		reg(ic->arg[0]) = data;
@@ -1287,6 +1381,7 @@ X(mov_w_r0_disp_rn)
  *  sub_rm_rn:  rn = rn - rm
  *  subc_rm_rn: rn = rn - rm - t; t = borrow
  *  tst_rm_rn:  t = ((rm & rn) == 0)
+ *  tst_rm:     t = (rm == 0)
  *  xtrct_rm_rn:  rn = (rn >> 16) | (rm << 16)
  *
  *  arg[0] = ptr to rm
@@ -1328,6 +1423,13 @@ X(tst_rm_rn)
 	else
 		cpu->cd.sh.sr |= SH_SR_T;
 }
+X(tst_rm)
+{
+	if (reg(ic->arg[0]))
+		cpu->cd.sh.sr &= ~SH_SR_T;
+	else
+		cpu->cd.sh.sr |= SH_SR_T;
+}
 X(xtrct_rm_rn)
 {
 	uint32_t rn = reg(ic->arg[1]), rm = reg(ic->arg[0]);
@@ -1349,14 +1451,16 @@ X(div0u)
 }
 X(div0s_rm_rn)
 {
-	int q = reg(ic->arg[1]) >> 31, m = reg(ic->arg[0]) >> 31;
-	cpu->cd.sh.sr &= ~(SH_SR_Q | SH_SR_M | SH_SR_T);
+	int q = reg(ic->arg[1]) & 0x80000000;
+	int m = reg(ic->arg[0]) & 0x80000000;
+	uint32_t new_sr = cpu->cd.sh.sr & ~(SH_SR_Q | SH_SR_M | SH_SR_T);
 	if (q)
-		cpu->cd.sh.sr |= SH_SR_Q;
+		new_sr |= SH_SR_Q;
 	if (m)
-		cpu->cd.sh.sr |= SH_SR_M;
+		new_sr |= SH_SR_M;
 	if (m ^ q)
-		cpu->cd.sh.sr |= SH_SR_T;
+		new_sr |= SH_SR_T;
+	cpu->cd.sh.sr = new_sr;
 }
 X(div1_rm_rn)
 {
@@ -1529,7 +1633,7 @@ X(cmp_str_rm_rn)
 X(shll_rn)
 {
 	uint32_t rn = reg(ic->arg[1]);
-	if (rn >> 31)
+	if (rn & 0x80000000)
 		cpu->cd.sh.sr |= SH_SR_T;
 	else
 		cpu->cd.sh.sr &= ~SH_SR_T;
@@ -1546,12 +1650,15 @@ X(shlr_rn)
 }
 X(rotl_rn)
 {
-	uint32_t rn = reg(ic->arg[1]);
-	if (rn >> 31)
+	uint32_t rn = reg(ic->arg[1]), x;
+	if (rn & 0x80000000) {
+		x = 1;
 		cpu->cd.sh.sr |= SH_SR_T;
-	else
+	} else {
+		x = 0;
 		cpu->cd.sh.sr &= ~SH_SR_T;
-	reg(ic->arg[1]) = (rn << 1) | (rn >> 31);
+	}
+	reg(ic->arg[1]) = (rn << 1) | x;
 }
 X(rotr_rn)
 {
@@ -1661,7 +1768,8 @@ X(shld)
  *  braf:  Like bra, but using a register instead of an immediate
  *  bsrf:  Like braf, but also sets PR to the return address
  *
- *  arg[0] = immediate offset relative to start of page
+ *  arg[0] = immediate offset relative to start of page,
+ *           or ptr to target instruction, for samepage branches
  *  arg[1] = ptr to Rn  (for braf/bsrf)
  */
 X(bra)
@@ -1678,6 +1786,15 @@ X(bra)
 		quick_pc_to_pointers(cpu);
 	} else
 		cpu->delay_slot = NOT_DELAYED;
+}
+X(bra_samepage)
+{
+	cpu->delay_slot = TO_BE_DELAYED;
+	ic[1].f(cpu, ic+1);
+	cpu->n_translated_instrs ++;
+	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))
+		cpu->cd.sh.next_ic = (struct sh_instr_call *) ic->arg[0];
+	cpu->delay_slot = NOT_DELAYED;
 }
 X(bsr)
 {
@@ -1697,6 +1814,20 @@ X(bsr)
 		quick_pc_to_pointers(cpu);
 	} else
 		cpu->delay_slot = NOT_DELAYED;
+}
+X(bsr_samepage)
+{
+	uint32_t old_pc;
+	SYNCH_PC;
+	old_pc = cpu->pc;
+	cpu->delay_slot = TO_BE_DELAYED;
+	ic[1].f(cpu, ic+1);
+	cpu->n_translated_instrs ++;
+	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+		cpu->cd.sh.pr = old_pc + 4;
+		cpu->cd.sh.next_ic = (struct sh_instr_call *) ic->arg[0];
+	}
+	cpu->delay_slot = NOT_DELAYED;
 }
 X(braf_rn)
 {
@@ -1741,6 +1872,7 @@ X(bsrf_rn)
  *  bf/s: Branch if false (with delay-slot)
  *
  *  arg[0] = immediate offset relative to start of page
+ *  arg[1] = for samepage functions, the new instruction pointer
  */
 X(bt)
 {
@@ -1759,6 +1891,16 @@ X(bf)
 		cpu->pc += ic->arg[0];
 		quick_pc_to_pointers(cpu);
 	}
+}
+X(bt_samepage)
+{
+	if (cpu->cd.sh.sr & SH_SR_T)
+		cpu->cd.sh.next_ic = (struct sh_instr_call *) ic->arg[1];
+}
+X(bf_samepage)
+{
+	if (!(cpu->cd.sh.sr & SH_SR_T))
+		cpu->cd.sh.next_ic = (struct sh_instr_call *) ic->arg[1];
 }
 X(bt_s)
 {
@@ -1794,6 +1936,38 @@ X(bf_s)
 			cpu->pc = target;
 			quick_pc_to_pointers(cpu);
 		} else
+			cpu->cd.sh.next_ic ++;
+	} else
+		cpu->delay_slot = NOT_DELAYED;
+}
+X(bt_s_samepage)
+{
+	int cond = cpu->cd.sh.sr & SH_SR_T;
+	cpu->delay_slot = TO_BE_DELAYED;
+	ic[1].f(cpu, ic+1);
+	cpu->n_translated_instrs ++;
+	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+		cpu->delay_slot = NOT_DELAYED;
+		if (cond)
+			cpu->cd.sh.next_ic =
+			    (struct sh_instr_call *) ic->arg[1];
+		else
+			cpu->cd.sh.next_ic ++;
+	} else
+		cpu->delay_slot = NOT_DELAYED;
+}
+X(bf_s_samepage)
+{
+	int cond = !(cpu->cd.sh.sr & SH_SR_T);
+	cpu->delay_slot = TO_BE_DELAYED;
+	ic[1].f(cpu, ic+1);
+	cpu->n_translated_instrs ++;
+	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+		cpu->delay_slot = NOT_DELAYED;
+		if (cond)
+			cpu->cd.sh.next_ic =
+			    (struct sh_instr_call *) ic->arg[1];
+		else
 			cpu->cd.sh.next_ic ++;
 	} else
 		cpu->delay_slot = NOT_DELAYED;
@@ -1906,18 +2080,6 @@ X(rts_trace)
 
 
 /*
- *  sts_mach_rn: Store MACH into Rn
- *  sts_macl_rn: Store MACL into Rn
- *  sts_pr_rn:   Store PR into Rn
- *
- *  arg[1] = ptr to rn
- */
-X(sts_mach_rn) { reg(ic->arg[1]) = cpu->cd.sh.mach; }
-X(sts_macl_rn) { reg(ic->arg[1]) = cpu->cd.sh.macl; }
-X(sts_pr_rn)   { reg(ic->arg[1]) = cpu->cd.sh.pr; }
-
-
-/*
  *  rte:  Return from exception.
  */
 X(rte)
@@ -1954,12 +2116,16 @@ X(ldtlb)
 	cpu->cd.sh.utlb_hi[urc] = cpu->cd.sh.pteh;
 	cpu->cd.sh.utlb_lo[urc] = cpu->cd.sh.ptel;
 
-	if ((old_lo & SH4_PTEL_SZ_MASK) == SH4_PTEL_SZ_4K)
-		cpu->invalidate_translation_caches(cpu,
-		    old_hi & 0xfffff000, INVALIDATE_VADDR);
-	else
-		cpu->invalidate_translation_caches(cpu,
-		    old_hi & 0xfffff000, INVALIDATE_ALL);
+	/*  Invalidate the old mapping, if it belonged to the same ASID:  */
+	if ((old_hi & SH4_PTEH_ASID_MASK) ==
+	    (cpu->cd.sh.pteh & SH4_PTEH_ASID_MASK)) {
+		if ((old_lo & SH4_PTEL_SZ_MASK) == SH4_PTEL_SZ_4K)
+			cpu->invalidate_translation_caches(cpu,
+			    old_hi & 0xfffff000, INVALIDATE_VADDR);
+		else
+			cpu->invalidate_translation_caches(cpu,
+			    0, INVALIDATE_ALL);
+	}
 }
 
 
@@ -1986,6 +2152,19 @@ X(ldc_rm_sr)
 {
 	RES_INST_IF_NOT_MD;
 	sh_update_sr(cpu, reg(ic->arg[1]));
+
+#if 0
+/*  NOTE: This code causes NetBSD/landisk to get past a point where it
+    otherwise hangs, but it causes Linux/Dreamcast to bug out instead. :/  */
+
+	if (!(cpu->cd.sh.sr & SH_SR_BL) && cpu->cd.sh.int_to_assert > 0 &&
+	    ( (cpu->cd.sh.sr & SH_SR_IMASK) >> SH_SR_IMASK_SHIFT)
+	    < cpu->cd.sh.int_level) {
+		/*  Cause interrupt immediately, by dropping out of the
+		    main dyntrans loop:  */
+		cpu->cd.sh.next_ic = &nothing_call;
+	}
+#endif
 }
 
 
@@ -2106,6 +2285,42 @@ X(ftrc_frm_fpul)
 		ieee_interpret_float_value(reg(ic->arg[0]), &op1, IEEE_FMT_S);
 		cpu->cd.sh.fpul = (int32_t) op1.f;
 	}
+}
+
+
+/*
+ *  fcnvsd_fpul_drn:  Convert single-precision to double-precision.
+ *  fcnvds_drm_fpul:  Convert double-precision to single-precision.
+ *
+ *  arg[0] = ptr to destination (double- or single-precision float)
+ */
+X(fcnvsd_fpul_drn)
+{
+	struct ieee_float_value op1;
+	int64_t ieee;
+
+	FLOATING_POINT_AVAILABLE_CHECK;
+
+	ieee_interpret_float_value(cpu->cd.sh.fpul, &op1, IEEE_FMT_S);
+	cpu->cd.sh.fpul = (int32_t) op1.f;
+
+	/*  Store double-precision result:  */
+	ieee = ieee_store_float_value(op1.f, IEEE_FMT_D, 0);
+	reg(ic->arg[0]) = (uint32_t) (ieee >> 32);
+	reg(ic->arg[0] + sizeof(uint32_t)) = (uint32_t) ieee;
+}
+X(fcnvds_drm_fpul)
+{
+	struct ieee_float_value op1;
+	int64_t r1;
+
+	FLOATING_POINT_AVAILABLE_CHECK;
+
+	r1 = reg(ic->arg[0] + sizeof(uint32_t)) +
+	    ((uint64_t)reg(ic->arg[0]) << 32);
+	ieee_interpret_float_value(r1, &op1, IEEE_FMT_D);
+
+	cpu->cd.sh.fpul = ieee_store_float_value(op1.f, IEEE_FMT_S, 0);
 }
 
 
@@ -2550,15 +2765,25 @@ X(tas_b_rn)
 
 
 /*
- *  prom_emul_dreamcast:
+ *  prom_emul:
  */
-X(prom_emul_dreamcast)
+X(prom_emul)
 {
 	uint32_t old_pc;
 	SYNCH_PC;
 	old_pc = cpu->pc;
 
-	dreamcast_emul(cpu);
+	switch (cpu->machine->machine_type) {
+	case MACHINE_DREAMCAST:
+		dreamcast_emul(cpu);
+		break;
+	case MACHINE_LANDISK:
+		sh_ipl_g_emul(cpu);
+		break;
+	default:
+		fatal("SH prom_emul: unimplemented machine type.\n");
+		exit(1);
+	}
 
 	if (!cpu->running) {
 		cpu->n_translated_instrs --;
@@ -2657,13 +2882,12 @@ X(end_of_page2)
  */
 X(to_be_translated)
 {
-	uint64_t addr, low_pc;
-	uint32_t iword;
+	uint32_t addr, low_pc, iword;
 	unsigned char *page;
-	unsigned char ib[4];
-	int main_opcode, isize = cpu->cd.sh.compact? 2 : sizeof(ib);
+	unsigned char ib[2];
+	int main_opcode, isize = sizeof(ib);
 	int in_crosspage_delayslot = 0, r8, r4, lo4, lo8;
-	/*  void (*samepage_function)(struct cpu *, struct sh_instr_call *);  */
+	void (*samepage_function)(struct cpu *, struct sh_instr_call *);
 
 	/*  Figure out the (virtual) address of the instruction:  */
 	low_pc = ((size_t)ic - (size_t)cpu->cd.sh.cur_ic_page)
@@ -2683,22 +2907,7 @@ X(to_be_translated)
 	addr &= ~((1 << SH_INSTR_ALIGNMENT_SHIFT) - 1);
 
 	/*  Read the instruction word from memory:  */
-#ifdef MODE32
 	page = cpu->cd.sh.host_load[(uint32_t)addr >> 12];
-#else
-	{
-		const uint32_t mask1 = (1 << DYNTRANS_L1N) - 1;
-		const uint32_t mask2 = (1 << DYNTRANS_L2N) - 1;
-		const uint32_t mask3 = (1 << DYNTRANS_L3N) - 1;
-		uint32_t x1 = (addr >> (64-DYNTRANS_L1N)) & mask1;
-		uint32_t x2 = (addr >> (64-DYNTRANS_L1N-DYNTRANS_L2N)) & mask2;
-		uint32_t x3 = (addr >> (64-DYNTRANS_L1N-DYNTRANS_L2N-
-		    DYNTRANS_L3N)) & mask3;
-		struct DYNTRANS_L2_64_TABLE *l2 = cpu->cd.sh.l1_64[x1];
-		struct DYNTRANS_L3_64_TABLE *l3 = l2->l3[x2];
-		page = l3->host_load[x3];
-	}
-#endif
 
 	if (page != NULL) {
 		/*  fatal("TRANSLATION HIT!\n");  */
@@ -2712,27 +2921,16 @@ X(to_be_translated)
 		}
 	}
 
-	if (cpu->cd.sh.compact) {
-		iword = *((uint16_t *)&ib[0]);
-		if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
-			iword = LE16_TO_HOST(iword);
-		else
-			iword = BE16_TO_HOST(iword);
-		main_opcode = iword >> 12;
-		r8 = (iword >> 8) & 0xf;
-		r4 = (iword >> 4) & 0xf;
-		lo8 = iword & 0xff;
-		lo4 = iword & 0xf;
-	} else {
-		iword = *((uint32_t *)&ib[0]);
-		if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
-			iword = LE32_TO_HOST(iword);
-		else
-			iword = BE32_TO_HOST(iword);
-		main_opcode = -1;	/*  TODO  */
-		fatal("SH5/SH64 isn't implemented yet. Sorry.\n");
-		goto bad;
-	}
+	iword = *((uint16_t *)&ib[0]);
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+		iword = LE16_TO_HOST(iword);
+	else
+		iword = BE16_TO_HOST(iword);
+	main_opcode = iword >> 12;
+	r8 = (iword >> 8) & 0xf;
+	r4 = (iword >> 4) & 0xf;
+	lo8 = iword & 0xff;
+	lo4 = iword & 0xf;
 
 
 #define DYNTRANS_TO_BE_TRANSLATED_HEAD
@@ -2808,9 +3006,9 @@ X(to_be_translated)
 			/*  STC Rm_BANK, Rn  */
 			ic->f = instr(copy_privileged_register);
 			ic->arg[0] = (size_t)&cpu->cd.sh.r_bank[(lo8 >> 4) & 7];
-		} else if (iword == 0x00ff) {
-			/*  PROM emulation specifically for Dreamcast  */
-			ic->f = instr(prom_emul_dreamcast);
+		} else if (iword == SH_INVALID_INSTR) {
+			/*  PROM emulation (GXemul specific)  */
+			ic->f = instr(prom_emul);
 		} else {
 			switch (lo8) {
 			case 0x02:	/*  STC SR,Rn  */
@@ -2827,19 +3025,23 @@ X(to_be_translated)
 			case 0x09:	/*  NOP  */
 				ic->f = instr(nop);
 				if (iword & 0x0f00) {
-					fatal("Unimplemented NOP variant?\n");
+					if (!cpu->translation_readahead)
+						fatal("Unimplemented NOP"
+						    " variant?\n");
 					goto bad;
 				}
 				break;
 			case 0x0a:	/*  STS MACH,Rn  */
-				ic->f = instr(sts_mach_rn);
+				ic->f = instr(mov_rm_rn);
+				ic->arg[0] = (size_t)&cpu->cd.sh.mach;
 				break;
 			case 0x12:	/*  STC GBR,Rn  */
 				ic->f = instr(mov_rm_rn);
 				ic->arg[0] = (size_t)&cpu->cd.sh.gbr;
 				break;
 			case 0x1a:	/*  STS MACL,Rn  */
-				ic->f = instr(sts_macl_rn);
+				ic->f = instr(mov_rm_rn);
+				ic->arg[0] = (size_t)&cpu->cd.sh.macl;
 				break;
 			case 0x22:	/*  STC VBR,Rn  */
 				ic->f = instr(copy_privileged_register);
@@ -2856,7 +3058,8 @@ X(to_be_translated)
 				ic->f = instr(movt_rn);
 				break;
 			case 0x2a:	/*  STS PR,Rn  */
-				ic->f = instr(sts_pr_rn);
+				ic->f = instr(mov_rm_rn);
+				ic->arg[0] = (size_t)&cpu->cd.sh.pr;
 				break;
 			case 0x32:	/*  STC SSR,Rn  */
 				ic->f = instr(copy_privileged_register);
@@ -2904,8 +3107,10 @@ X(to_be_translated)
 				ic->arg[0] = (size_t)&cpu->cd.sh.dbr;
 				ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];
 				break;
-			default:fatal("Unimplemented opcode 0x%x,0x%03x\n",
-				    main_opcode, iword & 0xfff);
+			default:if (!cpu->translation_readahead)
+					fatal("Unimplemented opcode 0x%x,"
+					    "0x%03x\n", main_opcode,
+					    iword & 0xfff);
 				goto bad;
 			}
 		}
@@ -2941,6 +3146,8 @@ X(to_be_translated)
 			break;
 		case 0x8:	/*  TST Rm,Rn  */
 			ic->f = instr(tst_rm_rn);
+			if (r8 == r4)
+				ic->f = instr(tst_rm);
 			break;
 		case 0x9:	/*  AND Rm,Rn  */
 			ic->f = instr(and_rm_rn);
@@ -2963,8 +3170,9 @@ X(to_be_translated)
 		case 0xf:	/*  MULS.W Rm,Rn  */
 			ic->f = instr(muls_w_rm_rn);
 			break;
-		default:fatal("Unimplemented opcode 0x%x,0x%x\n",
-			    main_opcode, lo4);
+		default:if (!cpu->translation_readahead)
+				fatal("Unimplemented opcode 0x%x,0x%x\n",
+				    main_opcode, lo4);
 			goto bad;
 		}
 		break;
@@ -3007,8 +3215,9 @@ X(to_be_translated)
 		case 0xe:	/*  ADDC Rm,Rn  */
 			ic->f = instr(addc_rm_rn);
 			break;
-		default:fatal("Unimplemented opcode 0x%x,0x%x\n",
-			    main_opcode, lo4);
+		default:if (!cpu->translation_readahead)
+				fatal("Unimplemented opcode 0x%x,0x%x\n",
+				    main_opcode, lo4);
 			goto bad;
 		}
 		break;
@@ -3020,7 +3229,7 @@ X(to_be_translated)
 			ic->f = instr(shld);
 		} else if ((lo8 & 0x8f) == 0x83) {
 			/*  STC.L Rm_BANK,@-Rn  */
-			ic->f = instr(stc_l_rm_predec_rn);
+			ic->f = instr(stc_l_rm_predec_rn_md);
 			ic->arg[0] = (size_t)&cpu->cd.sh.r_bank[
 			    (lo8 >> 4) & 7];	/* m */
 		} else if ((lo8 & 0x8f) == 0x87) {
@@ -3045,7 +3254,7 @@ X(to_be_translated)
 				ic->arg[0] = (size_t)&cpu->cd.sh.mach;
 				break;
 			case 0x03:	/*  STC.L SR,@-Rn  */
-				ic->f = instr(stc_l_rm_predec_rn);
+				ic->f = instr(stc_l_rm_predec_rn_md);
 				ic->arg[0] = (size_t)&cpu->cd.sh.sr;
 				break;
 			case 0x04:	/*  ROTL Rn  */
@@ -3090,7 +3299,7 @@ X(to_be_translated)
 				ic->arg[0] = (size_t)&cpu->cd.sh.macl;
 				break;
 			case 0x13:	/*  STC.L GBR,@-Rn  */
-				ic->f = instr(stc_l_rm_predec_rn);
+				ic->f = instr(mov_l_rm_predec_rn);
 				ic->arg[0] = (size_t)&cpu->cd.sh.gbr;
 				break;
 			case 0x15:	/*  CMP/PL Rn  */
@@ -3101,7 +3310,7 @@ X(to_be_translated)
 				ic->arg[0] = (size_t)&cpu->cd.sh.macl;
 				break;
 			case 0x17:	/*  LDC.L @Rm+,GBR  */
-				ic->f = instr(mov_l_arg1_postinc_to_arg0_md);
+				ic->f = instr(mov_l_arg1_postinc_to_arg0);
 				ic->arg[0] = (size_t)&cpu->cd.sh.gbr;
 				break;
 			case 0x18:	/*  SHLL8 Rn  */
@@ -3112,6 +3321,11 @@ X(to_be_translated)
 				break;
 			case 0x1b:	/*  TAS.B @Rn  */
 				ic->f = instr(tas_b_rn);
+				break;
+			case 0x1e:	/*  LDC Rm,GBR  */
+				ic->f = instr(mov_rm_rn);
+				ic->arg[0] = (size_t)&cpu->cd.sh.r[r8];	/* m */
+				ic->arg[1] = (size_t)&cpu->cd.sh.gbr;
 				break;
 			case 0x20:	/*  SHAL Rn  */
 				ic->f = instr(shll_rn);  /*  NOTE: shll  */
@@ -3125,7 +3339,7 @@ X(to_be_translated)
 				ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];	/* n */
 				break;
 			case 0x23:	/*  STC.L VBR,@-Rn  */
-				ic->f = instr(stc_l_rm_predec_rn);
+				ic->f = instr(stc_l_rm_predec_rn_md);
 				ic->arg[0] = (size_t)&cpu->cd.sh.vbr;
 				break;
 			case 0x24:	/*  ROTCL Rn  */
@@ -3167,7 +3381,7 @@ X(to_be_translated)
 				ic->arg[1] = (size_t)&cpu->cd.sh.vbr;
 				break;
 			case 0x33:	/*  STC.L SSR,@-Rn  */
-				ic->f = instr(stc_l_rm_predec_rn);
+				ic->f = instr(stc_l_rm_predec_rn_md);
 				ic->arg[0] = (size_t)&cpu->cd.sh.ssr;
 				break;
 			case 0x37:	/*  LDC.L @Rm+,SSR  */
@@ -3180,7 +3394,7 @@ X(to_be_translated)
 				ic->arg[1] = (size_t)&cpu->cd.sh.ssr;
 				break;
 			case 0x43:	/*  STC.L SPC,@-Rn  */
-				ic->f = instr(stc_l_rm_predec_rn);
+				ic->f = instr(stc_l_rm_predec_rn_md);
 				ic->arg[0] = (size_t)&cpu->cd.sh.spc;
 				break;
 			case 0x47:	/*  LDC.L @Rm+,SPC  */
@@ -3212,6 +3426,8 @@ X(to_be_translated)
 				ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];	/* n */
 				break;
 			case 0x66:	/*  LDS.L @Rm+,FPSCR  */
+				/*  Note: Loading into FPSCR is a specia
+				    case (need to call sh_update_fpsrc()).  */
 				ic->f = instr(mov_l_arg1_postinc_to_arg0_fp);
 				ic->arg[0] = (size_t)&cpu->cd.sh.fpscr;
 				break;
@@ -3224,8 +3440,9 @@ X(to_be_translated)
 				ic->arg[0] = (size_t)&cpu->cd.sh.r[r8];
 				ic->arg[1] = (size_t)&cpu->cd.sh.dbr;
 				break;
-			default:fatal("Unimplemented opcode 0x%x,0x%02x\n",
-				    main_opcode, lo8);
+			default:if (!cpu->translation_readahead)
+					fatal("Unimplemented opcode 0x%x,"
+					    "0x%02x\n", main_opcode, lo8);
 				goto bad;
 			}
 		}
@@ -3285,9 +3502,13 @@ X(to_be_translated)
 			break;
 		case 0xc:	/*  EXTU.B Rm,Rn  */
 			ic->f = instr(extu_b_rm_rn);
+			if (r8 == r4)
+				ic->f = instr(extu_b_rm);
 			break;
 		case 0xd:	/*  EXTU.W Rm,Rn  */
 			ic->f = instr(extu_w_rm_rn);
+			if (r8 == r4)
+				ic->f = instr(extu_w_rm);
 			break;
 		case 0xe:	/*  EXTS.B Rm,Rn  */
 			ic->f = instr(exts_b_rm_rn);
@@ -3295,8 +3516,9 @@ X(to_be_translated)
 		case 0xf:	/*  EXTS.W Rm,Rn  */
 			ic->f = instr(exts_w_rm_rn);
 			break;
-		default:fatal("Unimplemented opcode 0x%x,0x%x\n",
-			    main_opcode, lo4);
+		default:if (!cpu->translation_readahead)
+				fatal("Unimplemented opcode 0x%x,0x%x\n",
+				    main_opcode, lo4);
 			goto bad;
 		}
 		break;
@@ -3304,7 +3526,15 @@ X(to_be_translated)
 	case 0x7:	/*  ADD #imm,Rn  */
 		ic->f = instr(add_imm_rn);
 		ic->arg[0] = (int8_t)lo8;
-		ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];	/* n */
+		ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];		/* n */
+		if (lo8 == 1)
+			ic->f = instr(inc_rn);
+		if (lo8 == 4)
+			ic->f = instr(add_4_rn);
+		if (lo8 == 0xfc)
+			ic->f = instr(sub_4_rn);
+		if (lo8 == 0xff)
+			ic->f = instr(dec_rn);
 		break;
 
 	case 0x8:
@@ -3312,6 +3542,8 @@ X(to_be_translated)
 		ic->arg[0] = (int8_t)lo8 * 2 +
 		    (addr & ((SH_IC_ENTRIES_PER_PAGE-1)
 		    << SH_INSTR_ALIGNMENT_SHIFT) & ~1) + 4;
+		samepage_function = NULL;
+
 		switch (r8) {
 		case 0x0:	/*  MOV.B R0,@(disp,Rn)  */
 			ic->f = instr(mov_b_r0_disp_rn);
@@ -3339,35 +3571,81 @@ X(to_be_translated)
 			break;
 		case 0x9:	/*  BT (disp,PC)  */
 			ic->f = instr(bt);
+			samepage_function = instr(bt_samepage);
 			break;
 		case 0xb:	/*  BF (disp,PC)  */
 			ic->f = instr(bf);
+			samepage_function = instr(bf_samepage);
 			break;
 		case 0xd:	/*  BT/S (disp,PC)  */
 			ic->f = instr(bt_s);
+			samepage_function = instr(bt_s_samepage);
 			break;
 		case 0xf:	/*  BF/S (disp,PC)  */
 			ic->f = instr(bf_s);
+			samepage_function = instr(bf_s_samepage);
 			break;
-		default:fatal("Unimplemented opcode 0x%x,0x%x\n",
-			    main_opcode, r8);
+		default:if (!cpu->translation_readahead)
+				fatal("Unimplemented opcode 0x%x,0x%x\n",
+				    main_opcode, r8);
 			goto bad;
 		}
+
+		/*  samepage branches:  */
+		if (samepage_function != NULL && ic->arg[0] < 0x1000 &&
+		    (addr & 0xfff) < 0xffe) {
+			ic->arg[1] = (size_t) (cpu->cd.sh.cur_ic_page +
+			    (ic->arg[0] >> SH_INSTR_ALIGNMENT_SHIFT));
+			ic->f = samepage_function;
+		}
+
 		break;
 
 	case 0x9:	/*  MOV.W @(disp,PC),Rn  */
 		ic->f = instr(mov_w_disp_pc_rn);
 		ic->arg[0] = lo8 * 2 + (addr & ((SH_IC_ENTRIES_PER_PAGE-1)
 		    << SH_INSTR_ALIGNMENT_SHIFT) & ~1) + 4;
-		ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];	/* n */
+
+		/*  If the word is reachable from the same page as the
+		    current address, then optimize it as a mov_imm_rn:  */
+		if (ic->arg[0] < 0x1000 && page != NULL) {
+			uint16_t *p = (uint16_t *) page;
+			uint16_t data = p[ic->arg[0] >> 1];
+			if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+				data = LE16_TO_HOST(data);
+			else
+				data = BE16_TO_HOST(data);
+			ic->f = instr(mov_imm_rn);
+			ic->arg[0] = (int16_t) data;
+		}
 		break;
 
 	case 0xa:	/*  BRA disp  */
 	case 0xb:	/*  BSR disp  */
-		ic->f = main_opcode == 0xa? instr(bra) : instr(bsr);
+		samepage_function = NULL;
+
+		switch (main_opcode) {
+		case 0xa:
+			ic->f = instr(bra);
+			samepage_function = instr(bra_samepage);
+			break;
+		case 0xb:
+			ic->f = instr(bsr);
+			samepage_function = instr(bsr_samepage);
+			break;
+		}
+
 		ic->arg[0] = (int32_t) ( (addr & ((SH_IC_ENTRIES_PER_PAGE-1)
 		    << SH_INSTR_ALIGNMENT_SHIFT) & ~1) + 4 +
 		    (((int32_t)(int16_t)((iword & 0xfff) << 4)) >> 3) );
+
+		/*  samepage branches:  */
+		if (samepage_function != NULL && ic->arg[0] < 0x1000 &&
+		    (addr & 0xfff) < 0xffe) {
+			ic->arg[0] = (size_t) (cpu->cd.sh.cur_ic_page +
+			    (ic->arg[0] >> SH_INSTR_ALIGNMENT_SHIFT));
+			ic->f = samepage_function;
+		}
 		break;
 
 	case 0xc:
@@ -3422,8 +3700,21 @@ X(to_be_translated)
 			ic->f = instr(or_imm_r0);
 			ic->arg[0] = lo8;
 			break;
-		default:fatal("Unimplemented opcode 0x%x,0x%x\n",
-			    main_opcode, r8);
+		case 0xd:	/*  AND.B #imm,@(R0,GBR)  */
+			ic->f = instr(and_b_imm_r0_gbr);
+			ic->arg[0] = lo8;
+			break;
+		case 0xe:	/*  XOR.B #imm,@(R0,GBR)  */
+			ic->f = instr(xor_b_imm_r0_gbr);
+			ic->arg[0] = lo8;
+			break;
+		case 0xf:	/*  OR.B #imm,@(R0,GBR)  */
+			ic->f = instr(or_b_imm_r0_gbr);
+			ic->arg[0] = lo8;
+			break;
+		default:if (!cpu->translation_readahead)
+				fatal("Unimplemented opcode 0x%x,0x%x\n",
+				    main_opcode, r8);
 			goto bad;
 		}
 		break;
@@ -3432,12 +3723,27 @@ X(to_be_translated)
 		ic->f = instr(mov_l_disp_pc_rn);
 		ic->arg[0] = lo8 * 4 + (addr & ((SH_IC_ENTRIES_PER_PAGE-1)
 		    << SH_INSTR_ALIGNMENT_SHIFT) & ~3) + 4;
+
+		/*  If the word is reachable from the same page as the
+		    current address, then optimize it as a mov_imm_rn:  */
+		if (ic->arg[0] < 0x1000 && page != NULL) {
+			uint32_t *p = (uint32_t *) page;
+			uint32_t data = p[ic->arg[0] >> 2];
+			if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+				data = LE32_TO_HOST(data);
+			else
+				data = BE32_TO_HOST(data);
+			ic->f = instr(mov_imm_rn);
+			ic->arg[0] = data;
+		}
 		break;
 
 	case 0xe:	/*  MOV #imm,Rn  */
 		ic->f = instr(mov_imm_rn);
 		ic->arg[0] = (int8_t)lo8;
 		ic->arg[1] = (size_t)&cpu->cd.sh.r[r8];	/* n */
+		if (lo8 == 0)
+			ic->f = instr(mov_0_rn);
 		break;
 
 	case 0xf:
@@ -3546,6 +3852,14 @@ X(to_be_translated)
 			ic->f = instr(fldi_frn);
 			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8];
 			ic->arg[1] = 0x3f800000;
+		} else if ((iword & 0x01ff) == 0x00ad) {
+			/*  FCNVSD FPUL,DRn  */
+			ic->f = instr(fcnvsd_fpul_drn);
+			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8];
+		} else if ((iword & 0x01ff) == 0x00bd) {
+			/*  FCNVDS DRm,FPUL  */
+			ic->f = instr(fcnvds_drm_fpul);
+			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8];
 		} else if ((iword & 0x01ff) == 0x00fd) {
 			/*  FSCA FPUL,DRn  */
 			ic->f = instr(fsca_fpul_drn);
@@ -3566,13 +3880,15 @@ X(to_be_translated)
 			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r4];
 			ic->arg[1] = (size_t)&cpu->cd.sh.fr[r8];
 		} else {
-			fatal("Unimplemented opcode 0x%x,0x%02x\n",
-			    main_opcode, lo8);
+			if (!cpu->translation_readahead)
+				fatal("Unimplemented opcode 0x%x,0x%02x\n",
+				    main_opcode, lo8);
 			goto bad;
 		}
 		break;
 
-	default:fatal("Unimplemented main opcode 0x%x\n", main_opcode);
+	default:if (!cpu->translation_readahead)
+			fatal("Unimplemented main opcode 0x%x\n", main_opcode);
 		goto bad;
 	}
 

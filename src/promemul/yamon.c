@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,11 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: yamon.c,v 1.8 2006/08/22 16:07:34 debug Exp $
+ *  $Id: yamon.c,v 1.14.2.1 2008-01-18 19:12:34 debug Exp $
  *
- *  YAMON emulation. (Very basic, only what is needed to get NetBSD booting.)
+ *  COMMENT: YAMON emulation
+ *
+ *  (Very basic, only what is needed to get NetBSD booting.)
  */
 
 #include <stdio.h>
@@ -42,8 +44,6 @@
 #include "memory.h"
 #include "misc.h"
 #include "net.h"
-
-#ifdef ENABLE_MIPS
 
 #include "yamon.h"
 
@@ -143,6 +143,8 @@ int yamon_emul(struct cpu *cpu)
 	uint32_t ofs = (cpu->pc & 0xff) + YAMON_FUNCTION_BASE;
 	uint8_t ch;
 	int n;
+	uint32_t oid;
+	uint64_t paddr, psize;
 
 	switch (ofs) {
 
@@ -190,15 +192,46 @@ int yamon_emul(struct cpu *cpu)
 
 	case YAMON_SYSCON_READ_OFS:
 		/*
-		 *  syscon
+		 *  syscon_read(oid [a0], addr [a1], size [a2])
 		 */
-		fatal("[ yamon_emul(): syscon: TODO ]\n");
 
-		/*  TODO. For now, return some kind of "failure":  */
-		cpu->cd.mips.gpr[MIPS_GPR_V0] = 1;
+		oid = cpu->cd.mips.gpr[MIPS_GPR_A0];
+		paddr = cpu->cd.mips.gpr[MIPS_GPR_A1];
+		psize = cpu->cd.mips.gpr[MIPS_GPR_A2];
+
+		switch (oid) {
+		case SYSCON_BOARD_CPU_CLOCK_FREQ_ID:
+			if (psize == sizeof(uint32_t)) {
+				uint32_t freq = cpu->machine->emulated_hz;
+
+				debug("[ yamon_emul(): reporting CPU "
+				    "frequency of %u ]\n", (unsigned int)
+				    freq);
+
+				if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+					freq = LE32_TO_HOST(freq);
+				else
+					freq = BE32_TO_HOST(freq);
+
+				cpu->memory_rw(cpu, cpu->mem, (int32_t)paddr,
+				    (void *) &freq, sizeof(freq), MEM_WRITE,
+				    CACHE_DATA | NO_EXCEPTIONS);
+
+				cpu->cd.mips.gpr[MIPS_GPR_V0] = 0;
+			} else {
+				cpu->cd.mips.gpr[MIPS_GPR_V0] = 1;
+			}
+			break;
+
+		default:
+			fatal("[ yamon_emul(): unimplemented object id 0x%"
+			    PRIx32" ]\n", oid);
+			cpu->cd.mips.gpr[MIPS_GPR_V0] = 1;
+		}
 		break;
 
-	default:cpu_register_dump(cpu->machine, cpu, 1, 0);
+	default:
+		cpu_register_dump(cpu->machine, cpu, 1, 0);
 		printf("\n");
 		fatal("[ yamon_emul(): unimplemented yamon function 0x%"
 		    PRIx32" ]\n", ofs);
@@ -208,4 +241,3 @@ int yamon_emul(struct cpu *cpu)
 	return 1;
 }
 
-#endif	/*  ENABLE_MIPS  */

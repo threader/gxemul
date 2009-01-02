@@ -1,4 +1,4 @@
-/*  GXemul: $Id: gtreg.h,v 1.3 2006/09/23 03:52:10 debug Exp $  */
+/*  GXemul: $Id: gtreg.h,v 1.3 2006-09-23 03:52:10 debug Exp $  */
 /*	$NetBSD: gtreg.h,v 1.2 2005/12/24 20:07:03 perry Exp $	*/
 
 /*

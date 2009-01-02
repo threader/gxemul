@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,13 +25,16 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_bebox.c,v 1.3 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_bebox.c,v 1.14.2.1 2008-01-18 19:12:32 debug Exp $
+ *
+ *  COMMENT: BeBox
  *
  *  Experimental machine for running NetBSD/bebox (see
- *  http://www.netbsd.org/Ports/bebox/ for more info.)
+ *  http://www.netbsd.org/ports/bebox/ for more info.)
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "bus_isa.h"
@@ -40,26 +43,25 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
 
 MACHINE_SETUP(bebox)
 {
-	struct pci_data *pci_data;
+	char tmpstr[300];
 
 	machine->machine_name = "BeBox";
+	if (machine->emulated_hz == 0)
+		machine->emulated_hz = 33000000;
 
-	machine->md_int.bebox_data = device_add(machine, "bebox");
-	machine->isa_pic_data.native_irq = 5;
-	machine->md_interrupt = isa32_interrupt;
+	snprintf(tmpstr, sizeof(tmpstr), "bebox irq=%s.cpu[%i]",
+	    machine->path, machine->bootstrap_cpu);
+	device_add(machine, tmpstr);
 
-	pci_data = dev_eagle_init(machine, machine->memory,
-	    32 /*  isa irq base */, 0 /*  pci irq: TODO */);
-
-	bus_isa_init(machine, BUS_ISA_IDE0 | BUS_ISA_VGA,
-	    0x80000000, 0xc0000000, 32, 48);
+	snprintf(tmpstr, sizeof(tmpstr), "eagle irq=%s.cpu[%i]",
+	    machine->path, machine->bootstrap_cpu);
+	device_add(machine, tmpstr);
 
 	if (!machine->prom_emulation)
 		return;
@@ -92,13 +94,14 @@ MACHINE_SETUP(bebox)
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 12, 20);  /* next */
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 16, 1); /* console */
 	store_buf(cpu, cpu->cd.ppc.gpr[6] + 20,
-	    machine->use_x11? "vga" : "com", 4);
+	    machine->x11_md.in_use? "vga" : "com", 4);
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 24, 0x3f8);/* addr */
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 28, 9600);/* speed */
 
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 32, 0);  /*  next  */
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 36, 2);  /*  clock */
-	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 40, 100);
+	store_32bit_word(cpu, cpu->cd.ppc.gpr[6] + 40,
+	    (machine->emulated_hz / 4));
 }
 
 

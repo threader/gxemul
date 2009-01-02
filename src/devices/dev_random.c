@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_random.c,v 1.6 2006/02/25 12:55:20 debug Exp $
+ *  $Id: dev_random.c,v 1.9.2.1 2008-01-18 19:12:30 debug Exp $
  *  
- *  A simple device which returns random data for all reads, and discards all
- *  writes.
+ *  COMMENT: A device which returns random data for reads, discards all writes
  */
 
 #include <stdio.h>
@@ -44,7 +43,7 @@
 DEVICE_ACCESS(random)
 {
 	if (writeflag == MEM_READ) {
-		unsigned int i;
+		size_t i;
 		for (i=0; i<len; i++)
 			data[i] = random();
 	}

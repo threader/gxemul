@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_mvmeppc.c,v 1.9 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_mvmeppc.c,v 1.22.2.1 2008-01-18 19:12:33 debug Exp $
  *
- *  MVMEPPC machines (for experimenting with NetBSD/mvmeppc or RTEMS).
+ *  COMMENT: MVMEPPC machines
+ *
+ *  This is for experiments with NetBSD/mvmeppc or RTEMS.
  *  (ftp://ftp.netbsd.org/pub/NetBSD/arch/mvmeppc/snapshot/20020302/README)
  *
  *  Note:  MVME machines that really adhere to the PReP standard should be
@@ -48,13 +50,13 @@
 #include "devices.h"
 #include "diskimage.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
 
 MACHINE_SETUP(mvmeppc)
 {
+	char tmpstr[300];
 	struct pci_data *pci_data = NULL;
 
 	switch (machine->machine_subtype) {
@@ -62,15 +64,9 @@ MACHINE_SETUP(mvmeppc)
 	case MACHINE_MVMEPPC_1600:
 		machine->machine_name = "MVME1600";
 
-		machine->md_int.prep_data = device_add(machine, "prep");
-		machine->isa_pic_data.native_irq = 1;   /*  Semi-bogus  */
-		machine->md_interrupt = isa32_interrupt;
-
-		pci_data = dev_eagle_init(machine, machine->memory,
-		    32 /*  isa irq base */, 0 /*  pci irq: TODO */);
-        
-		bus_isa_init(machine, BUS_ISA_LPTBASE_3BC,
-		    0x80000000, 0xc0000000, 32, 48);
+		snprintf(tmpstr, sizeof(tmpstr), "eagle irq=%s.cpu[%i]",
+		    machine->path, machine->bootstrap_cpu);
+		device_add(machine, tmpstr);
 
 		bus_pci_add(machine, pci_data, machine->memory,
 		    0, 14, 0, "dec21143");
@@ -106,7 +102,7 @@ MACHINE_SETUP(mvmeppc)
 
 		/*  GT64260 interrupt and PCI controller:  */
 		pci_data = dev_gt_init(machine, machine->memory,
-		    0xf1000000, 0 /* TODO: irq */, 0 /* TODO: pciirq */, 260);
+		    0xf1000000, "TODO: timer irq", "TODO: isa irq", 260);
 
 		/*  TODO: irq  */
 		device_add(machine, "ns16550 irq=0 addr=0xf1120000");
@@ -186,7 +182,7 @@ MACHINE_DEFAULT_RAM(mvmeppc)
 
 MACHINE_REGISTER(mvmeppc)
 {
-	MR_DEFAULT(mvmeppc, "MVME", ARCH_PPC, MACHINE_MVMEPPC);
+	MR_DEFAULT(mvmeppc, "MVMEPPC", ARCH_PPC, MACHINE_MVMEPPC);
 
 	machine_entry_add_alias(me, "mvmeppc");
 

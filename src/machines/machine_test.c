@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,27 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_test.c,v 1.22 2006/10/25 09:24:06 debug Exp $
+ *  $Id: machine_test.c,v 1.40.2.1 2008-01-18 19:12:33 debug Exp $
  *
- *  Various "test" machines (bare machines with just a CPU, or a bare machine
- *  plus some experimental devices).
+ *  COMMENT: Various test machines
+ *
+ *  Generally, the machines are as follows:
+ *
+ *	bareXYZ:	A bare machine using an XYZ processor.
+ *
+ *	testXYZ:	A machine with an XYZ processor, and some experimental
+ *			devices connected to it.
+ *
+ *  The experimental devices in the test machines are:
+ *
+ *	cons		A serial I/O console device.
+ *	disk		A device for reading/writing (emulated) disk sectors.
+ *	ether		An ethernet device, for sending/receiving ethernet
+ *			frames on an emulated network.
+ *	fb		Framebuffer (24-bit RGB per pixel).
+ *	irqc		A generic interrupt controller.
+ *	mp		A multiprocessor controller.
+ *	rtc		A real-time clock device.
  */
 
 #include <stdio.h>
@@ -36,29 +53,76 @@
 
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
+
+#include "sh4_exception.h"
 
 #include "testmachine/dev_cons.h"
 #include "testmachine/dev_disk.h"
 #include "testmachine/dev_ether.h"
 #include "testmachine/dev_fb.h"
+#include "testmachine/dev_irqc.h"
 #include "testmachine/dev_mp.h"
 #include "testmachine/dev_rtc.h"
 
 
+/*
+ *  default_test():
+ *
+ *  Initializes devices for most test machines. (Note: MIPS is different,
+ *  because of legacy reasons.)
+ */
 static void default_test(struct machine *machine, struct cpu *cpu)
 {
 	char tmpstr[1000];
+	char base_irq[1000];
+	char end_of_base_irq[50];
 
-	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%"PRIx64" irq=0",
-	    (uint64_t) DEV_CONS_ADDRESS);
+	/*
+	 *  First add the interrupt controller. Most processor architectures
+	 *  in GXemul have only 1 interrupt pin on the CPU, and it is simply
+	 *  called "machine[y].cpu[z]".
+	 *
+	 *  MIPS is an exception, dealt with in a separate setup function.
+	 *  ARM and SH are dealt with here.
+	 */
+
+	switch (machine->arch) {
+
+	case ARCH_ARM:
+		snprintf(end_of_base_irq, sizeof(end_of_base_irq), ".irq");
+		break;
+
+	case ARCH_SH:
+		snprintf(end_of_base_irq, sizeof(end_of_base_irq),
+		    ".irq[0x%x]", SH4_INTEVT_IRQ15);
+		break;
+
+	default:
+		end_of_base_irq[0] = '\0';
+	}
+
+	snprintf(base_irq, sizeof(base_irq), "%s.cpu[%i]%s",
+	    machine->path, machine->bootstrap_cpu, end_of_base_irq);
+
+	snprintf(tmpstr, sizeof(tmpstr), "irqc addr=0x%"PRIx64" irq=%s",
+	    (uint64_t) DEV_IRQC_ADDRESS, base_irq);
+	device_add(machine, tmpstr);
+
+
+	/*  Now, add the other devices:  */
+
+	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%"PRIx64
+	    " irq=%s.irqc.2 in_use=%i",
+	    (uint64_t) DEV_CONS_ADDRESS, base_irq, machine->arch != ARCH_SH);
 	machine->main_console_handle = (size_t)device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%"PRIx64,
-	    (uint64_t) DEV_MP_ADDRESS);
+	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%"PRIx64" irq=%s%sirqc.6",
+	    (uint64_t) DEV_MP_ADDRESS,
+	    end_of_base_irq[0]? end_of_base_irq + 1 : "",
+	    end_of_base_irq[0]? "." : "");
 	device_add(machine, tmpstr);
 
 	snprintf(tmpstr, sizeof(tmpstr), "fbctrl addr=0x%"PRIx64,
@@ -69,12 +133,12 @@ static void default_test(struct machine *machine, struct cpu *cpu)
 	    (uint64_t) DEV_DISK_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%"PRIx64" irq=0",
-	    (uint64_t) DEV_ETHER_ADDRESS);
+	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%"PRIx64" irq=%s.irqc.3",
+	    (uint64_t) DEV_ETHER_ADDRESS, base_irq);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%"PRIx64" irq=0",
-	    (uint64_t) DEV_RTC_ADDRESS);
+	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%"PRIx64" irq=%s.irqc.4",
+	    (uint64_t) DEV_RTC_ADDRESS, base_irq);
 	device_add(machine, tmpstr);
 }
 
@@ -82,16 +146,12 @@ static void default_test(struct machine *machine, struct cpu *cpu)
 MACHINE_SETUP(barealpha)
 {
 	machine->machine_name = "Generic \"bare\" Alpha machine";
-	machine->stable = 1;
 }
 
 
 MACHINE_SETUP(testalpha)
 {
 	machine->machine_name = "Alpha test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for Alpha?  */
 
 	default_test(machine, cpu);
 }
@@ -130,16 +190,12 @@ MACHINE_REGISTER(testalpha)
 MACHINE_SETUP(barearm)
 {
 	machine->machine_name = "Generic \"bare\" ARM machine";
-	machine->stable = 1;
 }
 
 
 MACHINE_SETUP(testarm)
 {
 	machine->machine_name = "ARM test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for ARM?  */
 
 	default_test(machine, cpu);
 
@@ -186,250 +242,97 @@ MACHINE_REGISTER(testarm)
 
 
 
-MACHINE_SETUP(bareavr32)
+MACHINE_SETUP(barem32r)
 {
-	machine->machine_name = "Generic \"bare\" AVR32 machine";
-	machine->stable = 1;
+	machine->machine_name = "Generic \"bare\" M32R machine";
 }
 
 
-MACHINE_SETUP(testavr32)
+MACHINE_SETUP(testm32r)
 {
-	machine->machine_name = "AVR32 test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupts  */
+	machine->machine_name = "M32R test machine";
 
 	default_test(machine, cpu);
 }
 
 
-MACHINE_DEFAULT_CPU(bareavr32)
+MACHINE_DEFAULT_CPU(barem32r)
 {
-	machine->cpu_name = strdup("AVR32A");
+	machine->cpu_name = strdup("M32R");
 }
 
 
-MACHINE_DEFAULT_CPU(testavr32)
+MACHINE_DEFAULT_CPU(testm32r)
 {
-	machine->cpu_name = strdup("AVR32A");
+	machine->cpu_name = strdup("M32R");
 }
 
 
-MACHINE_REGISTER(bareavr32)
+MACHINE_REGISTER(barem32r)
 {
-	MR_DEFAULT(bareavr32, "Generic \"bare\" AVR32 machine",
-	    ARCH_AVR32, MACHINE_BAREAVR32);
+	MR_DEFAULT(barem32r, "Generic \"bare\" M32R machine",
+	    ARCH_M32R, MACHINE_BAREM32R);
 
-	machine_entry_add_alias(me, "bareavr32");
+	machine_entry_add_alias(me, "barem32r");
 }
 
 
-MACHINE_REGISTER(testavr32)
+MACHINE_REGISTER(testm32r)
 {
-	MR_DEFAULT(testavr32, "Test-machine for AVR32",
-	    ARCH_AVR32, MACHINE_TESTAVR32);
+	MR_DEFAULT(testm32r, "Test-machine for M32R",
+	    ARCH_M32R, MACHINE_TESTM32R);
 
-	machine_entry_add_alias(me, "testavr32");
+	machine_entry_add_alias(me, "testm32r");
 }
 
 
-MACHINE_SETUP(barehppa)
+MACHINE_SETUP(barem88k)
 {
-	machine->machine_name = "Generic \"bare\" HPPA machine";
-	machine->stable = 1;
+	machine->machine_name = "Generic \"bare\" M88K machine";
 }
 
 
-MACHINE_SETUP(testhppa)
+MACHINE_SETUP(testm88k)
 {
-	machine->machine_name = "HPPA test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for HPPA?  */
+	machine->machine_name = "M88K test machine";
 
 	default_test(machine, cpu);
 }
 
 
-MACHINE_DEFAULT_CPU(barehppa)
+MACHINE_DEFAULT_CPU(barem88k)
 {
-	machine->cpu_name = strdup("HPPA");
+	machine->cpu_name = strdup("88110");
 }
 
 
-MACHINE_DEFAULT_CPU(testhppa)
+MACHINE_DEFAULT_CPU(testm88k)
 {
-	machine->cpu_name = strdup("HPPA");
+	machine->cpu_name = strdup("88110");
 }
 
 
-MACHINE_REGISTER(barehppa)
+MACHINE_REGISTER(barem88k)
 {
-	MR_DEFAULT(barehppa, "Generic \"bare\" HPPA machine",
-	    ARCH_HPPA, MACHINE_BAREHPPA);
+	MR_DEFAULT(barem88k, "Generic \"bare\" M88K machine",
+	    ARCH_M88K, MACHINE_BAREM88K);
 
-	machine_entry_add_alias(me, "barehppa");
+	machine_entry_add_alias(me, "barem88k");
 }
 
 
-MACHINE_REGISTER(testhppa)
+MACHINE_REGISTER(testm88k)
 {
-	MR_DEFAULT(testhppa, "Test-machine for HPPA",
-	    ARCH_HPPA, MACHINE_TESTHPPA);
+	MR_DEFAULT(testm88k, "Test-machine for M88K",
+	    ARCH_M88K, MACHINE_TESTM88K);
 
-	machine_entry_add_alias(me, "testhppa");
-}
-
-
-MACHINE_SETUP(barei960)
-{
-	machine->machine_name = "Generic \"bare\" i960 machine";
-	machine->stable = 1;
-}
-
-
-MACHINE_SETUP(testi960)
-{
-	machine->machine_name = "i960 test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for i960?  */
-
-	default_test(machine, cpu);
-}
-
-
-MACHINE_DEFAULT_CPU(barei960)
-{
-	machine->cpu_name = strdup("i960");
-}
-
-
-MACHINE_DEFAULT_CPU(testi960)
-{
-	machine->cpu_name = strdup("i960");
-}
-
-
-MACHINE_REGISTER(barei960)
-{
-	MR_DEFAULT(barei960, "Generic \"bare\" i960 machine",
-	    ARCH_I960, MACHINE_BAREI960);
-
-	machine_entry_add_alias(me, "barei960");
-}
-
-
-MACHINE_REGISTER(testi960)
-{
-	MR_DEFAULT(testi960, "Test-machine for i960",
-	    ARCH_I960, MACHINE_TESTI960);
-
-	machine_entry_add_alias(me, "testi960");
-}
-
-
-MACHINE_SETUP(bareia64)
-{
-	machine->machine_name = "Generic \"bare\" IA64 machine";
-	machine->stable = 1;
-}
-
-
-MACHINE_SETUP(testia64)
-{
-	machine->machine_name = "IA64 test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for IA64?  */
-
-	default_test(machine, cpu);
-}
-
-
-MACHINE_DEFAULT_CPU(bareia64)
-{
-	machine->cpu_name = strdup("IA64");
-}
-
-
-MACHINE_DEFAULT_CPU(testia64)
-{
-	machine->cpu_name = strdup("IA64");
-}
-
-
-MACHINE_REGISTER(bareia64)
-{
-	MR_DEFAULT(bareia64, "Generic \"bare\" IA64 machine",
-	    ARCH_IA64, MACHINE_BAREIA64);
-
-	machine_entry_add_alias(me, "bareia64");
-}
-
-
-MACHINE_REGISTER(testia64)
-{
-	MR_DEFAULT(testia64, "Test-machine for IA64",
-	    ARCH_IA64, MACHINE_TESTIA64);
-
-	machine_entry_add_alias(me, "testia64");
-}
-
-
-MACHINE_SETUP(barem68k)
-{
-	machine->machine_name = "Generic \"bare\" M68K machine";
-	machine->stable = 1;
-}
-
-
-MACHINE_SETUP(testm68k)
-{
-	machine->machine_name = "M68K test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for M68K?  */
-
-	default_test(machine, cpu);
-}
-
-
-MACHINE_DEFAULT_CPU(barem68k)
-{
-	machine->cpu_name = strdup("68020");
-}
-
-
-MACHINE_DEFAULT_CPU(testm68k)
-{
-	machine->cpu_name = strdup("68020");
-}
-
-
-MACHINE_REGISTER(barem68k)
-{
-	MR_DEFAULT(barem68k, "Generic \"bare\" M68K machine",
-	    ARCH_M68K, MACHINE_BAREM68K);
-
-	machine_entry_add_alias(me, "barem68k");
-}
-
-
-MACHINE_REGISTER(testm68k)
-{
-	MR_DEFAULT(testm68k, "Test-machine for M68K",
-	    ARCH_M68K, MACHINE_TESTM68K);
-
-	machine_entry_add_alias(me, "testm68k");
+	machine_entry_add_alias(me, "testm88k");
 }
 
 
 MACHINE_SETUP(baremips)
 {
 	machine->machine_name = "Generic \"bare\" MIPS machine";
-	machine->stable = 1;
 	cpu->byte_order = EMUL_BIG_ENDIAN;
 }
 
@@ -437,8 +340,10 @@ MACHINE_SETUP(baremips)
 MACHINE_SETUP(testmips)
 {
 	/*
-	 *  A MIPS test machine (which happens to work with the
-	 *  code in my master's thesis).  :-)
+	 *  A MIPS test machine. Originally, this was created as a way for
+	 *  me to test my master's thesis code; since then it has both
+	 *  evolved to support new things, and suffered bit rot so that it
+	 *  no longer can run my thesis code. Well, well...
 	 *
 	 *  IRQ map:
 	 *      7       CPU counter
@@ -449,17 +354,17 @@ MACHINE_SETUP(testmips)
 	 *      2       serial console
 	 */
 
-	char tmpstr[1000];
+	char tmpstr[300];
 
 	machine->machine_name = "MIPS test machine";
-	machine->stable = 1;
 	cpu->byte_order = EMUL_BIG_ENDIAN;
 
-	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%"PRIx64" irq=2",
-	    (uint64_t) DEV_CONS_ADDRESS);
+	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%"PRIx64" irq=%s."
+	    "cpu[%i].2", (uint64_t) DEV_CONS_ADDRESS, machine->path,
+	    machine->bootstrap_cpu);
 	machine->main_console_handle = (size_t)device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%"PRIx64,
+	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%"PRIx64" irq=6",
 	    (uint64_t) DEV_MP_ADDRESS);
 	device_add(machine, tmpstr);
 
@@ -471,25 +376,27 @@ MACHINE_SETUP(testmips)
 	    (uint64_t) DEV_DISK_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%"PRIx64" irq=3",
-	    (uint64_t) DEV_ETHER_ADDRESS);
+	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%"PRIx64" irq=%s."
+	    "cpu[%i].3", (uint64_t) DEV_ETHER_ADDRESS, machine->path,
+	    machine->bootstrap_cpu);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%"PRIx64" irq=4",
-	    (uint64_t) DEV_RTC_ADDRESS);
+	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%"PRIx64" irq=%s."
+	    "cpu[%i].4", (uint64_t) DEV_RTC_ADDRESS, machine->path,
+	    machine->bootstrap_cpu);
 	device_add(machine, tmpstr);
 }
 
 
 MACHINE_DEFAULT_CPU(baremips)
 {
-	machine->cpu_name = strdup("5Kc");
+	machine->cpu_name = strdup("5KE");
 }
 
 
 MACHINE_DEFAULT_CPU(testmips)
 {
-	machine->cpu_name = strdup("5Kc");
+	machine->cpu_name = strdup("5KE");
 }
 
 
@@ -514,16 +421,12 @@ MACHINE_REGISTER(testmips)
 MACHINE_SETUP(bareppc)
 {
 	machine->machine_name = "Generic \"bare\" PPC machine";
-	machine->stable = 1;
 }
 
 
 MACHINE_SETUP(testppc)
 {
 	machine->machine_name = "PPC test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for PPC?  */
 
 	default_test(machine, cpu);
 }
@@ -561,16 +464,12 @@ MACHINE_REGISTER(testppc)
 MACHINE_SETUP(baresh)
 {
 	machine->machine_name = "Generic \"bare\" SH machine";
-	machine->stable = 1;
 }
 
 
 MACHINE_SETUP(testsh)
 {
 	machine->machine_name = "SH test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for SH?  */
 
 	default_test(machine, cpu);
 }
@@ -608,16 +507,12 @@ MACHINE_REGISTER(testsh)
 MACHINE_SETUP(baresparc)
 {
 	machine->machine_name = "Generic \"bare\" SPARC machine";
-	machine->stable = 1;
 }
 
 
 MACHINE_SETUP(testsparc)
 {
 	machine->machine_name = "SPARC test machine";
-	machine->stable = 1;
-
-	/*  TODO: interrupt for SPARC?  */
 
 	default_test(machine, cpu);
 }
@@ -652,25 +547,4 @@ MACHINE_REGISTER(testsparc)
 	machine_entry_add_alias(me, "testsparc");
 }
 
-
-MACHINE_SETUP(baretransputer)
-{
-	machine->machine_name = "Generic \"bare\" Transputer machine";
-	machine->stable = 1;
-}
-
-
-MACHINE_DEFAULT_CPU(baretransputer)
-{
-	machine->cpu_name = strdup("T800");
-}
-
-
-MACHINE_REGISTER(baretransputer)
-{
-	MR_DEFAULT(baretransputer, "Generic \"bare\" Transputer machine",
-	    ARCH_TRANSPUTER, MACHINE_BARETRANSPUTER);
-
-	machine_entry_add_alias(me, "baretransputer");
-}
 

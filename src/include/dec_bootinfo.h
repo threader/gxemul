@@ -1,4 +1,4 @@
-/*  gxemul: $Id: dec_bootinfo.h,v 1.4 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: dec_bootinfo.h,v 1.4 2005-03-05 12:34:02 debug Exp $  */
 /*	$NetBSD: bootinfo.h,v 1.5 2000/01/09 15:34:41 ad Exp $	*/
 
 /*

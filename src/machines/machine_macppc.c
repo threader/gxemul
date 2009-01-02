@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,21 +25,29 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_macppc.c,v 1.5 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_macppc.c,v 1.16.2.1 2008-01-18 19:12:33 debug Exp $
  *
- *  NOTE: Currently, these are skeletons for generic PowerMac G3, G4, and G5
- *        systems. They do not model real PowerMacs, but should be enough to
- *        begin experimenting with NetBSD/macppc and OpenBSD/macppc.
+ *  COMMENT: Generic PowerPC-based Macintosh machines
+ *
+ *  See also:
+ *
+ *	NetBSD/macppc (http://www.netbsd.org/ports/macppc/)
+ *	OpenBSD/macppc (http://www.openbsd.org/macppc.html)
+ *
+ *  Currently, these are skeletons for generic PowerMac G3, G4, and G5 systems.
+ *  They do not model real PowerMacs, but should be enough to begin
+ *  experimenting with running NetBSD/macppc and OpenBSD/macppc.
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include "bus_pci.h"
 #include "cpu.h"
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 #include "of.h"
@@ -47,42 +55,42 @@
 
 MACHINE_SETUP(macppc)
 {
+	char tmpstr[300];
 	struct pci_data *pci_data;
 	struct vfb_data *fb;
 	uint64_t b, a;
 	int i;
 
-	/*
-	 *  NetBSD/macppc (http://www.netbsd.org/Ports/macppc/)
-	 *  OpenBSD/macppc (http://www.openbsd.org/macppc.html)
-	 */
 	machine->machine_name = "Macintosh (PPC)";
 	if (machine->emulated_hz == 0)
 		machine->emulated_hz = 40000000;
 
-	machine->md_int.gc_data = dev_gc_init(machine, machine->memory,
-	    0xf3000000, 64);
-	machine->md_interrupt = gc_interrupt;
+	device_add(machine, "gc addr=0xf3000000");
 
 	pci_data = dev_uninorth_init(machine, machine->memory, 0xe2000000,
 	    64 /*  isa irq base */, 0 /*  pci irq: TODO */);
 
-	bus_pci_add(machine, pci_data, machine->memory, 0, 12, 0, "dec21143");
+	/*  bus_pci_add(
+	    machine, pci_data, machine->memory, 0, 12, 0, "dec21143");  */
 	bus_pci_add(machine, pci_data, machine->memory, 0, 15, 0, "gc_obio");
 
-	if (machine->use_x11)
+	if (machine->x11_md.in_use)
 		bus_pci_add(machine, pci_data, machine->memory, 0, 16, 0,
 		    "ati_radeon_9200_2");
 
-	machine->main_console_handle = (size_t)device_add(machine,
-	    "z8530 addr=0xf3013000 irq=23 dma_irq=8 addr_mult=0x10");
+	snprintf(tmpstr, sizeof(tmpstr), "z8530 addr=0xf3013000 irq="
+	    "%s.cpu[%i].gc.lo.23 addr_mult=0x10",
+	    machine->path, machine->bootstrap_cpu);
+	machine->main_console_handle = (size_t)device_add(machine, tmpstr);
 
 	fb = dev_fb_init(machine, machine->memory, 0xf1000000,
 	    VFB_GENERIC | VFB_REVERSE_START, 1024,768, 1024,768, 8, "ofb");
 
 	device_add(machine, "hammerhead addr=0xf2800000");
 
-	device_add(machine, "adb addr=0xf3016000 irq=1");
+	snprintf(tmpstr, sizeof(tmpstr), "adb addr=0xf3016000 irq="
+	    "%s.cpu[%i].gc.lo.1", machine->path, machine->bootstrap_cpu);
+	device_add(machine, tmpstr);
 
 	if (!machine->prom_emulation)
 		return;
@@ -93,7 +101,7 @@ MACHINE_SETUP(macppc)
 	of_emul_init(machine, fb, 0xf1000000, 1024, 768);
 	of_emul_init_uninorth(machine);
 
-	if (machine->use_x11)
+	if (machine->x11_md.in_use)
 		of_emul_init_adb(machine);
 	else
 		of_emul_init_zs(machine);

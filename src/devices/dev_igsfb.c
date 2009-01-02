@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_igsfb.c,v 1.4 2006/08/11 17:43:30 debug Exp $
+ *  $Id: dev_igsfb.c,v 1.6.2.1 2008-01-18 19:12:29 debug Exp $
  *
- *  Integraphics Systems "igsfb" Framebuffer (graphics) card, used in at
- *  least the NetWinder.
+ *  COMMENT: Integraphics Systems "igsfb" Framebuffer graphics card
+ *
+ *  Used in at least the NetWinder.
  *
  *  TODO:  This is hardcoded to 1024x768x8 right now, and only supports the
  *         two acceleration commands used by NetBSD for scrolling the
@@ -158,8 +159,8 @@ static void dev_igsfb_op3_written(struct dev_igsfb_data *d)
 
 DEVICE_ACCESS(igsfb)
 {
-	uint64_t idata = 0, odata = 0;
 	struct dev_igsfb_data *d = extra;
+	uint64_t idata = 0, odata = 0;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -404,11 +405,8 @@ DEVICE_ACCESS(igsfb)
 DEVINIT(igsfb)
 {
 	struct dev_igsfb_data *d;
-	d = malloc(sizeof(struct dev_igsfb_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dev_igsfb_data)));
 	memset(d, 0, sizeof(struct dev_igsfb_data));
 
 	d->xres = 1024;

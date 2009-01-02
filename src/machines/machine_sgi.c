@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_sgi.c,v 1.6 2006/08/30 15:07:47 debug Exp $
+ *  $Id: machine_sgi.c,v 1.23.2.1 2008-01-18 19:12:33 debug Exp $
  *
- *  Machine descriptions for Silicon Graphics' MIPS-based machines.
+ *  COMMENT: Silicon Graphics' MIPS-based machines
  *
  *  http://obsolete.majix.org/computers/sgi/iptable.shtml contains a
  *  pretty detailed list of IP ("Inhouse Processor") model numbers.
@@ -46,7 +46,6 @@
 #include "devices.h"
 #include "diskimage.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 #include "net.h"
@@ -71,11 +70,7 @@ MACHINE_SETUP(sgi)
 
 	struct pci_data *pci_data = NULL;
 
-	machine->machine_name = malloc(MACHINE_NAME_MAXBUF);
-	if (machine->machine_name == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(machine->machine_name = malloc(MACHINE_NAME_MAXBUF));
 
 	cpu->byte_order = EMUL_BIG_ENDIAN;
 	snprintf(machine->machine_name, MACHINE_NAME_MAXBUF,
@@ -101,7 +96,7 @@ MACHINE_SETUP(sgi)
 	}
 
 	net_generate_unique_mac(machine, macaddr);
-	eaddr_string = malloc(ETHERNET_STRING_MAXLEN);
+	CHECK_ALLOCATION(eaddr_string = malloc(ETHERNET_STRING_MAXLEN));
 
 	switch (machine->machine_subtype) {
 
@@ -125,8 +120,8 @@ MACHINE_SETUP(sgi)
 		    " (Everest IP19)", MACHINE_NAME_MAXBUF);
 		machine->main_console_handle = (size_t)device_add(machine,
 		    "z8530 addr=0x1fbd9830 irq=0 addr_mult=4");
-		dev_scc_init(machine, mem, 0x10086000, 0, machine->use_x11,
-		    0, 8);	/*  serial? irix?  */
+		dev_scc_init(machine, mem, 0x10086000, 0,
+		    machine->x11_md.in_use, 0, 8);	/*  serial? irix?  */
 
 		device_add(machine, "sgi_ip19 addr=0x18000000");
 
@@ -170,8 +165,10 @@ MACHINE_SETUP(sgi)
 		 */
 
 		/*  int0 at mainbus0 addr 0x1fb801c0  */
-		machine->md_int.sgi_ip20_data = dev_sgi_ip20_init(cpu, mem,
-		    DEV_SGI_IP20_BASE);
+fatal("TODO: SGI legacy interrupt system rewrite!\n");
+abort();
+//		machine->md_int.sgi_ip20_data = dev_sgi_ip20_init(cpu, mem,
+//		    DEV_SGI_IP20_BASE);
 
 		/*  imc0 at mainbus0 addr 0x1fa00000: revision 0:
 		    TODO (or in dev_sgi_ip20?)  */
@@ -186,7 +183,7 @@ MACHINE_SETUP(sgi)
 		    "z8530 addr=0x1fb80d00 irq=0 addr_mult=4");
 
 		/*  WDSC SCSI controller:  */
-		dev_wdsc_init(machine, mem, 0x1fb8011f, 0, 0);
+/*		dev_wdsc_init(machine, mem, 0x1fb8011f, 0, 0);  */
 
 		/*  Return memory read errors so that hpc1
 		    and hpc2 are not detected:  */
@@ -216,14 +213,18 @@ MACHINE_SETUP(sgi)
 			strlcat(machine->machine_name,
 			    " (Indy, Indigo2, Challenge S; Full-house)",
 			    MACHINE_NAME_MAXBUF);
-			machine->md_int.sgi_ip22_data =
-			    dev_sgi_ip22_init(machine, mem, 0x1fbd9000, 0);
+fatal("TODO: SGI legacy interrupt system rewrite!\n");
+abort();
+//			machine->md_int.sgi_ip22_data =
+//			    dev_sgi_ip22_init(machine, mem, 0x1fbd9000, 0);
 		} else {
 			strlcat(machine->machine_name,
 			    " (Indy, Indigo2, Challenge S; Guiness)",
 			    MACHINE_NAME_MAXBUF);
-			machine->md_int.sgi_ip22_data =
-			    dev_sgi_ip22_init(machine, mem, 0x1fbd9880, 1);
+fatal("TODO: SGI legacy interrupt system rewrite!\n");
+abort();
+//			machine->md_int.sgi_ip22_data =
+//			    dev_sgi_ip22_init(machine, mem, 0x1fbd9880, 1);
 		}
 
 /*
@@ -231,7 +232,10 @@ Why is this here? TODO
 		dev_ram_init(machine, 0x88000000ULL,
 		    128 * 1048576, DEV_RAM_MIRROR, 0x08000000);
 */
-		machine->md_interrupt = sgi_ip22_interrupt;
+
+fatal("TODO: Legacy rewrite\n");
+abort();
+//		machine->md_interrupt = sgi_ip22_interrupt;
 
 		/*
 		 *  According to NetBSD 1.6.2:
@@ -265,20 +269,23 @@ Why is this here? TODO
 		    "z8530 addr=0x1fbd9830 irq=363 addr_mult=4");
 
 		/*  Not supported by NetBSD 1.6.2, but by 2.0_BETA:  */
-		j = dev_pckbc_init(machine, mem, 0x1fbd9840, PCKBC_8242,
-		    0, 0, machine->use_x11, 0);  /*  TODO: irq numbers  */
+fatal("TODO: legacy rewrite\n");
+abort();
+//		j = dev_pckbc_init(machine, mem, 0x1fbd9840, PCKBC_8242,
+//		    0, 0, machine->x11_md.in_use, 0);  /*  TODO: irq numbers  */
+j = 0;
 
-		if (machine->use_x11)
+		if (machine->x11_md.in_use)
 			machine->main_console_handle = j;
 
 		/*  sq0: Ethernet.  TODO:  This should have irq_nr = 8 + 3  */
 		/*  dev_sq_init...  */
 
 		/*  wdsc0: SCSI  */
-		dev_wdsc_init(machine, mem, 0x1fbc4000, 0, 8 + 1);
+/*		dev_wdsc_init(machine, mem, 0x1fbc4000, 0, 8 + 1);  */
 
 		/*  wdsc1: SCSI  TODO: irq nr  */
-		dev_wdsc_init(machine, mem, 0x1fbcc000, 1, 8 + 1);
+/*		dev_wdsc_init(machine, mem, 0x1fbcc000, 1, 8 + 1);  */
 
 		/*  dsclock0: TODO:  possibly irq 8 + 33  */
 
@@ -302,7 +309,7 @@ Why is this here? TODO
 
 		 /*  serial? irix?  */
 		dev_scc_init(machine, mem,
-		    0x400086000ULL, 0, machine->use_x11, 0, 8);
+		    0x400086000ULL, 0, machine->x11_md.in_use, 0, 8);
 
 		/*  NOTE: ip19! (perhaps not really the same  */
 		device_add(machine, "sgi_ip19 addr=0x18000000");
@@ -354,9 +361,14 @@ Why is this here? TODO
 		strlcat(machine->machine_name, " (Octane)",
 		    MACHINE_NAME_MAXBUF);
 
-		machine->md_int.sgi_ip30_data =
-		    dev_sgi_ip30_init(machine, mem, 0x0ff00000);
-		machine->md_interrupt = sgi_ip30_interrupt;
+fatal("TODO: SGI legacy interrupt system rewrite!\n");
+abort();
+//		machine->md_int.sgi_ip30_data =
+//		    dev_sgi_ip30_init(machine, mem, 0x0ff00000);
+
+fatal("TODO: Legacy rewrite\n");
+abort();
+//		machine->md_interrupt = sgi_ip30_interrupt;
 
 		dev_ram_init(machine, 0xa0000000ULL, 128 * 1048576,
 		    DEV_RAM_MIRROR | DEV_RAM_MIGHT_POINT_TO_DEVICES,
@@ -382,7 +394,8 @@ Why is this here? TODO
 
 		/*  TODO: irq!  */
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=0 addr="
-		    "0x1f620170 name2=tty0 in_use=%i", machine->use_x11? 0 : 1);
+		    "0x1f620170 name2=tty0 in_use=%i",
+		    machine->x11_md.in_use? 0 : 1);
 		machine->main_console_handle = (size_t)device_add(machine,
 		    tmpstr);
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=0 addr="
@@ -396,7 +409,6 @@ Why is this here? TODO
 
 	case 32:
 		strlcat(machine->machine_name, " (O2)", MACHINE_NAME_MAXBUF);
-		machine->stable = 1;
 
 		/*  TODO: Find out where the phys ram is actually located.  */
 		dev_ram_init(machine, 0x07ffff00ULL,           256,
@@ -414,8 +426,11 @@ Why is this here? TODO
 		dev_ram_init(machine, 0x40000000ULL, 128 * 1048576,
 		    DEV_RAM_MIRROR, 0x10000000);
 
-		machine->md_int.ip32.crime_data = dev_crime_init(machine,
-		    mem, 0x14000000, 2, machine->use_x11);	/*  crime0  */
+		/*  Connect CRIME (Interrupt Controller) to MIPS irq 2:  */
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2",
+		    machine->path, machine->bootstrap_cpu);
+		dev_crime_init(machine, mem, 0x14000000, tmpstr,
+		    machine->x11_md.in_use);			/*  crime0  */
 		dev_sgi_mte_init(mem, 0x15000000);		/*  mte ???  */
 		dev_sgi_gbe_init(machine, mem, 0x16000000);	/*  gbe?  */
 
@@ -443,10 +458,6 @@ Why is this here? TODO
 		 * 	  1f3a0000	  mcclock0
 		 */
 
-		machine->md_int.ip32.mace_data =
-		    dev_mace_init(mem, 0x1f310000, 2);
-		machine->md_interrupt = sgi_ip32_interrupt;
-
 		/*
 		 *  IRQ mapping is really ugly.  TODO: fix
 		 *
@@ -463,44 +474,61 @@ Why is this here? TODO
 		 *  intr 7 = MACE_PCI_BRIDGE
 		 */
 
-		if (eaddr_string == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
 		snprintf(eaddr_string, ETHERNET_STRING_MAXLEN,
 		    "eaddr=%02x:%02x:%02x:%02x:%02x:%02x",
 		    macaddr[0], macaddr[1], macaddr[2],
 		    macaddr[3], macaddr[4], macaddr[5]);
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.crime.0x%x",
+		    machine->path, machine->bootstrap_cpu, MACE_ETHERNET);
 		dev_sgi_mec_init(machine, mem, 0x1f280000,
-		    MACE_ETHERNET, macaddr);
+		    tmpstr, macaddr);
 
 		dev_sgi_ust_init(mem, 0x1f340000);  /*  ust?  */
 
-		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%i addr="
+		snprintf(tmpstr, sizeof(tmpstr),
+		    "ns16550 irq=%s.cpu[%i].2.crime.0x%x.mace.%i addr="
 		    "0x1f390000 addr_mult=0x100 in_use=%i name2=tty0",
-		    (1<<20) + MACE_PERIPH_SERIAL, machine->use_x11? 0 : 1);
+		    machine->path, machine->bootstrap_cpu,
+		    MACE_PERIPH_SERIAL, 20, machine->x11_md.in_use? 0 : 1);
 		j = (size_t)device_add(machine, tmpstr);
-		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%i addr="
+		snprintf(tmpstr, sizeof(tmpstr),
+		    "ns16550 irq=%s.cpu[%i].2.crime.0x%x.mace.%i addr="
 		    "0x1f398000 addr_mult=0x100 in_use=%i name2=tty1",
-		    (1<<26) + MACE_PERIPH_SERIAL, 0);
+		    machine->path, machine->bootstrap_cpu,
+		    MACE_PERIPH_SERIAL, 26, 0);
 		device_add(machine, tmpstr);
 
 		machine->main_console_handle = j;
 
 		/*  TODO: Once this works, it should be enabled
 		    always, not just when using X!  */
-		if (machine->use_x11) {
+#if 0
+fatal("TODO: legacy SGI rewrite\n");
+abort();
+		if (machine->x11_md.in_use) {
 			i = dev_pckbc_init(machine, mem, 0x1f320000,
 			    PCKBC_8242, 0x200 + MACE_PERIPH_MISC,
-			    0x800 + MACE_PERIPH_MISC, machine->use_x11, 0);
+			    0x800 + MACE_PERIPH_MISC, machine->x11_md.in_use,
+				0);
 				/*  keyb+mouse (mace irq numbers)  */
 			machine->main_console_handle = i;
 		}
+#endif
 
-		dev_mc146818_init(machine, mem, 0x1f3a0000, (1<<8) +
-		    MACE_PERIPH_MISC, MC146818_SGI, 0x40);  /*  mcclock0  */
-		machine->main_console_handle = (size_t)device_add(machine,
-		    "z8530 addr=0x1fbd9830 irq=0 addr_mult=4");
+		snprintf(tmpstr, sizeof(tmpstr),
+		    "%s.cpu[%i].2.crime.0x%x.mace.%i",
+		    machine->path, machine->bootstrap_cpu,
+		    MACE_PERIPH_MISC, 8);
+		dev_mc146818_init(machine, mem, 0x1f3a0000, tmpstr,
+		    MC146818_SGI, 0x40);  /*  mcclock0  */
+
+		/*  TODO: _WHERE_ does the z8530 interrupt?  */
+		snprintf(tmpstr, sizeof(tmpstr), "z8530 addr=0x1fbd9830 "
+		    "irq=%s.cpu[%i].2 addr_mult=4",
+		    machine->path, machine->bootstrap_cpu);
+		machine->main_console_handle = (size_t)
+		    device_add(machine, tmpstr);
 
 		/*
 		 *  PCI devices:   (according to NetBSD's GENERIC
@@ -511,8 +539,11 @@ Why is this here? TODO
 		 *	ahc1            at pci0 dev 2 function ?
 		 */
 
+		snprintf(tmpstr, sizeof(tmpstr),
+		    "%s.cpu[%i].2.crime.0x%x", machine->path,
+		    machine->bootstrap_cpu, MACE_PCI_BRIDGE);
 		pci_data = dev_macepci_init(machine, mem, 0x1f080000,
-		    MACE_PCI_BRIDGE);	/*  macepci0  */
+		    tmpstr);		/*  macepci0  */
 		/*  bus_pci_add(machine, pci_data, mem, 0, 0, 0,
 		    "ne2000");  TODO  */
 

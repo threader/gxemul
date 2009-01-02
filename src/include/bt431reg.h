@@ -1,4 +1,4 @@
-/*  gxemul: $Id: bt431reg.h,v 1.2 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: bt431reg.h,v 1.2 2005-03-05 12:34:02 debug Exp $  */
 /* $NetBSD: bt431reg.h,v 1.1 1998/10/28 04:10:37 nisimura Exp $ */
 
 #ifndef BT431REG_H

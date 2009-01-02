@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pcic.c,v 1.16 2006/02/09 20:02:59 debug Exp $
+ *  $Id: dev_pcic.c,v 1.20.2.1 2008-01-18 19:12:29 debug Exp $
  *
- *  Intel 82365SL PC Card Interface Controller (called "pcic" by NetBSD).
+ *  COMMENT: Intel 82365SL PC Card Interface Controller
+ *
+ *  (Called "pcic" by NetBSD.)
  *
  *  TODO: Lots of stuff. This is just a quick hack. Don't rely on it.
  */
@@ -39,6 +41,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "emul.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -52,14 +55,11 @@
 #define	DEV_PCIC_LENGTH		2
 
 struct pcic_data {
-	int		irq_nr;
-	int		regnr;
+	struct interrupt	irq;
+	int			regnr;
 };
 
 
-/*
- *  dev_pcic_cis_access():
- */
 DEVICE_ACCESS(pcic_cis)
 {
 	/*  struct pcic_data *d = (struct pcic_data *) extra;  */
@@ -140,12 +140,9 @@ DEVICE_ACCESS(pcic_cis)
 }
 
 
-/*
- *  dev_pcic_access():
- */
 DEVICE_ACCESS(pcic)
 {
-	struct pcic_data *d = (struct pcic_data *) extra;
+	struct pcic_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int controller_nr, socket_nr;
 
@@ -156,14 +153,17 @@ DEVICE_ACCESS(pcic)
 	socket_nr = d->regnr & 0x40? 1 : 0;
 
 	switch (relative_addr) {
+
 	case 0:	/*  Register select:  */
 		if (writeflag == MEM_WRITE)
 			d->regnr = idata;
 		else
 			odata = d->regnr;
 		break;
+
 	case 1:	/*  Register access:  */
 		switch (d->regnr & 0x3f) {
+
 		case PCIC_IDENT:
 			/*  This causes sockets A and B to be present on
 			    controller 0, and only socket A on controller 1.  */
@@ -178,15 +178,18 @@ DEVICE_ACCESS(pcic)
 			odata = PCIC_INTR_IRQ3;
 			break;
 #endif
+
 		case PCIC_CSC:
 			odata = PCIC_CSC_GPI;
 			break;
+
 		case PCIC_IF_STATUS:
 			odata = PCIC_IF_STATUS_READY
 			    | PCIC_IF_STATUS_POWERACTIVE;
 			if (controller_nr == 0 && socket_nr == 0)
 				odata |= PCIC_IF_STATUS_CARDDETECT_PRESENT;
 			break;
+
 		default:
 			if (writeflag == MEM_WRITE) {
 				debug("[ pcic: unimplemented write to "
@@ -212,14 +215,13 @@ DEVICE_ACCESS(pcic)
 
 DEVINIT(pcic)
 {
-	struct pcic_data *d = malloc(sizeof(struct pcic_data));
+	char tmpstr[200];
+	struct pcic_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pcic_data)));
 	memset(d, 0, sizeof(struct pcic_data));
-	d->irq_nr = devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    devinit->addr, DEV_PCIC_LENGTH,
@@ -231,12 +233,15 @@ DEVINIT(pcic)
 	    DM_DEFAULT, NULL);
 
 	/*  TODO: find out a good way to specify the address, and the IRQ!  */
-	/*  IRQ 8 + 32 + 9  */
-	device_add(devinit->machine, "wdc addr=0x14000180 irq=49");
+	snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x14000180 irq=%s.giu.9",
+	    devinit->interrupt_path);
+	device_add(devinit->machine, tmpstr);
 
 	/*  TODO: Linux/MobilePro looks at 0x14000170 and 0x1f0...  */
 	/*  Yuck. Now there are two. How should this be solved nicely?  */
-	device_add(devinit->machine, "wdc addr=0x140001f0 irq=49");
+	snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x140001f0 irq=%s.giu.9",
+	    devinit->interrupt_path);
+	device_add(devinit->machine, tmpstr);
 
 	return 1;
 }

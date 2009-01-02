@@ -1,4 +1,4 @@
-/*  GXemul: $Id: dreamcast_sysasicvar.h,v 1.2 2006/10/28 01:37:54 debug Exp $  */
+/*  GXemul: $Id: dreamcast_sysasicvar.h,v 1.2 2006-10-28 01:37:54 debug Exp $  */
 /*  $NetBSD: sysasicvar.h,v 1.5 2005/12/24 23:24:00 perry Exp $  */
 
 /*

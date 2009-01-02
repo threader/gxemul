@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_fbctrl.c,v 1.4 2006/07/09 07:53:33 debug Exp $
+ *  $Id: dev_fbctrl.c,v 1.6.2.1 2008-01-18 19:12:28 debug Exp $
+ *
+ *  COMMENT: Framebuffer controller device (control's dev_fb in test machines)
  *
  *  A "framebuffer control" device. It can be used to manipulate the
  *  framebuffer device in testmachines.
@@ -36,7 +38,6 @@
 #include <string.h>
 
 #include "cpu.h"
-#include "cpu_mips.h"
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
@@ -155,11 +156,7 @@ DEVINIT(fbctrl)
 {
 	struct fbctrl_data *d;
 
-	d = malloc(sizeof(struct fbctrl_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct fbctrl_data)));
 	memset(d, 0, sizeof(struct fbctrl_data));
 
 	d->vfb_data = dev_fb_init(devinit->machine, devinit->machine->memory,

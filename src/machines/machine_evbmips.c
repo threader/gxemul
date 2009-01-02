@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_evbmips.c,v 1.11 2006/09/23 03:52:10 debug Exp $
+ *  $Id: machine_evbmips.c,v 1.30.2.1 2008-01-18 19:12:33 debug Exp $
+ *
+ *  COMMENT: MIPS evaluation boards (e.g. Malta)
  */
 
 #include <stdio.h>
@@ -38,7 +40,6 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -47,39 +48,45 @@
 
 MACHINE_SETUP(evbmips)
 {
-	char tmpstr[1000];
+	char tmpstr[1000], tmpstr2[1000];
 	struct pci_data *pci_data;
 	int i;
 
-	/*  See http://www.netbsd.org/Ports/evbmips/ for more info.  */
+	/*  See http://www.netbsd.org/ports/evbmips/ for more info.  */
 
 	switch (machine->machine_subtype) {
+
 	case MACHINE_EVBMIPS_MALTA:
 	case MACHINE_EVBMIPS_MALTA_BE:
 		if (machine->emulated_hz == 0)
 			machine->emulated_hz = 33000000;
 		cpu->byte_order = EMUL_LITTLE_ENDIAN;
 		machine->machine_name = "MALTA (evbmips, little endian)";
-		machine->stable = 1;
 
 		if (machine->machine_subtype == MACHINE_EVBMIPS_MALTA_BE) {
 			machine->machine_name = "MALTA (evbmips, big endian)";
 			cpu->byte_order = EMUL_BIG_ENDIAN;
 		}
 
-		machine->md_interrupt = isa8_interrupt;
-		machine->isa_pic_data.native_irq = 2;
+		/*  ISA bus at MIPS irq 2:  */
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2",
+		    machine->path, machine->bootstrap_cpu);
+		bus_isa_init(machine, tmpstr, 0, 0x18000000, 0x10000000);
 
-		bus_isa_init(machine, 0, 0x18000000, 0x10000000, 8, 24);
-
-		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=4 addr=0x%x"
-		    " name2=tty2 in_use=0", MALTA_CBUSUART);
+		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%s.cpu[%i].4 "
+		    "addr=0x%x name2=tty2 in_use=0", machine->path,
+		    machine->bootstrap_cpu, MALTA_CBUSUART);
 		device_add(machine, tmpstr);
 
+		/*  Add a GT controller; timer interrupts at ISA irq 9:  */
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.isa.9",
+		    machine->path, machine->bootstrap_cpu);
+		snprintf(tmpstr2, sizeof(tmpstr2), "%s.cpu[%i].2",
+		    machine->path, machine->bootstrap_cpu);
 		pci_data = dev_gt_init(machine, machine->memory, 0x1be00000,
-		    8+9, 8+9, 120);
+		    tmpstr, tmpstr2, 120);
 
-		if (machine->use_x11) {
+		if (machine->x11_md.in_use) {
 			if (strlen(machine->boot_string_argument) < 3) {
 				fatal("WARNING: remember to use  -o 'console="
 				    "tty0'  if you are emulating Linux. (Not"
@@ -99,52 +106,6 @@ MACHINE_SETUP(evbmips)
 		    0, 11, 0, "pcn");  */
 
 		device_add(machine, "malta_lcd addr=0x1f000400");
-		break;
-
-	case MACHINE_EVBMIPS_MESHCUBE:
-		machine->machine_name = "Meshcube";
-
-		/*  See: http://mail-index.netbsd.org/port-evbmips/2006/
-		    02/23/0000.html  */
-
-		if (machine->physical_ram_in_mb != 64)
-			fprintf(stderr, "WARNING! MeshCubes are supposed to "
-			    "have exactly 64 MB RAM. Continuing anyway.\n");
-		if (machine->use_x11)
-			fprintf(stderr, "WARNING! MeshCube with -X is "
-			    "meaningless. Continuing anyway.\n");
-
-		/*  First of all, the MeshCube has an Au1500 in it:  */
-		machine->md_interrupt = au1x00_interrupt;
-		machine->md_int.au1x00_ic_data = dev_au1x00_init(machine,
-		    machine->memory);
-
-		/*
-		 *  TODO:  Which non-Au1500 devices, and at what addresses?
-		 *
-		 *  "4G Systems MTX-1 Board" at ?
-		 *	1017fffc, 14005004, 11700000, 11700008, 11900014,
-		 *	1190002c, 11900100, 11900108, 1190010c,
-		 *	10400040 - 10400074,
-		 *	14001000 (possibly LCD?)
-		 *	11100028 (possibly ttySx?)
-		 *
-		 *  "usb_ohci=base:0x10100000,len:0x100000,irq:26"
-		 */
-
-		/*  Linux reads this during startup...  */
-		device_add(machine, "random addr=0x1017fffc len=4");
-
-		break;
-
-	case MACHINE_EVBMIPS_PB1000:
-		machine->machine_name = "PB1000 (evbmips)";
-		cpu->byte_order = EMUL_BIG_ENDIAN;
-
-		machine->md_interrupt = au1x00_interrupt;
-		machine->md_int.au1x00_ic_data = dev_au1x00_init(machine,
-		    machine->memory);
-		/*  TODO  */
 		break;
 
 	default:fatal("Unimplemented EVBMIPS model.\n");
@@ -180,13 +141,7 @@ MACHINE_SETUP(evbmips)
 	cpu->cd.mips.gpr[MIPS_GPR_A3] = machine->physical_ram_in_mb * 1048576;
 	/*  Hm. Linux ignores a3.  */
 
-	/*
-	 *  TODO:
-	 *	Core ID numbers.
-	 *	How much of this is not valid for PBxxxx?
-	 *
-	 *  See maltareg.h for more info.
-	 */
+	/*  Set the Core ID. See maltareg.h for more info.  */
 	store_32bit_word(cpu, (int32_t)(0x80000000 + MALTA_REVISION),
 	    (1 << 10) + 0x26);
 
@@ -205,16 +160,13 @@ MACHINE_SETUP(evbmips)
 MACHINE_DEFAULT_CPU(evbmips)
 {
 	switch (machine->machine_subtype) {
+
 	case MACHINE_EVBMIPS_MALTA:
 	case MACHINE_EVBMIPS_MALTA_BE:
+		/*  5Kc = MIPS64 rev 1, 5KE = MIPS64 rev 2  */
 		machine->cpu_name = strdup("5Kc");
 		break;
-	case MACHINE_EVBMIPS_MESHCUBE:
-		machine->cpu_name = strdup("AU1500");
-		break;
-	case MACHINE_EVBMIPS_PB1000:
-		machine->cpu_name = strdup("AU1000");
-		break;
+
 	default:fatal("Unimplemented evbmips subtype.\n");
 		exit(1);
 	}
@@ -223,9 +175,7 @@ MACHINE_DEFAULT_CPU(evbmips)
 
 MACHINE_DEFAULT_RAM(evbmips)
 {
-	/*  MeshCube is always (?) 64 MB, and the others work fine
-	    with 64 MB too.  */
-	machine->physical_ram_in_mb = 64;
+	machine->physical_ram_in_mb = 128;
 }
 
 
@@ -241,12 +191,6 @@ MACHINE_REGISTER(evbmips)
 
 	machine_entry_add_subtype(me, "Malta (Big-Endian)",
 	    MACHINE_EVBMIPS_MALTA_BE, "maltabe", NULL);
-
-	machine_entry_add_subtype(me, "MeshCube", MACHINE_EVBMIPS_MESHCUBE,
-	    "meshcube", NULL);
-
-	machine_entry_add_subtype(me, "PB1000", MACHINE_EVBMIPS_PB1000,
-	    "pb1000", NULL);
 
 	me->set_default_ram = machine_default_ram_evbmips;
 }

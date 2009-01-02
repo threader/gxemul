@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_sparc.c,v 1.3 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_sparc.c,v 1.6.2.1 2008-01-18 19:12:33 debug Exp $
  *
- *  SPARC machines.
+ *  COMMENT: SUN SPARC machines
  */
 
 #include <stdio.h>
@@ -66,6 +66,11 @@ MACHINE_SETUP(sparc)
 
 		break;
 
+	case MACHINE_SPARC_SUN4V:
+		machine->machine_name = "SUN Generic sun4v";
+
+		break;
+
 	default:fatal("Unimplemented SPARC machine subtype %i\n",
 		    machine->machine_subtype);
 		exit(1);
@@ -95,6 +100,10 @@ MACHINE_DEFAULT_CPU(sparc)
 
 	case MACHINE_SPARC_ULTRA60:
 		machine->cpu_name = strdup("UltraSPARC-II");
+		break;
+
+	case MACHINE_SPARC_SUN4V:
+		machine->cpu_name = strdup("T1");
 		break;
 
 	default:fatal("Unimplemented SPARC machine subtype %i\n",
@@ -127,6 +136,9 @@ MACHINE_REGISTER(sparc)
 
 	machine_entry_add_subtype(me, "SUN Ultra60", MACHINE_SPARC_ULTRA60,
 	    "ultra60", NULL);
+
+	machine_entry_add_subtype(me, "SUN Generic sun4v", MACHINE_SPARC_SUN4V,
+	    "sun4v", NULL);
 
 	me->set_default_ram = machine_default_ram_sparc;
 }

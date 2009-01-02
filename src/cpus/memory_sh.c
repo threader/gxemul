@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_sh.c,v 1.12 2006/10/28 04:00:32 debug Exp $
+ *  $Id: memory_sh.c,v 1.23.2.1 2008-01-18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>
@@ -85,7 +85,7 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 
 		/*  fatal("urc = %i  ==>  ", urc);  */
 		urc ++;
-		if (urc == SH_N_UTLB_ENTRIES || (urb > 0 && urc == urb))
+		if (urc >= SH_N_UTLB_ENTRIES || (urb > 0 && urc == urb))
 			urc = 0;
 		/*  fatal("%i\n", urc);  */
 
@@ -113,6 +113,8 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 		mask = 0xfff00000;
 
 		v = lo & SH4_PTEL_V;
+		if (!v)
+			continue;
 
 		switch (lo & SH4_PTEL_SZ_MASK) {
 		case SH4_PTEL_SZ_1K:  mask = 0xfffffc00; break;
@@ -121,7 +123,7 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 		/*  case SH4_PTEL_SZ_1M:  mask = 0xfff00000; break;  */
 		}
 
-		if (!v || (hi & mask) != (vaddr & mask))
+		if ((hi & mask) != (vaddr & mask))
 			continue;
 
 		sh = lo & SH4_PTEL_SH;
@@ -141,8 +143,9 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 	if (i == SH_N_UTLB_ENTRIES)
 		goto tlb_miss;
 
-	/*  Matching address found! Let's see it is readable/writable, etc:  */
-	d = lo & SH4_PTEL_D;
+	/*  Matching address found! Let's see whether it is
+	    readable/writable, etc.:  */
+	d = lo & SH4_PTEL_D? 1 : 0;
 	pr = (lo & SH4_PTEL_PR_MASK) >> SH4_PTEL_PR_SHIFT;
 
 	*return_paddr = (vaddr & ~mask) | (lo & mask & 0x1fffffff);
@@ -150,15 +153,29 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 	if (flags & FLAG_INSTR) {
 		/*
 		 *  Instruction access:
-		 *
+		 */
+#if 0
+		/*  NOTE: Emulating the ITLB as exact as this is not
+			necessary... so I'm disabling it for now.  */
+		/*
 		 *  If a matching entry wasn't found in the ITLB, but in the
 		 *  UTLB, then copy it to a random place in the ITLB.
 		 */
-		if (i >= 0) {
+		if (i >= 0 && !(flags & FLAG_NOEXCEPTIONS)) {
 			int r = random() % SH_N_ITLB_ENTRIES;
+
+			/*  NOTE: Make sure that the old mapping for
+			    that itlb entry is invalidated:  */
+			cpu->invalidate_translation_caches(cpu,
+			    cpu->cd.sh.itlb_hi[r] & ~0xfff, INVALIDATE_VADDR);
+
+			cpu->invalidate_code_translation(cpu,
+			    cpu->cd.sh.utlb_lo[i] & ~0xfff, INVALIDATE_PADDR);
+
 			cpu->cd.sh.itlb_hi[r] = cpu->cd.sh.utlb_hi[i];
 			cpu->cd.sh.itlb_lo[r] = cpu->cd.sh.utlb_lo[i];
 		}
+#endif
 
 		/*  Permission checks:  */
 		if (cpu->cd.sh.sr & SH_SR_MD)
@@ -180,7 +197,7 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 		case 1:
 		case 3:	if (wf && !d)
 				goto initial_write_exception;
-			return 1;
+			return 1 + d;
 		}
 	}
 
@@ -193,7 +210,7 @@ static int translate_via_mmu(struct cpu *cpu, uint32_t vaddr,
 		return 1;
 	case 3:	if (wf && !d)
 			goto initial_write_exception;
-		return 1;
+		return 1 + d;
 	}
 
 
@@ -231,12 +248,11 @@ exception:
  *		available as read-only.
  *	2	Same as 1, but the page is available as read/write.
  */
-int sh_translate_v2p(struct cpu *cpu, uint64_t vaddr, uint64_t *return_paddr,
+int sh_translate_v2p(struct cpu *cpu, uint64_t vaddr64, uint64_t *return_paddr,
 	int flags)
 {
 	int user = cpu->cd.sh.sr & SH_SR_MD? 0 : 1;
-
-	vaddr = (uint32_t)vaddr;
+	uint32_t vaddr = vaddr64;
 
 	/*  U0/P0: Userspace addresses, or P3: Kernel virtual memory.  */
 	if (!(vaddr & 0x80000000) ||
@@ -294,7 +310,13 @@ int sh_translate_v2p(struct cpu *cpu, uint64_t vaddr, uint64_t *return_paddr,
 	}
 
 	/*  TODO  */
-	fatal("Unimplemented SH vaddr 0x%08"PRIx32"\n", (uint32_t)vaddr);
-	exit(1);
+
+	/*  The ugly 'if' is just here to fool Compaq CC.  */
+	if (!(flags & FLAG_NOEXCEPTIONS)) {
+		fatal("Unimplemented SH vaddr 0x%08"PRIx32"\n", vaddr);
+		exit(1);
+	}
+
+	return 0;
 }
 

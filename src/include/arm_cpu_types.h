@@ -2,7 +2,7 @@
 #define	ARM_CPU_TYPES_H
 
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,13 +28,16 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: arm_cpu_types.h,v 1.10 2006/03/05 17:58:16 debug Exp $
+ *  $Id: arm_cpu_types.h,v 1.11.2.2 2008-06-09 14:25:57 debug Exp $
  */
 
 /*  See cpu_arm.h for struct arm_cpu_type_def.  */
 /*  See armreg.h for CPU_ID_xxx defines.  */
 
 /*  TODO: Refactor these flags  */
+
+/*  TODO: Include "ARM level", i.e. ARMv5  */
+
 
 /*  Flags:  */
 #define	ARM_NO_MMU		1

@@ -1,4 +1,4 @@
-/*  GXemul: $Id: dreamcast_maple.h,v 1.1 2006/10/27 04:22:44 debug Exp $  */
+/*  GXemul: $Id: dreamcast_maple.h,v 1.1 2006-10-27 04:22:44 debug Exp $  */
 /*	$NetBSD: maple.h,v 1.9 2005/12/11 12:17:06 christos Exp $	*/
 
 /*-

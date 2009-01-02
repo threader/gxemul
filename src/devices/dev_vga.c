@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_vga.c,v 1.100 2006/07/08 12:30:02 debug Exp $
+ *  $Id: dev_vga.c,v 1.104.2.2 2008-01-18 19:12:30 debug Exp $
  *
- *  VGA charcell and graphics device.
+ *  COMMENT: VGA framebuffer device (charcell and graphics modes)
  *
  *  It should work with 80x25 and 40x25 text modes, and with a few graphics
  *  modes as long as no fancy VGA features are used.
@@ -250,7 +250,7 @@ static void reset_palette(struct vga_data *d, int grayscale)
 /*
  *  vga_update_textmode():
  *
- *  Called from vga_update() when use_x11 is false. This causes modified
+ *  Called from vga_update() when x11 in_use is false. This causes modified
  *  character cells to be "simulated" by outputing ANSI escape sequences
  *  that draw the characters in a terminal window instead.
  */
@@ -407,7 +407,7 @@ static void vga_update_text(struct machine *machine, struct vga_data *d,
 	base = ((d->crtc_reg[VGA_CRTC_START_ADDR_HIGH] << 8)
 	    + d->crtc_reg[VGA_CRTC_START_ADDR_LOW]) * 2;
 
-	if (!machine->use_x11)
+	if (!machine->x11_md.in_use)
 		vga_update_textmode(machine, d, base, start, end);
 
 	for (i=start; i<=end; i+=2) {
@@ -467,7 +467,7 @@ static void vga_update_text(struct machine *machine, struct vga_data *d,
 					continue;
 				dev_fb_access(machine->cpus[0],
 				    machine->memory, addr, rgb_line,
-				    3 * machine->x11_scaleup * font_width,
+				    3 * machine->x11_md.scaleup * font_width,
 				    MEM_WRITE, d->fb);
 			}
 		}
@@ -503,10 +503,7 @@ static void vga_update_cursor(struct machine *machine, struct vga_data *d)
 }
 
 
-/*
- *  dev_vga_tick():
- */
-void dev_vga_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(vga)
 {
 	struct vga_data *d = extra;
 	int64_t low = -1, high;
@@ -559,7 +556,7 @@ void dev_vga_tick(struct cpu *cpu, void *extra)
 		}
 	}
 
-	if (!cpu->machine->use_x11) {
+	if (!cpu->machine->x11_md.in_use) {
 		/*  NOTE: 2 > 0, so this only updates the cursor, no
 		    character cells.  */
 		vga_update_textmode(cpu->machine, d, 0, 2, 0);
@@ -587,8 +584,6 @@ void dev_vga_tick(struct cpu *cpu, void *extra)
 
 
 /*
- *  vga_graphics_access():
- *
  *  Reads and writes to the VGA video memory (pixels).
  */
 DEVICE_ACCESS(vga_graphics)
@@ -684,9 +679,7 @@ DEVICE_ACCESS(vga_graphics)
 
 
 /*
- *  dev_vga_access():
- *
- *  Reads and writes to the VGA video memory (charcells).
+ *  Reads and writes the VGA video memory (charcells).
  */
 DEVICE_ACCESS(vga)
 {
@@ -790,8 +783,8 @@ static void vga_crtc_reg_write(struct machine *machine, struct vga_data *d,
 		case 0x01:
 			d->cur_mode = MODE_CHARCELL;
 			d->max_x = 40; d->max_y = 25;
-			d->pixel_repx = machine->x11_scaleup * 2;
-			d->pixel_repy = machine->x11_scaleup;
+			d->pixel_repx = machine->x11_md.scaleup * 2;
+			d->pixel_repy = machine->x11_md.scaleup;
 			d->font_width = 8;
 			d->font_height = 16;
 			d->font = font8x16;
@@ -801,7 +794,7 @@ static void vga_crtc_reg_write(struct machine *machine, struct vga_data *d,
 		case 0x03:
 			d->cur_mode = MODE_CHARCELL;
 			d->max_x = 80; d->max_y = 25;
-			d->pixel_repx = d->pixel_repy = machine->x11_scaleup;
+			d->pixel_repx = d->pixel_repy = machine->x11_md.scaleup;
 			d->font_width = 8;
 			d->font_height = 16;
 			d->font = font8x16;
@@ -811,8 +804,8 @@ static void vga_crtc_reg_write(struct machine *machine, struct vga_data *d,
 			d->max_x = 160;	d->max_y = 200;
 			d->graphics_mode = GRAPHICS_MODE_4BIT;
 			d->bits_per_pixel = 4;
-			d->pixel_repx = 4 * machine->x11_scaleup;
-			d->pixel_repy = 2 * machine->x11_scaleup;
+			d->pixel_repx = 4 * machine->x11_md.scaleup;
+			d->pixel_repy = 2 * machine->x11_md.scaleup;
 			break;
 		case 0x09:
 		case 0x0d:
@@ -821,29 +814,29 @@ static void vga_crtc_reg_write(struct machine *machine, struct vga_data *d,
 			d->graphics_mode = GRAPHICS_MODE_4BIT;
 			d->bits_per_pixel = 4;
 			d->pixel_repx = d->pixel_repy =
-			    2 * machine->x11_scaleup;
+			    2 * machine->x11_md.scaleup;
 			break;
 		case 0x0e:
 			d->cur_mode = MODE_GRAPHICS;
 			d->max_x = 640;	d->max_y = 200;
 			d->graphics_mode = GRAPHICS_MODE_4BIT;
 			d->bits_per_pixel = 4;
-			d->pixel_repx = machine->x11_scaleup;
-			d->pixel_repy = machine->x11_scaleup * 2;
+			d->pixel_repx = machine->x11_md.scaleup;
+			d->pixel_repy = machine->x11_md.scaleup * 2;
 			break;
 		case 0x10:
 			d->cur_mode = MODE_GRAPHICS;
 			d->max_x = 640; d->max_y = 350;
 			d->graphics_mode = GRAPHICS_MODE_4BIT;
 			d->bits_per_pixel = 4;
-			d->pixel_repx = d->pixel_repy = machine->x11_scaleup;
+			d->pixel_repx = d->pixel_repy = machine->x11_md.scaleup;
 			break;
 		case 0x12:
 			d->cur_mode = MODE_GRAPHICS;
 			d->max_x = 640; d->max_y = 480;
 			d->graphics_mode = GRAPHICS_MODE_4BIT;
 			d->bits_per_pixel = 4;
-			d->pixel_repx = d->pixel_repy = machine->x11_scaleup;
+			d->pixel_repx = d->pixel_repy = machine->x11_md.scaleup;
 			break;
 		case 0x13:
 			d->cur_mode = MODE_GRAPHICS;
@@ -851,7 +844,7 @@ static void vga_crtc_reg_write(struct machine *machine, struct vga_data *d,
 			d->graphics_mode = GRAPHICS_MODE_8BIT;
 			d->bits_per_pixel = 8;
 			d->pixel_repx = d->pixel_repy =
-			    2 * machine->x11_scaleup;
+			    2 * machine->x11_md.scaleup;
 			break;
 		default:
 			fatal("TODO! video mode change hack (mode 0x%02x)\n",
@@ -882,7 +875,8 @@ static void vga_crtc_reg_write(struct machine *machine, struct vga_data *d,
 		if (d->cur_mode == MODE_GRAPHICS)
 			d->gfx_mem_size = d->max_x * d->max_y /
 			    (d->graphics_mode == GRAPHICS_MODE_8BIT? 1 : 2);
-		d->gfx_mem = malloc(d->gfx_mem_size);
+
+		CHECK_ALLOCATION(d->gfx_mem = malloc(d->gfx_mem_size));
 
 		/*  Clear screen and reset the palette:  */
 		memset(d->charcells_outputed, 0, d->charcells_size);
@@ -1145,12 +1139,9 @@ DEVICE_ACCESS(vga_ctrl)
 			if ((d->current_retrace_line & 7) == 7) {
 				if (d->retrace_palette == NULL &&
 				    d->n_is1_reads > N_IS1_READ_THRESHOLD) {
-					d->retrace_palette = malloc(
-					    MAX_RETRACE_SCANLINES * 256*3);
-					if (d->retrace_palette == NULL) {
-						fatal("out of memory\n");
-						exit(1);
-					}
+					CHECK_ALLOCATION(d->retrace_palette =
+					    malloc(
+					    MAX_RETRACE_SCANLINES * 256*3));
 				}
 				if (d->retrace_palette != NULL)
 					memcpy(d->retrace_palette + (d->
@@ -1199,14 +1190,9 @@ void dev_vga_init(struct machine *machine, struct memory *mem,
 	uint64_t videomem_base, uint64_t control_base, char *name)
 {
 	struct vga_data *d;
-	size_t i;
-	size_t allocsize;
+	size_t allocsize, i;
 
-	d = malloc(sizeof(struct vga_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct vga_data)));
 	memset(d, 0, sizeof(struct vga_data));
 
 	d->console_handle = console_start_slave(machine, "vga",
@@ -1219,20 +1205,16 @@ void dev_vga_init(struct machine *machine, struct memory *mem,
 	d->cur_mode       = MODE_CHARCELL;
 	d->crtc_reg[0xff] = 0x03;
 	d->charcells_size = 0x8000;
-	d->gfx_mem_size   = 1;	/*  Nothing, as we start in text mode  */
-	d->pixel_repx = d->pixel_repy = machine->x11_scaleup;
+	d->gfx_mem_size   = 64;	/*  Nothing, as we start in text mode,
+			but size large enough to make gfx_mem aligned.  */
+	d->pixel_repx = d->pixel_repy = machine->x11_md.scaleup;
 
 	/*  Allocate in full pages, to make it possible to use dyntrans:  */
 	allocsize = ((d->charcells_size-1) | (machine->arch_pagesize-1)) + 1;
-	d->charcells = malloc(d->charcells_size);
-	d->charcells_outputed = malloc(d->charcells_size);
-	d->charcells_drawn = malloc(d->charcells_size);
-	d->gfx_mem = malloc(d->gfx_mem_size);
-	if (d->charcells == NULL || d->charcells_outputed == NULL ||
-	    d->charcells_drawn == NULL || d->gfx_mem == NULL) {
-		fprintf(stderr, "out of memory in dev_vga_init()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d->charcells = malloc(d->charcells_size));
+	CHECK_ALLOCATION(d->charcells_outputed = malloc(d->charcells_size));
+	CHECK_ALLOCATION(d->charcells_drawn = malloc(d->charcells_size));
+	CHECK_ALLOCATION(d->gfx_mem = malloc(d->gfx_mem_size));
 
 	memset(d->charcells_drawn, 0, d->charcells_size);
 
@@ -1280,8 +1262,7 @@ void dev_vga_init(struct machine *machine, struct memory *mem,
 	d->update_y2 = d->max_y - 1;
 	d->modified = 1;
 
-	machine_add_tickfunction(machine, dev_vga_tick, d,
-	    VGA_TICK_SHIFT, 0.0);
+	machine_add_tickfunction(machine, dev_vga_tick, d, VGA_TICK_SHIFT);
 
 	register_reset(d);
 

@@ -1,4 +1,4 @@
-/*  gxemul: $Id: dec_kn01.h,v 1.3 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: dec_kn01.h,v 1.3 2005-03-05 12:34:02 debug Exp $  */
 
 #ifndef DEC_KN01_H
 #define DEC_KN01_H

@@ -2,7 +2,7 @@
 #define	MISC_H
 
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: misc.h,v 1.247 2006/10/08 02:28:40 debug Exp $
+ *  $Id: misc.h,v 1.259.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Misc. definitions for gxemul.
  */
@@ -105,6 +105,10 @@ static void *no_map_anon_mmap(void *addr, size_t len, int prot, int flags,
 #endif
 
 
+/*  tmp dir to use if the TMPDIR environment variable isn't set:  */
+#define	DEFAULT_TMP_DIR		"/tmp"
+
+
 struct cpu;
 struct emul;
 struct machine;
@@ -162,6 +166,52 @@ struct memory;
 #define	DEBUG_INDENTATION	4
 
 
+#ifdef HAVE___FUNCTION__
+
+#define	FAILURE(error_msg)					{	\
+		char where_msg[400];					\
+		snprintf(where_msg, sizeof(where_msg),			\
+		    "%s, line %i, function %s().\n",			\
+		    __FILE__, __LINE__, __FUNCTION__);			\
+        	fprintf(stderr, "\n%s, in %s\n", error_msg, where_msg);	\
+		exit(1);						\
+	}
+
+#else
+
+#define	FAILURE(error_msg)					{	\
+		char where_msg[400];					\
+		snprintf(where_msg, sizeof(where_msg),			\
+		    "%s, line %i\n", __FILE__, __LINE__);		\
+        	fprintf(stderr, "\n%s, in %s.\n", error_msg, where_msg);\
+		exit(1);						\
+	}
+
+#endif	/*  !HAVE___FUNCTION__  */
+
+
+#define	CHECK_ALLOCATION(ptr)					{	\
+		if ((ptr) == NULL)					\
+			FAILURE("Out of memory");			\
+	}
+
+
+/*  bootblock.c:  */
+int load_bootblock(struct machine *m, struct cpu *cpu,
+	int *n_loadp, char ***load_namesp);
+
+
+/*  bootblock_apple.c:  */
+int apple_load_bootblock(struct machine *m, struct cpu *cpu,
+	int disk_id, int disk_type, int *n_loadp, char ***load_namesp);
+
+
+/*  bootblock_iso9660.c:  */
+int iso_load_bootblock(struct machine *m, struct cpu *cpu,
+	int disk_id, int disk_type, int iso_type, unsigned char *buf,
+	int *n_loadp, char ***load_namesp);
+
+
 /*  dec_prom.c:  */
 int decstation_prom_emul(struct cpu *cpu);
 
@@ -169,6 +219,10 @@ int decstation_prom_emul(struct cpu *cpu);
 /*  dreamcast.c:  */
 void dreamcast_machine_setup(struct machine *);
 int dreamcast_emul(struct cpu *cpu);
+
+
+/*  dreamcast_scramble.c:  */
+void dreamcast_descramble(char *from, char *to);
 
 
 /*  file.c:  */
@@ -191,25 +245,21 @@ int mymkstemp(char *template);
 size_t mystrlcpy(char *dst, const char *src, size_t size);
 size_t mystrlcat(char *dst, const char *src, size_t size);
 #endif
+void print_separator_line(void);
 
 
-/*  pc_bios.c:  */
-void pc_bios_simple_pmode_setup(struct cpu *cpu);
-void pc_bios_init(struct cpu *cpu);
-int pc_bios_emul(struct cpu *cpu);
+/*  mvmeprom.c:  */
+void mvmeprom_init(struct machine *machine);
+int mvmeprom_emul(struct cpu *cpu);
 
 
 /*  ps2_bios.c:  */
 int playstation2_sifbios_emul(struct cpu *cpu);
 
 
-/*  useremul.c:  */
-void useremul_setup(struct cpu *, int, char **);
-void useremul_syscall(struct cpu *cpu, uint32_t code);
-void useremul_name_to_useremul(struct cpu *, char *name,
-	int *arch, char **machine_name, char **cpu_name);
-void useremul_list_emuls(void);
-void useremul_init(void);
+/*  sh_ipl_g.c:  */
+void sh_ipl_g_emul_init(struct machine *machine);
+int sh_ipl_g_emul(struct cpu *);
 
 
 /*  yamon.c:  */

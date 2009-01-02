@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,12 +25,18 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_i80321.c,v 1.15 2006/03/04 12:38:47 debug Exp $
+ *  $Id: dev_i80321.c,v 1.23.2.1 2008-01-18 19:12:28 debug Exp $
  *
- *  Intel i80321 (ARM) core functionality.
+ *  COMMENT: Intel i80321 (ARM) core functionality
  *
- *  TODO: This is mostly just a dummy device.
- *  TODO 2: This is hardcoded for little endian emulation.
+ *	o)  Interrupt controller
+ *	o)  Timer
+ *	o)  PCI controller
+ *	o)  Memory controller
+ *
+ *  TODO:
+ *	o)  LOTS of things left to implement.
+ *	o)  This is hardcoded for little endian emulation.
  */
 
 #include <stdio.h>
@@ -40,32 +46,89 @@
 #include "bus_pci.h"
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
+#include "timer.h"
 
 
 #include "i80321reg.h"
 
-#define	TICK_SHIFT		20
+#define	TICK_SHIFT		15
 #define	DEV_I80321_LENGTH	VERDE_PMMR_SIZE
 
+struct i80321_data {
+	/*  Interrupt Controller  */
+	struct interrupt irq;
+	uint32_t	*status;	/*  Note: these point to i80321_isrc  */
+	uint32_t	*enable;	/*  and i80321_inten in the CPU!  */
 
-void dev_i80321_tick(struct cpu *cpu, void *extra)
+	/*  Timer:  */
+	struct timer	*timer;
+	double		hz;
+	int		pending_tmr0_interrupts;
+
+	/*  PCI Controller:  */
+	uint32_t	pci_addr;
+	struct pci_data *pci_bus;
+
+	/*  Memory Controller:  */
+	uint32_t	mcu_reg[0x100 / sizeof(uint32_t)];
+};
+
+
+static void i80321_assert(struct i80321_data *d, uint32_t linemask)
 {
-	/*  struct i80321_data *d = extra;  */
-	int do_timer_interrupt = 0;
+	*d->status |= linemask;
+	if (*d->status & *d->enable)
+		INTERRUPT_ASSERT(d->irq);
+}
+static void i80321_deassert(struct i80321_data *d, uint32_t linemask)
+{
+	*d->status &= ~linemask;
+	if (!(*d->status & *d->enable))
+		INTERRUPT_DEASSERT(d->irq);
+}
 
-	if (cpu->cd.arm.tmr0 & TMRx_ENABLE) {
-		do_timer_interrupt = 1;
-	}
 
-	if (do_timer_interrupt) {
-		cpu_interrupt(cpu, 9);
+/*  
+ *  i80321_interrupt_assert():
+ *  i80321_interrupt_deassert():
+ *
+ *  Called whenever an i80321 interrupt is asserted/deasserted.
+ */
+void i80321_interrupt_assert(struct interrupt *interrupt)
+{ i80321_assert(interrupt->extra, interrupt->line); }
+void i80321_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct i80321_data *d = interrupt->extra;
+
+	/*  Ack. timer interrupts:  */
+	if (interrupt->line == 1 << 9 &&
+	    d->pending_tmr0_interrupts > 0)
+		d->pending_tmr0_interrupts --;
+
+	i80321_deassert(d, interrupt->line);
+}
+
+
+/*  TMR0 ticks, called d->hz times per second.  */
+static void tmr0_tick(struct timer *t, void *extra)
+{
+	struct i80321_data *d = extra;
+	d->pending_tmr0_interrupts ++;
+}
+
+
+DEVICE_TICK(i80321)
+{
+	struct i80321_data *d = extra;
+
+	if (cpu->cd.arm.tmr0 & TMRx_ENABLE && d->pending_tmr0_interrupts > 0) {
+		i80321_assert(d, 1 << 9);
 		cpu->cd.arm.tisr |= TISR_TMR0;
 	} else {
-		cpu_interrupt_ack(cpu, 9);
+		i80321_deassert(d, 1 << 9);
 		cpu->cd.arm.tisr &= ~TISR_TMR0;
 	}
 }
@@ -76,7 +139,7 @@ DEVICE_ACCESS(i80321)
 	struct i80321_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	char *n = NULL;
-	int i, bus, dev, func, reg;
+	int bus, dev, func, reg;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -164,6 +227,7 @@ DEVICE_ACCESS(i80321)
 			}
 		} else {
 			uint64_t tmp;
+			unsigned int i;
 			int r = relative_addr - (VERDE_ATU_BASE + ATU_OCCDR);
 			bus_pci_data_access(cpu, d->pci_bus, &tmp,
 			    sizeof(uint32_t), MEM_READ);
@@ -220,39 +284,76 @@ ret:
 
 DEVINIT(i80321)
 {
-	struct i80321_data *d = malloc(sizeof(struct i80321_data));
+	struct i80321_data *d;
 	uint32_t memsize = devinit->machine->physical_ram_in_mb * 1048576;
 	uint32_t base;
+	char tmpstr[300];
+	struct cpu *cpu = devinit->machine->cpus[devinit->
+	    machine->bootstrap_cpu];
+	int i;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct i80321_data)));
 	memset(d, 0, sizeof(struct i80321_data));
+
+	/*  Connect to the CPU interrupt pin:  */
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
+
+	/*  Register 32 i80321 interrupts:  */
+	for (i=0; i<32; i++) {
+		struct interrupt template;
+		char tmpstr[300];
+		snprintf(tmpstr, sizeof(tmpstr), "%s.i80321.%i",
+		    devinit->interrupt_path, i);
+		memset(&template, 0, sizeof(template));
+		template.line = 1 << i;
+		template.name = tmpstr;
+		template.extra = d;
+		template.interrupt_assert = i80321_interrupt_assert;
+		template.interrupt_deassert = i80321_interrupt_deassert;
+		interrupt_handler_register(&template);
+
+		/*
+		 *  Connect the CPU's TMR0 and TMR1 interrupts to these
+		 *  i80321 timer interrupts (nr 9 and 10):
+		 */
+		if (i == 9)
+			INTERRUPT_CONNECT(tmpstr, cpu->cd.arm.tmr0_irq);
+		if (i == 10)
+			INTERRUPT_CONNECT(tmpstr, cpu->cd.arm.tmr1_irq);
+	}
+
+	d->status = &cpu->cd.arm.i80321_isrc;
+	d->enable = &cpu->cd.arm.i80321_inten;
 
 	d->mcu_reg[MCU_SDBR / sizeof(uint32_t)] = base = 0xa0000000;
 	d->mcu_reg[MCU_SBR0 / sizeof(uint32_t)] = (base + memsize) >> 25;
 	d->mcu_reg[MCU_SBR1 / sizeof(uint32_t)] = (base + memsize) >> 25;
 
+	snprintf(tmpstr, sizeof(tmpstr), "%s.i80321", devinit->interrupt_path);
+
 	d->pci_bus = bus_pci_init(devinit->machine,
-	    0 /*  TODO: pciirq  */,
-	    0x90000000 /*  TODO: pci_io_offset  */,
-	    0x90010000 /*  TODO: pci_mem_offset  */,
-	    0xffff0000 /*  TODO: pci_portbase  */,
-	    0x00000000 /*  TODO: pci_membase  */,
-	    29 /*  TODO: pci_irqbase  */,
-	    0x90000000 /*  TODO: isa_portbase  */,
-	    0x90010000 /*  TODO: isa_membase  */,
-	    0 /*  TODO: isa_irqbase  */);
+	    tmpstr	/*  pciirq  */,
+	    0x90000000	/*  TODO: pci_io_offset  */,
+	    0x90010000	/*  TODO: pci_mem_offset  */,
+	    0xffff0000	/*  TODO: pci_portbase  */,
+	    0x00000000	/*  TODO: pci_membase  */,
+	    tmpstr	/*  pci_irqbase  */,
+	    0x90000000	/*  TODO: isa_portbase  */,
+	    0x90010000	/*  TODO: isa_membase  */,
+	    "TODO: isa_irqbase" /*  TODO: isa_irqbase  */);
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    devinit->addr, DEV_I80321_LENGTH,
 	    dev_i80321_access, d, DM_DEFAULT, NULL);
 
-	machine_add_tickfunction(devinit->machine, dev_i80321_tick,
-	    d, TICK_SHIFT, 0.0);
+	/*  TODO: Don't hardcode to 100 Hz!  */
+	d->hz = 100;
+	d->timer = timer_add(d->hz, tmr0_tick, d);
 
-	devinit->return_ptr = d;
+	machine_add_tickfunction(devinit->machine, dev_i80321_tick,
+	    d, TICK_SHIFT);
+
+	devinit->return_ptr = d->pci_bus;
 
 	return 1;
 }

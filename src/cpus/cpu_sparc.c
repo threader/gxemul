@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sparc.c,v 1.38 2006/09/19 10:50:08 debug Exp $
+ *  $Id: cpu_sparc.c,v 1.47.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  SPARC CPU emulation.
  */
@@ -139,15 +139,24 @@ int sparc_cpu_new(struct cpu *cpu, struct memory *mem, struct machine *machine,
 	cpu->cd.sparc.tick |= SPARC_TICK_NPT;
 
 	/*  Insert number of Windows and Trap levels into the version reg.:  */
-	cpu->cd.sparc.ver |= MAXWIN | (MAXTL << SPARC_VER_MAXTL_SHIFT);
+	cpu->cd.sparc.ver |= N_REG_WINDOWS | (MAXTL << SPARC_VER_MAXTL_SHIFT);
 
 	/*  Misc. initial settings suitable for userland emulation:  */
-	cpu->cd.sparc.cansave = cpu->cd.sparc.cpu_type.nwindows - 1;
-	cpu->cd.sparc.cleanwin = cpu->cd.sparc.cpu_type.nwindows / 2;
+	cpu->cd.sparc.cansave = cpu->cd.sparc.cpu_type.nwindows - 2;
+	cpu->cd.sparc.canrestore = 0;
+	cpu->cd.sparc.cleanwin = 1;
+	cpu->cd.sparc.otherwin = 0;
 
-	if (cpu->cd.sparc.cpu_type.nwindows >= MAXWIN) {
+	if (cpu->cd.sparc.cansave + cpu->cd.sparc.canrestore
+	    + cpu->cd.sparc.otherwin != cpu->cd.sparc.cpu_type.nwindows - 2) {
+		fatal("Fatal internal error: inconsistent windowing "
+		    "parameters!\n");
+		exit(1);
+	}
+
+	if (cpu->cd.sparc.cpu_type.nwindows > N_REG_WINDOWS) {
 		fatal("Fatal internal error: nwindows = %1 is more than %i\n",
-		    cpu->cd.sparc.cpu_type.nwindows, MAXWIN);
+		    cpu->cd.sparc.cpu_type.nwindows, N_REG_WINDOWS);
 		exit(1);
 	}
 
@@ -258,7 +267,8 @@ void sparc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 					continue;
 				}
 				debug("%s=", sparc_regnames[i]);
-				debug("0x%08x", (int) cpu->cd.sparc.r[i]);
+				debug("0x%08"PRIx32,
+				    (uint32_t) cpu->cd.sparc.r[i]);
 				if ((i & 3) < 3)
 					debug("  ");
 				else
@@ -287,6 +297,73 @@ void sparc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 			}
 		}
 	}
+
+	if (coprocs & 1) {
+		int sum;
+
+		debug("cpu%i: cwp        = 0x%02x\n", x, cpu->cd.sparc.cwp);
+		debug("cpu%i: cansave    = 0x%02x\n", x, cpu->cd.sparc.cansave);
+		debug("cpu%i: canrestore = 0x%02x\n", x,
+		    cpu->cd.sparc.canrestore);
+		debug("cpu%i: otherwin   = 0x%02x\n", x,
+		    cpu->cd.sparc.otherwin);
+		debug("cpu%i: cleanwin   = 0x%02x\n", x,
+		    cpu->cd.sparc.cleanwin);
+
+		sum = cpu->cd.sparc.cansave + cpu->cd.sparc.canrestore +
+		    cpu->cd.sparc.otherwin;
+		debug("cpu%i: cansave + canrestore + otherwin = %i + %i + %i"
+		    " = %i", x, cpu->cd.sparc.cansave, cpu->cd.sparc.canrestore,
+		    cpu->cd.sparc.otherwin, sum);
+		if (sum == cpu->cd.sparc.cpu_type.nwindows - 2)
+			debug("  (consistent)\n");
+		else
+			debug("  (INCONSISTENT!)\n");
+
+		debug("cpu%i: wstate: other = %i, normal = %i\n",
+		    x, (cpu->cd.sparc.wstate & SPARC_WSTATE_OTHER_MASK)
+		    >> SPARC_WSTATE_OTHER_SHIFT, cpu->cd.sparc.wstate &
+		    SPARC_WSTATE_NORMAL_MASK);
+
+		debug("cpu%i: asi = 0x%02x\n", x, cpu->cd.sparc.asi);
+		debug("cpu%i: tl  = 0x%02x\n", x, cpu->cd.sparc.tl);
+		debug("cpu%i: pil = 0x%02x\n", x, cpu->cd.sparc.pil);
+
+		for (i=0; i<MAXTL; i++) {
+			debug("cpu%i: tpc[%i]    = 0x", x, i);
+			if (bits32)
+				debug("%08"PRIx32"\n",
+				    (uint32_t) cpu->cd.sparc.tpc[i]);
+			else
+				debug("%016"PRIx64"\n",
+				    (uint64_t) cpu->cd.sparc.tpc[i]);
+
+			debug("cpu%i: tnpc[%i]   = 0x", x, i);
+			if (bits32)
+				debug("%08"PRIx32"\n",
+				    (uint32_t) cpu->cd.sparc.tnpc[i]);
+			else
+				debug("%016"PRIx64"\n",
+				    (uint64_t) cpu->cd.sparc.tnpc[i]);
+
+			debug("cpu%i: tstate[%i] = 0x", x, i);
+			if (bits32)
+				debug("%08"PRIx32"\n",
+				    (uint32_t) cpu->cd.sparc.tstate[i]);
+			else
+				debug("%016"PRIx64"\n",
+				    (uint64_t) cpu->cd.sparc.tstate[i]);
+
+			debug("cpu%i: ttype[%i]  = 0x"PRIx32"\n",
+			    x, i, cpu->cd.sparc.ttype[i]);
+		}
+
+		debug("cpu%i: tba = 0x", x);
+		if (bits32)
+			debug("%08"PRIx32"\n", (uint32_t) cpu->cd.sparc.tba);
+		else
+			debug("%016"PRIx64"\n", (uint64_t) cpu->cd.sparc.tba);
+	}
 }
 
 
@@ -301,113 +378,6 @@ void sparc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
  */
 void sparc_cpu_tlbdump(struct machine *m, int x, int rawflag)
 {
-}
-
-
-static void add_response_word(struct cpu *cpu, char *r, uint64_t value,
-	size_t maxlen, int len)
-{
-	char *format = (len == 4)? "%08"PRIx64 : "%016"PRIx64;
-	if (len == 4)
-		value &= 0xffffffffULL;
-	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
-		if (len == 4) {
-			value = ((value & 0xff) << 24) +
-				((value & 0xff00) << 8) +
-				((value & 0xff0000) >> 8) +
-				((value & 0xff000000) >> 24);
-		} else {
-			value = ((value & 0xff) << 56) +
-				((value & 0xff00) << 40) +
-				((value & 0xff0000) << 24) +
-				((value & 0xff000000ULL) << 8) +
-				((value & 0xff00000000ULL) >> 8) +
-				((value & 0xff0000000000ULL) >> 24) +
-				((value & 0xff000000000000ULL) >> 40) +
-				((value & 0xff00000000000000ULL) >> 56);
-		}
-	}
-	snprintf(r + strlen(r), maxlen - strlen(r), format, (uint64_t)value);
-}
-
-
-/*
- *  sparc_cpu_gdb_stub():
- *
- *  Execute a "remote GDB" command. Returns a newly allocated response string
- *  on success, NULL on failure.
- */
-char *sparc_cpu_gdb_stub(struct cpu *cpu, char *cmd)
-{
-	if (strcmp(cmd, "g") == 0) {
-		int i;
-		char *r;
-		size_t wlen = cpu->is_32bit?
-		    sizeof(uint32_t) : sizeof(uint64_t);
-		size_t len = 1 + 76 * wlen;
-		r = malloc(len);
-		if (r == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
-		r[0] = '\0';
-		/*  TODO  */
-		for (i=0; i<128; i++)
-			add_response_word(cpu, r, i, len, wlen);
-		return r;
-	}
-
-	if (cmd[0] == 'p') {
-		int regnr = strtol(cmd + 1, NULL, 16);
-		size_t wlen = sizeof(uint32_t);
-		/*  TODO: cpu->is_32bit? sizeof(uint32_t) : sizeof(uint64_t); */
-		size_t len = 2 * wlen + 1;
-		char *r = malloc(len);
-		r[0] = '\0';
-		if (regnr >= 0 && regnr < N_SPARC_REG) {
-			add_response_word(cpu, r,
-			    cpu->cd.sparc.r[regnr], len, wlen);
-		} else if (regnr == 0x44) {
-			add_response_word(cpu, r, cpu->pc, len, wlen);
-/* TODO:
-20..3f = f0..f31
-40 = y
-41 = psr
-42 = wim
-43 = tbr
-45 = npc
-46 = fsr
-47 = csr
-*/
-		} else {
-			/*  Unimplemented:  */
-			add_response_word(cpu, r, 0xcc000 + regnr, len, wlen);
-		}
-		return r;
-	}
-
-	fatal("sparc_cpu_gdb_stub(): TODO\n");
-	return NULL;
-}
-
-
-/*
- *  sparc_cpu_interrupt():
- */
-int sparc_cpu_interrupt(struct cpu *cpu, uint64_t irq_nr)
-{
-	fatal("sparc_cpu_interrupt(): TODO\n");
-	return 0;
-}
-
-
-/*
- *  sparc_cpu_interrupt_ack():
- */
-int sparc_cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr)
-{
-	/*  fatal("sparc_cpu_interrupt_ack(): TODO\n");  */
-	return 0;
 }
 
 
@@ -490,7 +460,7 @@ int sparc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 	iword = *(uint32_t *)&instr[0];
 	iword = BE32_TO_HOST(iword);
 
-	debug(": %08x", iword);
+	debug(": %08"PRIx32, iword);
 
 	if (running && cpu->delay_slot)
 		debug(" (d)");

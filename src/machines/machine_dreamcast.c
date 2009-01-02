@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_dreamcast.c,v 1.24 2006/11/06 05:32:38 debug Exp $
+ *  $Id: machine_dreamcast.c,v 1.33.2.2 2008-02-24 05:43:17 debug Exp $
  *
- *  Dreamcast.
+ *  COMMENT: SEGA Dreamcast
  */
 
 #include <stdio.h>
@@ -45,7 +45,6 @@
 MACHINE_SETUP(dreamcast)
 {
 	machine->machine_name = "Dreamcast";
-	machine->stable = 1;
 
 	if (machine->emulated_hz == 0)
 		machine->emulated_hz = 200000000;
@@ -53,7 +52,7 @@ MACHINE_SETUP(dreamcast)
 	/*  50 MHz SH4 PCLOCK:  */
 	machine->cpus[0]->cd.sh.pclock = 50000000;
 
-	if (!machine->use_x11)
+	if (!machine->x11_md.in_use)
 		fprintf(stderr, "-------------------------------------"
 		    "------------------------------------------\n"
 		    "\n  WARNING!  You are emulating a Dreamcast without -X."
@@ -70,12 +69,13 @@ MACHINE_SETUP(dreamcast)
 	 *
 	 *  0x00000000 - 0x001fffff	Boot ROM (2 MB)
 	 *  0x00200000 - 0x003fffff	Flash (256 KB)
-	 *  0x005f6800 - ...		PVR DMA register
+	 *  0x005f6800 - ...		G2 DMA registers
 	 *  0x005f6900 - ...		ASIC registers
 	 *  0x005f6c00 - ...		Maple registers (controller ports)
+	 *  0x005f7000 - ...		GDROM registers
 	 *  0x005f7400 - ...		???
-	 *  0x005f74e4 - ...		??? CDROM
-	 *  0x005f7800 - ...		G2 DMA registers
+	 *  0x005f74e4 - ...		GDROM re-enable disabled drive (?)
+	 *  0x005f7800 - ...		G2 External DMA registers
 	 *  0x005f7c00 - ...		???
 	 *  0x005f8000 - 0x005f9fff	PVR registers (graphics)
 	 *  0x00600400 - 0x0060047f	LAN Adapter (MB86967) registers
@@ -85,8 +85,8 @@ MACHINE_SETUP(dreamcast)
 	 *  0x00800000 - 0x009fffff	Sound RAM (2 MB)
 	 *  0x01000000 - ...		Parallel port registers
 	 *  0x02000000 - ...		CD-ROM port registers
-	 *  0x04000000 - 0x047fffff	Video RAM (*)
-	 *  0x05000000 - 0x057fffff	Video RAM (8 MB)
+	 *  0x04000000 - 0x047fffff	Video RAM (*)     (64-bit)
+	 *  0x05000000 - 0x057fffff	Video RAM (8 MB)  (32-bit)
 	 *  0x0c000000 - 0x0cffffff	RAM (16 MB)
 	 *  0x0e000000 - 0x0effffff	Copy of RAM? (*2)
 	 *  0x10000000 - ...		Tile accelerator command area
@@ -98,7 +98,16 @@ MACHINE_SETUP(dreamcast)
 	 *  (*3) = See VOUTC in Linux' drivers/video/pvr2fb.c.
 	 */
 
+	dev_ram_init(machine, 0x00702c00, 4, DEV_RAM_RAM, 0);
+
+	/*  Sound RAM:  */
 	dev_ram_init(machine, 0x00800000, 2 * 1048576, DEV_RAM_RAM, 0);
+
+	/*
+	 *  HACK!  TODO: Remove this device at 0x00a00000 once NetBSD has
+	 *  been fixed to not clear 6 MB beyound the sound RAM area.
+	 */
+	dev_ram_init(machine, 0x00a00000, 6 * 1048576, DEV_RAM_RAM, 0);
 
 	dev_ram_init(machine, 0x0c000000, 16 * 1048576, DEV_RAM_RAM, 0x0);
 
@@ -107,8 +116,10 @@ MACHINE_SETUP(dreamcast)
 	dev_ram_init(machine, 0x0e000000, 16 * 1048576, DEV_RAM_RAM, 0);
 
 	device_add(machine, "pvr");
-	device_add(machine, "mb8696x addr=0x600400 addr_mult=4");
+/*	device_add(machine, "mb8696x addr=0x600400 addr_mult=4");  */
 	device_add(machine, "dreamcast_asic");
+	device_add(machine, "dreamcast_g2");
+	device_add(machine, "dreamcast_gdrom");
 	device_add(machine, "dreamcast_maple");
 	device_add(machine, "dreamcast_rtc");
 

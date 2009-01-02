@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,12 +25,14 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh.c,v 1.53 2006/10/31 11:07:05 debug Exp $
+ *  $Id: cpu_sh.c,v 1.76.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  Hitachi SuperH ("SH") CPU emulation.
  *
  *  TODO: It would be nice if this could encompass both 64-bit SH5, and
  *        32-bit SH encodings. Right now, it only really supports 32-bit mode.
+ *
+ *  TODO: This actually only works or SH4 so far, not SH3.
  */
 
 #include <stdio.h>
@@ -42,6 +44,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "float_emul.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -60,6 +63,9 @@
 extern int quiet_mode;
 
 void sh_pc_to_pointers(struct cpu *);
+
+void sh3_cpu_interrupt_assert(struct interrupt *interrupt);
+void sh3_cpu_interrupt_deassert(struct interrupt *interrupt);
 
 
 /*
@@ -91,7 +97,6 @@ int sh_cpu_new(struct cpu *cpu, struct memory *mem, struct machine *machine,
 	cpu->cd.sh.cpu_type = cpu_type_defs[i];
 	cpu->byte_order = EMUL_LITTLE_ENDIAN;
 	cpu->is_32bit = cpu->cd.sh.cpu_type.bits == 32;
-	cpu->cd.sh.compact = 1;		/*  Default to 16-bit opcode mode  */
 
 	if (!cpu->is_32bit) {
 		fatal("SH64 emulation not implemented. Sorry.\n");
@@ -132,6 +137,9 @@ int sh_cpu_new(struct cpu *cpu, struct memory *mem, struct machine *machine,
 	CPU_SETTINGS_ADD_REGISTER32("gbr", cpu->cd.sh.gbr);
 	CPU_SETTINGS_ADD_REGISTER32("macl", cpu->cd.sh.macl);
 	CPU_SETTINGS_ADD_REGISTER32("mach", cpu->cd.sh.mach);
+	CPU_SETTINGS_ADD_REGISTER32("expevt", cpu->cd.sh.expevt);
+	CPU_SETTINGS_ADD_REGISTER32("intevt", cpu->cd.sh.intevt);
+	CPU_SETTINGS_ADD_REGISTER32("tra", cpu->cd.sh.tra);
 	CPU_SETTINGS_ADD_REGISTER32("fpscr", cpu->cd.sh.fpscr);
 	CPU_SETTINGS_ADD_REGISTER32("fpul", cpu->cd.sh.fpul);
 	for (i=0; i<SH_N_GPRS; i++) {
@@ -166,11 +174,185 @@ int sh_cpu_new(struct cpu *cpu, struct memory *mem, struct machine *machine,
 		CPU_SETTINGS_ADD_REGISTER32(tmpstr, cpu->cd.sh.utlb_lo[i]);
 	}
 
+	/*  Register the CPU's interrupts:  */
+	if (cpu->cd.sh.cpu_type.arch == 4) {
+		for (i=SH_INTEVT_NMI; i<0x1000; i+=0x20) {
+			struct interrupt template;
+			char name[100];
+			snprintf(name, sizeof(name), "%s.irq[0x%x]",
+			    cpu->path, i);
+			memset(&template, 0, sizeof(template));
+			template.line = i;
+			template.name = name;
+			template.extra = cpu;
+			template.interrupt_assert = sh_cpu_interrupt_assert;
+			template.interrupt_deassert = sh_cpu_interrupt_deassert;
+			interrupt_handler_register(&template);
+		}
+	} else {
+		struct interrupt template;
+		memset(&template, 0, sizeof(template));
+		template.line = i;
+		template.name = cpu->path;
+		template.extra = cpu;
+		template.interrupt_assert = sh3_cpu_interrupt_assert;
+		template.interrupt_deassert = sh3_cpu_interrupt_deassert;
+		interrupt_handler_register(&template);
+	}
+
 	/*  SH4-specific memory mapped registers, TLBs, caches, etc:  */
-	if (cpu->cd.sh.cpu_type.arch == 4)
-		device_add(machine, "sh4");
+	if (cpu->cd.sh.cpu_type.arch == 4) {
+		cpu->cd.sh.pcic_pcibus = device_add(machine, "sh4");
+
+		/*
+		 *  Interrupt Controller initial values, according to the
+		 *  SH7760 manual:
+		 */
+		cpu->cd.sh.intc_iprd = 0xda74;
+		cpu->cd.sh.intc_intmsk00 = 0xf3ff7fff;
+		cpu->cd.sh.intc_intmsk04 = 0x00ffffff;
+		/*  All others are zero.  */
+
+		/*  TODO: Initial priorities?  */
+		cpu->cd.sh.intc_intpri00 = 0x33333333;
+		cpu->cd.sh.intc_intpri04 = 0x33333333;
+		cpu->cd.sh.intc_intpri08 = 0x33333333;
+		cpu->cd.sh.intc_intpri0c = 0x33333333;
+	}
+
+	sh_update_interrupt_priorities(cpu);
 
 	return 1;
+}
+
+
+/*
+ *  sh_update_interrupt_priorities():
+ *
+ *  SH interrupts are a bit complicated; there are several intc registers
+ *  controlling priorities for various peripherals:
+ *
+ *  Register:  Bits 15..12  11..8  7..4      3..0
+ *  ---------  -----------  -----  ----      ----
+ *  ipra       TMU0         TMU1   TMU2      Reserved
+ *  iprb       WDT          REF    Reserved  Reserved
+ *  iprc       GPIO         DMAC   Reserved  H-UDI
+ *  iprd       IRL0         IRL1   IRL2      IRL3
+ *
+ *  Register:  31..28  27..24  23..20  19..16  15..12  11..8   7..4   3..0
+ *  ---------  ------  ------  ------  ------  ------  -----   ----   ----
+ *  intpri00   IRQ4    IRQ5    IRQ6    IRQ7    Rsrvd.  Rsrvd.  Rsrvd. Reserved
+ *  intpri04   HCAN2,0 HCAN2,1 SSI(0)  SSI(1)  HAC(0)  HAC(1)  I2C(0) I2C(1)
+ *  intpri08   USB     LCDC    DMABRG  SCIF(0) SCIF(1) SCIF(2) SIM    HSPI
+ *  intpri0c   Reserv. Reserv. MMCIF   Reserv. MFI     Rsrvd.  ADC    CMT
+ */
+void sh_update_interrupt_priorities(struct cpu *cpu)
+{
+	int i;
+
+	/*
+	 *  Set priorities of known interrupts, without affecting the
+	 *  SH_INT_ASSERTED bit:
+	 */
+
+	for (i=SH4_INTEVT_IRQ0; i<=SH4_INTEVT_IRQ14; i+=0x20) {
+		cpu->cd.sh.int_prio_and_pending[i/0x20] &= ~SH_INT_PRIO_MASK;
+		cpu->cd.sh.int_prio_and_pending[i/0x20] |= (15 - ((i - 
+		    SH4_INTEVT_IRQ0) / 0x20));
+	}
+
+	cpu->cd.sh.int_prio_and_pending[SH_INTEVT_TMU0_TUNI0 / 0x20] &=
+	    ~SH_INT_PRIO_MASK;
+	cpu->cd.sh.int_prio_and_pending[SH_INTEVT_TMU0_TUNI0 / 0x20] |=
+	    (cpu->cd.sh.intc_ipra >> 12) & 0xf;
+
+	cpu->cd.sh.int_prio_and_pending[SH_INTEVT_TMU1_TUNI1 / 0x20] &=
+	    ~SH_INT_PRIO_MASK;
+	cpu->cd.sh.int_prio_and_pending[SH_INTEVT_TMU1_TUNI1 / 0x20] |=
+	    (cpu->cd.sh.intc_ipra >> 8) & 0xf;
+
+	cpu->cd.sh.int_prio_and_pending[SH_INTEVT_TMU2_TUNI2 / 0x20] &=
+	    ~SH_INT_PRIO_MASK;
+	cpu->cd.sh.int_prio_and_pending[SH_INTEVT_TMU2_TUNI2 / 0x20] |=
+	    (cpu->cd.sh.intc_ipra >> 4) & 0xf;
+
+	for (i=SH4_INTEVT_SCIF_ERI; i<=SH4_INTEVT_SCIF_TXI; i+=0x20) {
+		cpu->cd.sh.int_prio_and_pending[i/0x20] &= ~SH_INT_PRIO_MASK;
+		cpu->cd.sh.int_prio_and_pending[i/0x20] |=
+		    ((cpu->cd.sh.intc_intpri08 >> 16) & 0xf);
+	}
+}
+
+
+/*
+ *  sh3_cpu_interrupt_assert():
+ *  sh3_cpu_interrupt_deassert():
+ */
+void sh3_cpu_interrupt_assert(struct interrupt *interrupt)
+{
+	/*  TODO  */
+}
+void sh3_cpu_interrupt_deassert(struct interrupt *interrupt)
+{
+	/*  TODO  */
+}       
+
+
+/*
+ *  sh_cpu_interrupt_assert():
+ */
+void sh_cpu_interrupt_assert(struct interrupt *interrupt)
+{
+	struct cpu *cpu = interrupt->extra;
+	unsigned int irq_nr = interrupt->line;
+	unsigned int index = irq_nr / 0x20;
+	unsigned int prio;
+
+	/*  Assert the interrupt, and check its priority level:  */
+	cpu->cd.sh.int_prio_and_pending[index] |= SH_INT_ASSERTED;
+	prio = cpu->cd.sh.int_prio_and_pending[index] & SH_INT_PRIO_MASK;
+
+	if (prio == 0) {
+		/*  Interrupt not implemented? Hm.  */
+		fatal("[ SH interrupt 0x%x, prio 0 (?), aborting ]\n", irq_nr);
+		exit(1);
+	}
+
+	if (cpu->cd.sh.int_to_assert == 0 || prio > cpu->cd.sh.int_level) {
+		cpu->cd.sh.int_to_assert = irq_nr;
+		cpu->cd.sh.int_level = prio;
+	}
+}
+
+
+/*
+ *  sh_cpu_interrupt_deassert():
+ */
+void sh_cpu_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct cpu *cpu = interrupt->extra;
+	int irq_nr = interrupt->line;
+	int index = irq_nr / 0x20;
+
+	/*  Deassert the interrupt:  */
+	if (cpu->cd.sh.int_prio_and_pending[index] & SH_INT_ASSERTED) {
+		cpu->cd.sh.int_prio_and_pending[index] &= ~SH_INT_ASSERTED;
+
+		/*  Calculate new interrupt assertion:  */
+		cpu->cd.sh.int_to_assert = 0;
+		cpu->cd.sh.int_level = 0;
+
+		/*  NOTE/TODO: This is slow, but should hopefully work:  */
+		for (index=0; index<0x1000/0x20; index++) {
+			uint8_t x = cpu->cd.sh.int_prio_and_pending[index];
+			uint8_t prio = x & SH_INT_PRIO_MASK;
+			if (x & SH_INT_ASSERTED &&
+			    prio > cpu->cd.sh.int_level) {
+				cpu->cd.sh.int_to_assert = index * 0x20;
+				cpu->cd.sh.int_level = prio;
+			}
+		}
+	}
 }
 
 
@@ -271,7 +453,7 @@ void sh_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 {
 	char *symbol;
 	uint64_t offset;
-	int i, x = cpu->cpu_id, nregs = cpu->cd.sh.compact? 16 : 64;
+	int i, x = cpu->cpu_id;
 
 	if (gprs) {
 		/*  Special registers (pc, ...) first:  */
@@ -302,7 +484,7 @@ void sh_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 		    "  gbr = 0x%08"PRIx32"\n", x, (uint32_t)cpu->cd.sh.mach,
 		    (uint32_t)cpu->cd.sh.macl, (uint32_t)cpu->cd.sh.gbr);
 
-		for (i=0; i<nregs; i++) {
+		for (i=0; i<SH_N_GPRS; i++) {
 			if ((i % 4) == 0)
 				debug("cpu%i:", x);
 			debug(" r%-2i = 0x%08x ", i, (int)cpu->cd.sh.r[i]);
@@ -313,8 +495,12 @@ void sh_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 
 	if (coprocs & 1) {
 		/*  Floating point:  */
-		debug("cpu%i: fpscr = 0x%08"PRIx32"  fpul = 0x%08"PRIx32
-		    "\n", x, cpu->cd.sh.fpscr, cpu->cd.sh.fpul);
+		debug("cpu%i: fpscr = 0x%08"PRIx32" (%s,%s,%s)  fpul = 0x%08"
+		    PRIx32"\n", x, cpu->cd.sh.fpscr,
+		    cpu->cd.sh.fpscr & SH_FPSCR_PR? "PR" : "!pr",
+		    cpu->cd.sh.fpscr & SH_FPSCR_SZ? "SZ" : "!sz",
+		    cpu->cd.sh.fpscr & SH_FPSCR_FR? "FR" : "!fr",
+		    cpu->cd.sh.fpul);
 
 		for (i=0; i<SH_N_FPRS; i++) {
 			if ((i % 4) == 0)
@@ -389,103 +575,6 @@ void sh_cpu_tlbdump(struct machine *m, int x, int rawflag)
 
 
 /*
- *  sh_cpu_gdb_stub():
- *
- *  Execute a "remote GDB" command. Returns a newly allocated response string
- *  on success, NULL on failure.
- */
-char *sh_cpu_gdb_stub(struct cpu *cpu, char *cmd)
-{
-	fatal("sh_cpu_gdb_stub(): TODO\n");
-	return NULL;
-}
-
-
-/*
- *  sh_cpu_interrupt():
- *
- *  Note: This gives higher interrupt priority to lower number interrupts.
- *        Hopefully this is correct.
- */
-int sh_cpu_interrupt(struct cpu *cpu, uint64_t irq_nr)
-{
-	int word_index, bit_index;
-
-	if (cpu->cd.sh.int_to_assert == 0 || irq_nr < cpu->cd.sh.int_to_assert)
-		cpu->cd.sh.int_to_assert = irq_nr;
-
-	/*
-	 *  TODO: Keep track of all pending interrupts at multiple levels...
-	 *
-	 *  This is just a quick hack:
-	 */
-	cpu->cd.sh.int_level = 1;
-	if (irq_nr == SH_INTEVT_TMU0_TUNI0)
-		cpu->cd.sh.int_level = (cpu->cd.sh.intc_ipra >> 12) & 0xf;
-	if (irq_nr == SH_INTEVT_TMU1_TUNI1)
-		cpu->cd.sh.int_level = (cpu->cd.sh.intc_ipra >> 8) & 0xf;
-	if (irq_nr == SH_INTEVT_TMU2_TUNI2)
-		cpu->cd.sh.int_level = (cpu->cd.sh.intc_ipra >> 4) & 0xf;
-	if (irq_nr >= SH4_INTEVT_SCIF_ERI &&
-	    irq_nr <= SH4_INTEVT_SCIF_TXI)
-		cpu->cd.sh.int_level = (cpu->cd.sh.intc_iprc >> 4) & 0xf;
-
-	irq_nr /= 0x20;
-	word_index = irq_nr / (sizeof(uint32_t)*8);
-	bit_index = irq_nr & ((sizeof(uint32_t)*8) - 1);
-
-	cpu->cd.sh.int_pending[word_index] |= (1 << bit_index);
-
-	return 0;
-}
-
-
-/*
- *  sh_cpu_interrupt_ack():
- */
-int sh_cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr)
-{
-	int word_index, bit_index;
-
-	if (cpu->cd.sh.int_to_assert == irq_nr) {
-		/*
-		 *  Rescan all interrupts to see if any are still asserted.
-		 *
-		 *  Note: The scan only has to go from irq_nr + 0x20 to the max
-		 *        index, since any lower interrupt cannot be asserted
-		 *        at this time.
-		 */
-		int i, max = 0x1000;
-		cpu->cd.sh.int_to_assert = 0;
-
-		for (i=irq_nr+0x20; i<max; i+=0x20) {
-			int j = i / 0x20;
-			int word_index = j / (sizeof(uint32_t)*8);
-			int bit_index = j & ((sizeof(uint32_t)*8) - 1);
-
-			/*  Skip entire word if no bits are set:  */
-			if (bit_index == 0 &&
-			    cpu->cd.sh.int_pending[word_index] == 0)
-				i += (sizeof(uint32_t)*8 - 1) * 0x20;
-			else if (cpu->cd.sh.int_pending[word_index]
-			    & (1 << bit_index)) {
-				cpu->cd.sh.int_to_assert = i;
-				break;
-			}
-		}
-	}
-
-	irq_nr /= 0x20;
-	word_index = irq_nr / (sizeof(uint32_t)*8);
-	bit_index = irq_nr & ((sizeof(uint32_t)*8) - 1);
-
-	cpu->cd.sh.int_pending[word_index] &= ~(1 << bit_index);
-
-	return 0;
-}
-
-
-/*
  *  sh_update_sr():
  *
  *  Writes a new value to the status register.
@@ -534,6 +623,8 @@ void sh_update_fpscr(struct cpu *cpu, uint32_t new_fpscr)
  *
  *  Causes a transfer of control to an exception or interrupt handler.
  *  If intevt > 0, then it is an interrupt, otherwise an exception.
+ *
+ *  vaddr contains the faulting address, on TLB exceptions.
  */
 void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr)
 {
@@ -545,7 +636,7 @@ void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr)
 		else
 			debug("[ exception 0x%03x", expevt);
 
-		debug(", pc=0x%08"PRIx32" ", (uint32_t)vaddr);
+		debug(", pc=0x%08"PRIx32" ", (uint32_t)cpu->pc);
 		if (intevt == 0)
 			debug("vaddr=0x%08"PRIx32" ", vaddr);
 
@@ -553,7 +644,7 @@ void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr)
 	}
 
 	if (cpu->cd.sh.sr & SH_SR_BL) {
-		fatal("sh_exception(): BL bit already set. TODO\n");
+		fatal("[ sh_exception(): BL bit already set. ]\n");
 
 		/*  This is actually OK in two cases: a User Break,
 		    or on NMI interrupts if a special flag is set?  */
@@ -578,19 +669,27 @@ void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr)
 		cpu->pc -= sizeof(uint16_t);
 	}
 
-	/*  Stuff common to all exceptions:  */
+
+	/*
+	 *  Stuff common to all exceptions:
+	 */
+
 	cpu->cd.sh.spc = cpu->pc;
 	cpu->cd.sh.ssr = cpu->cd.sh.sr;
 	cpu->cd.sh.sgr = cpu->cd.sh.r[15];
+
 	if (intevt > 0) {
 		cpu->cd.sh.intevt = intevt;
 		expevt = -1;
-	} else
+	} else {
 		cpu->cd.sh.expevt = expevt;
+	}
+
 	sh_update_sr(cpu, cpu->cd.sh.sr | SH_SR_MD | SH_SR_RB | SH_SR_BL);
 
 	/*  Most exceptions set PC to VBR + 0x100.  */
 	cpu->pc = vbr + 0x100;
+
 
 	/*  Specific cases:  */
 	switch (expevt) {
@@ -618,10 +717,31 @@ void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr)
 		break;
 
 	case EXPEVT_TRAPA:
-		/*  Note: The TRA register is already set by the
-		    implementation of the trapa instruction. See
-		    cpu_sh_instr.c.  */
+		/*
+		 *  Note: The TRA register is already set by the implementation
+		 *  of the trapa instruction. See cpu_sh_instr.c for details.
+		 *  Here, spc is incremented, so that a return from the trap
+		 *  handler transfers control to the instruction _following_
+		 *  the trapa.
+		 */
 		cpu->cd.sh.spc += sizeof(uint16_t);
+		break;
+
+	case EXPEVT_RES_INST:
+		/*
+		 *  Note: Having this code here makes it possible to catch
+		 *  reserved instructions; during normal instruction execution,
+		 *  these are not very common.
+		 */
+#if 1
+		printf("\nRESERVED SuperH instruction at spc=%08"PRIx32"\n",
+		    cpu->cd.sh.spc);
+		exit(1);
+#else
+		break;
+#endif
+
+	case EXPEVT_FPU_DISABLE:
 		break;
 
 	default:fatal("sh_exception(): exception 0x%x is not yet "
@@ -634,18 +754,41 @@ void sh_exception(struct cpu *cpu, int expevt, int intevt, uint32_t vaddr)
 
 
 /*
- *  sh_cpu_disassemble_instr_compact():
+ *  sh_cpu_disassemble_instr():
  *
  *  SHcompact instruction disassembly. The top 4 bits of each 16-bit
  *  instruction word is used as the main opcode. For most instructions, the
  *  lowest 4 or 8 bits then select sub-opcode.
+ *
+ *  This function convert an instruction word into human readable format,
+ *  for instruction tracing.
+ *
+ *  If running is 1, cpu->pc should be the address of the instruction.
+ *
+ *  If running is 0, things that depend on the runtime environment (eg.
+ *  register contents) will not be shown, and addr will be used instead of
+ *  cpu->pc for relative addresses.
  */
-int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
+int sh_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 	int running, uint64_t dumpaddr)
 {
-	uint64_t addr;
+	char *symbol;
+	uint64_t offset, addr;
 	uint16_t iword;
 	int hi4, lo4, lo8, r8, r4;
+
+	if (running)
+		dumpaddr = cpu->pc;
+
+	symbol = get_symbol_name(&cpu->machine->symbol_context,
+	    dumpaddr, &offset);
+	if (symbol != NULL && offset==0)
+		debug("<%s>\n", symbol);
+
+	if (cpu->machine->ncpus > 1 && running)
+		debug("cpu%i: ", cpu->cpu_id);
+
+	debug("%08"PRIx32, (uint32_t) dumpaddr);
 
 	if (cpu->byte_order == EMUL_BIG_ENDIAN)
 		iword = (instr[0] << 8) + instr[1];
@@ -655,6 +798,7 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 	debug(":  %04x %s\t", iword, cpu->delay_slot? "(d)" : "");
 	hi4 = iword >> 12; lo4 = iword & 15; lo8 = iword & 255;
 	r8 = (iword >> 8) & 15; r4 = (iword >> 4) & 15;
+
 
 	/*
 	 *  Decode the instruction:
@@ -666,13 +810,27 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 			debug("stc\tsr,r%i\n", r8);
 		else if (lo8 == 0x03)
 			debug("bsrf\tr%i\n", r8);
-		else if (lo4 == 0x4)
-			debug("mov.b\tr%i,@(r0,r%i)\n", r4, r8);
-		else if (lo4 == 0x5)
-			debug("mov.w\tr%i,@(r0,r%i)\n", r4, r8);
-		else if (lo4 == 0x6)
-			debug("mov.l\tr%i,@(r0,r%i)\n", r4, r8);
-		else if (lo4 == 0x7)
+		else if (lo4 >= 4 && lo4 <= 6) {
+			if (lo4 == 0x4)
+				debug("mov.b\tr%i,@(r0,r%i)", r4, r8);
+			else if (lo4 == 0x5)
+				debug("mov.w\tr%i,@(r0,r%i)", r4, r8);
+			else if (lo4 == 0x6)
+				debug("mov.l\tr%i,@(r0,r%i)", r4, r8);
+			if (running) {
+				uint32_t addr = cpu->cd.sh.r[0] +
+				    cpu->cd.sh.r[r8];
+				debug("\t; r0+r%i = ", r8);
+				symbol = get_symbol_name(
+				    &cpu->machine->symbol_context,
+				    addr, &offset);
+				if (symbol != NULL)
+					debug("<%s>", symbol);
+				else
+					debug("0x%08"PRIx32, addr);
+			}
+			debug("\n");
+		} else if (lo4 == 0x7)
 			debug("mul.l\tr%i,r%i\n", r4, r8);
 		else if (iword == 0x0008)
 			debug("clrt\n");
@@ -682,13 +840,27 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 			debug("sts\tmach,r%i\n", r8);
 		else if (iword == 0x000b)
 			debug("rts\n");
-		else if (lo4 == 0xc)
-			debug("mov.b\t@(r0,r%i),r%i\n", r4, r8);
-		else if (lo4 == 0xd)
-			debug("mov.w\t@(r0,r%i),r%i\n", r4, r8);
-		else if (lo4 == 0xe)
-			debug("mov.l\t@(r0,r%i),r%i\n", r4, r8);
-		else if (lo8 == 0x12)
+		else if (lo4 >= 0xc && lo4 <= 0xe) {
+			if (lo4 == 0xc)
+				debug("mov.b\t@(r0,r%i),r%i", r4, r8);
+			else if (lo4 == 0xd)
+				debug("mov.w\t@(r0,r%i),r%i", r4, r8);
+			else if (lo4 == 0xe)
+				debug("mov.l\t@(r0,r%i),r%i", r4, r8);
+			if (running) {
+				uint32_t addr = cpu->cd.sh.r[0] +
+				    cpu->cd.sh.r[r4];
+				debug("\t; r0+r%i = ", r4);
+				symbol = get_symbol_name(
+				    &cpu->machine->symbol_context,
+				    addr, &offset);
+				if (symbol != NULL)
+					debug("<%s>", symbol);
+				else
+					debug("0x%08"PRIx32, addr);
+			}
+			debug("\n");
+		} else if (lo8 == 0x12)
 			debug("stc\tgbr,r%i\n", r8);
 		else if (iword == 0x0018)
 			debug("sett\n");
@@ -740,13 +912,24 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 			debug("movca.l\tr0,@r%i\n", r8);
 		else if (lo8 == 0xfa)
 			debug("stc\tdbr,r%i\n", r8);
-		else if (iword == 0x00ff)
+		else if (iword == SH_INVALID_INSTR)
 			debug("gxemul_dreamcast_prom_emul\n");
 		else
 			debug("UNIMPLEMENTED hi4=0x%x, lo8=0x%02x\n", hi4, lo8);
 		break;
 	case 0x1:
-		debug("mov.l\tr%i,@(%i,r%i)\n", r4, lo4 * 4, r8);
+		debug("mov.l\tr%i,@(%i,r%i)", r4, lo4 * 4, r8);
+		if (running) {
+			uint32_t addr = cpu->cd.sh.r[r8] + lo4 * 4;
+			debug("\t; r%i+%i = ", r8, lo4 * 4);
+			symbol = get_symbol_name(&cpu->machine->symbol_context,
+			    addr, &offset);
+			if (symbol != NULL)
+				debug("<%s>", symbol);
+			else
+				debug("0x%08"PRIx32, addr);
+		}
+		debug("\n");
 		break;
 	case 0x2:
 		if (lo4 == 0x0)
@@ -891,9 +1074,17 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 			debug("shlr16\tr%i\n", r8);
 		else if (lo8 == 0x2a)
 			debug("lds\tr%i,pr\n", r8);
-		else if (lo8 == 0x2b)
-			debug("jmp\t@r%i\n", r8);
-		else if (lo8 == 0x2e)
+		else if (lo8 == 0x2b) {
+			debug("jmp\t@r%i", r8);
+			if (running) {
+				symbol = get_symbol_name(
+				    &cpu->machine->symbol_context,
+				    cpu->cd.sh.r[r8], &offset);
+				if (symbol != NULL)
+					debug("\t\t; <%s>", symbol);
+			}
+			debug("\n");
+		} else if (lo8 == 0x2e)
 			debug("ldc\tr%i,vbr\n", r8);
 		else if (lo8 == 0x33)
 			debug("stc.l\tssr,@-r%i\n", r8);
@@ -931,7 +1122,12 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 			debug("UNIMPLEMENTED hi4=0x%x, lo8=0x%02x\n", hi4, lo8);
 		break;
 	case 0x5:
-		debug("mov.l\t@(%i,r%i),r%i\n", lo4 * 4, r4, r8);
+		debug("mov.l\t@(%i,r%i),r%i", lo4 * 4, r4, r8);
+		if (running) {
+			debug("\t; r%i+%i = 0x%08"PRIx32, r4, lo4 * 4,
+			    cpu->cd.sh.r[r4] + lo4 * 4);
+		}
+		debug("\n");
 		break;
 	case 0x6:
 		if (lo4 == 0x0)
@@ -973,22 +1169,39 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 		debug("add\t#%i,r%i\n", (int8_t)lo8, r8);
 		break;
 	case 0x8:
-		if (r8 == 0x0) {
-			debug("mov.b\tr0,@(%i,r%i)\n", lo4, r4);
-		} else if (r8 == 0x1) {
-			debug("mov.w\tr0,@(%i,r%i)\n", lo4 * 2, r4);
-		} else if (r8 == 0x4) {
-			debug("mov.b\t@(%i,r%i),r0\n", lo4, r4);
-		} else if (r8 == 0x5) {
-			debug("mov.w\t@(%i,r%i),r0\n", lo4 * 2, r4);
+		if (r8 == 0 || r8 == 4) {
+			if (r8 == 0x0)
+				debug("mov.b\tr0,@(%i,r%i)", lo4, r4);
+			else if (r8 == 0x4)
+				debug("mov.b\t@(%i,r%i),r0", lo4, r4);
+			if (running) {
+				debug("\t; r%i+%i = 0x%08"PRIx32, r4, lo4,
+				    cpu->cd.sh.r[r4] + lo4);
+			}
+			debug("\n");
+		} else if (r8 == 1 || r8 == 5) {
+			if (r8 == 0x1)
+				debug("mov.w\tr0,@(%i,r%i)", lo4 * 2, r4);
+			else if (r8 == 0x5)
+				debug("mov.w\t@(%i,r%i),r0", lo4 * 2, r4);
+			if (running) {
+				debug("\t; r%i+%i = 0x%08"PRIx32, r4, lo4 * 2,
+				    cpu->cd.sh.r[r4] + lo4 * 2);
+			}
+			debug("\n");
 		} else if (r8 == 0x8) {
 			debug("cmp/eq\t#%i,r0\n", (int8_t)lo8);
 		} else if (r8 == 0x9 || r8 == 0xb || r8 == 0xd || r8 == 0xf) {
 			addr = (int8_t)lo8;
 			addr = dumpaddr + 4 + (addr << 1);
-			debug("b%s%s\t0x%x\n",
+			debug("b%s%s\t0x%x",
 			    (r8 == 0x9 || r8 == 0xd)? "t" : "f",
 			    (r8 == 0x9 || r8 == 0xb)? "" : "/s", (int)addr);
+			symbol = get_symbol_name(&cpu->machine->symbol_context,
+			    addr, &offset);
+			if (symbol != NULL)
+				debug("\t; <%s>", symbol);
+			debug("\n");
 		} else
 			debug("UNIMPLEMENTED hi4=0x%x,0x%x\n", hi4, r8);
 		break;
@@ -996,14 +1209,25 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 	case 0xd:
 		addr = lo8 * (hi4==9? 2 : 4);
 		addr += (dumpaddr & ~(hi4==9? 1 : 3)) + 4;
-		debug("mov.%s\t0x%x,r%i\n", hi4==9? "w":"l", (int)addr, r8);
+		debug("mov.%s\t0x%x,r%i", hi4==9? "w":"l", (int)addr, r8);
+		symbol = get_symbol_name(&cpu->machine->symbol_context,
+		    addr, &offset);
+		if (symbol != NULL)
+			debug("\t; <%s>", symbol);
+		debug("\n");
 		break;
 	case 0xa:
 	case 0xb:
 		addr = (int32_t)(int16_t)((iword & 0xfff) << 4);
 		addr = ((int32_t)addr >> 3);
 		addr += dumpaddr + 4;
-		debug("%s\t0x%x\n", hi4==0xa? "bra":"bsr", (int)addr);
+		debug("%s\t0x%x", hi4==0xa? "bra":"bsr", (int)addr);
+
+		symbol = get_symbol_name(&cpu->machine->symbol_context,
+		    addr, &offset);
+		if (symbol != NULL)
+			debug("\t; <%s>", symbol);
+		debug("\n");
 		break;
 	case 0xc:
 		if (r8 == 0x0)
@@ -1143,6 +1367,10 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 			debug("fldi0\tfr%i\n", r8);
 		else if (lo8 == 0x9d)
 			debug("fldi1\tfr%i\n", r8);
+		else if (lo8 == 0xad)
+			debug("fcnvsd\tfpul,dr%i\n", r8);
+		else if (lo8 == 0xbd)
+			debug("fcnvds\tdr%i,fpul\n", r8);
 		else if ((iword & 0x01ff) == 0x00fd)
 			debug("fsca\tfpul,dr%i\n", r8);
 		else if (iword == 0xf3fd)
@@ -1158,64 +1386,6 @@ int sh_cpu_disassemble_instr_compact(struct cpu *cpu, unsigned char *instr,
 		break;
 	default:debug("UNIMPLEMENTED hi4=0x%x\n", hi4);
 	}
-
-	return sizeof(iword);
-}
-
-
-/*
- *  sh_cpu_disassemble_instr():
- *
- *  Convert an instruction word into human readable format, for instruction
- *  tracing.
- *
- *  If running is 1, cpu->pc should be the address of the instruction.
- *
- *  If running is 0, things that depend on the runtime environment (eg.
- *  register contents) will not be shown, and addr will be used instead of
- *  cpu->pc for relative addresses.
- */
-int sh_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
-	int running, uint64_t dumpaddr)
-{
-	uint64_t offset;
-	uint32_t iword;
-	char *symbol;
-
-	if (running)
-		dumpaddr = cpu->pc;
-
-	symbol = get_symbol_name(&cpu->machine->symbol_context,
-	    dumpaddr, &offset);
-	if (symbol != NULL && offset==0)
-		debug("<%s>\n", symbol);
-
-	if (cpu->machine->ncpus > 1 && running)
-		debug("cpu%i: ", cpu->cpu_id);
-
-	if (cpu->cd.sh.cpu_type.bits == 32)
-		debug("%08x", (int)dumpaddr);
-	else
-		debug("%016llx", (long long)dumpaddr);
-
-	if (cpu->cd.sh.compact)
-		return sh_cpu_disassemble_instr_compact(cpu, instr,
-		    running, dumpaddr);
-
-	if (cpu->byte_order == EMUL_BIG_ENDIAN)
-		iword = (instr[0] << 24) + (instr[1] << 16) + (instr[2] << 8)
-		    + instr[3];
-	else
-		iword = (instr[3] << 24) + (instr[2] << 16) + (instr[1] << 8)
-		    + instr[0];
-
-	debug(": %08x\t", iword);
-
-	/*
-	 *  Decode the instruction:
-	 */
-
-	debug("TODO\n");
 
 	return sizeof(iword);
 }

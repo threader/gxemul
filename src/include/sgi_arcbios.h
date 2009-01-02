@@ -1,4 +1,4 @@
-/*  gxemul: $Id: sgi_arcbios.h,v 1.14 2005/03/05 12:34:03 debug Exp $  */
+/*  gxemul: $Id: sgi_arcbios.h,v 1.14 2005-03-05 12:34:03 debug Exp $  */
 /*  This file has been modified from the NetBSD version, the additions
     are mostly guesses for 64-bit SGI stuff.  */
 

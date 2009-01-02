@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_kn02.c,v 1.21 2006/01/01 13:17:16 debug Exp $
+ *  $Id: dev_kn02.c,v 1.28.2.1 2008-01-18 19:12:29 debug Exp $
  *  
- *  KN02 stuff ("3MAX", DECstation type 2).  See include/dec_kn02.h for more
- *  details.
+ *  COMMENT: DEC KN02 mainbus (TurboChannel interrupt controller)
+ *
+ *  Used in DECstation type 2 ("3MAX").  See include/dec_kn02.h for more info.
  */
 
 #include <stdio.h>
@@ -36,19 +37,57 @@
 #include <string.h>
 
 #include "cpu.h"
-#include "devices.h"
+#include "device.h"
+#include "interrupt.h"
+#include "machine.h"
 #include "memory.h"
 #include "misc.h"
 
 
+#include "dec_kn02.h"
+
 #define	DEV_KN02_LENGTH		0x1000
 
+
+struct kn02_data {
+	uint8_t		csr[sizeof(uint32_t)];
+
+	/*  Dummy fill bytes, so dyntrans can be used:  */
+	uint8_t		filler[DEV_KN02_LENGTH - sizeof(uint32_t)];
+
+	struct interrupt irq;
+	int		int_asserted;
+};
+
+
 /*
- *  dev_kn02_access():
+ *  kn02_interrupt_assert(), kn02_interrupt_deassert():
+ *
+ *  Called whenever a KN02 (TurboChannel) interrupt is asserted/deasserted.
  */
+void kn02_interrupt_assert(struct interrupt *interrupt)
+{
+	struct kn02_data *d = interrupt->extra;
+	d->csr[0] |= interrupt->line;
+	if (d->csr[0] & d->csr[2] && !d->int_asserted) {
+		d->int_asserted = 1;
+		INTERRUPT_ASSERT(d->irq);
+	}
+}
+void kn02_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct kn02_data *d = interrupt->extra;
+	d->csr[0] &= ~interrupt->line;
+	if (!(d->csr[0] & d->csr[2]) && d->int_asserted) {
+		d->int_asserted = 0;
+		INTERRUPT_DEASSERT(d->irq);
+	}
+}
+
+
 DEVICE_ACCESS(kn02)
 {
-	struct kn02_csr *d = extra;
+	struct kn02_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 
 	if (writeflag == MEM_WRITE)
@@ -59,6 +98,7 @@ DEVICE_ACCESS(kn02)
 		if (writeflag==MEM_READ) {
 			odata = d->csr[0] + (d->csr[1] << 8) +
 			    (d->csr[2] << 16) + (d->csr[3] << 24);
+
 			/* debug("[ kn02: read from CSR: 0x%08x ]\n", odata); */
 		} else {
 			/*
@@ -69,13 +109,24 @@ DEVICE_ACCESS(kn02)
 			 *  LEDs in the emulator, so those bits are just
 			 *  ignored.)
 			 */
+			int old_assert = (d->csr[0] & d->csr[2])? 1 : 0;
+			int new_assert;
 			/* fatal("[ kn02: write to CSR: 0x%08x ]\n", idata); */
 
 			d->csr[1] = (idata >> 8) & 255;
 			d->csr[2] = (idata >> 16) & 255;
 
 			/*  Recalculate interrupt assertions:  */
-			cpu_interrupt(cpu, 8);
+			new_assert = (d->csr[0] & d->csr[2])? 1 : 0;
+			if (new_assert != old_assert) {
+				if (new_assert) {
+					INTERRUPT_ASSERT(d->irq);
+					d->int_asserted = 1;
+				} else {
+					INTERRUPT_DEASSERT(d->irq);
+					d->int_asserted = 0;
+				}
+			}
 		}
 		break;
 	default:
@@ -95,24 +146,47 @@ DEVICE_ACCESS(kn02)
 }
 
 
-/*
- *  dev_kn02_init():
- */
-struct kn02_csr *dev_kn02_init(struct cpu *cpu, struct memory *mem,
-	uint64_t baseaddr)
+DEVINIT(kn02)
 {
-	struct kn02_csr *d;
+	struct kn02_data *d;
+	uint32_t csr;
+	int i;
 
-	d = malloc(sizeof(struct kn02_csr));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
+	CHECK_ALLOCATION(d = malloc(sizeof(struct kn02_data)));
+	memset(d, 0, sizeof(struct kn02_data));
+
+	/*  Connect the KN02 to a specific MIPS CPU interrupt line:  */
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
+
+	/*  Register the 8 possible TurboChannel interrupts:  */
+	for (i=0; i<8; i++) {
+		struct interrupt template;
+		char tmpstr[300];
+		snprintf(tmpstr, sizeof(tmpstr), "%s.kn02.%i",
+		    devinit->interrupt_path, i);
+		memset(&template, 0, sizeof(template));
+		template.line = 1 << i;
+		template.name = tmpstr;
+		template.extra = d;
+		template.interrupt_assert = kn02_interrupt_assert;
+		template.interrupt_deassert = kn02_interrupt_deassert;
+		interrupt_handler_register(&template);
 	}
-	memset(d, 0, sizeof(struct kn02_csr));
 
-	memory_device_register(mem, "kn02", baseaddr, DEV_KN02_LENGTH,
-	    dev_kn02_access, d, DM_DYNTRANS_OK, &d->csr[0]);
+	/*
+	 *  Set initial value of the CSR. Note: If the KN02_CSR_NRMMOD bit
+	 *  is not set, the 5000/200 PROM image loops forever.
+	 */
+	csr = KN02_CSR_NRMMOD;
+	d->csr[0] = csr;
+	d->csr[1] = csr >> 8;
+	d->csr[2] = csr >> 16;
+	d->csr[3] = csr >> 24;
 
-	return d;
+	memory_device_register(devinit->machine->memory, devinit->name,
+	    devinit->addr, DEV_KN02_LENGTH, dev_kn02_access, d,
+	    DM_DYNTRANS_OK, &d->csr[0]);
+
+	return 1;
 }
 

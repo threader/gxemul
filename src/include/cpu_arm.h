@@ -2,7 +2,7 @@
 #define	CPU_ARM_H
 
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,11 +28,11 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_arm.h,v 1.68 2006/07/16 13:32:27 debug Exp $
+ *  $Id: cpu_arm.h,v 1.75.2.1 2008-01-18 19:12:31 debug Exp $
  */
 
 #include "misc.h"
-
+#include "interrupt.h"
 
 struct cpu_family;
 
@@ -69,11 +69,7 @@ struct arm_cpu_type_def {
 	"and", "eor", "sub", "rsb", "add", "adc", "sbc", "rsc",	\
 	"tst", "teq", "cmp", "cmn", "orr", "mov", "bic", "mvn" }
 
-#ifdef ONEKPAGE
-#define	ARM_IC_ENTRIES_SHIFT		8
-#else
 #define	ARM_IC_ENTRIES_SHIFT		10
-#endif
 
 #define	ARM_N_IC_ARGS			3
 #define	ARM_INSTR_ALIGNMENT_SHIFT	2
@@ -127,7 +123,7 @@ struct arm_cpu_type_def {
 
 DYNTRANS_MISC_DECLARATIONS(arm,ARM,uint32_t)
 
-#define	ARM_MAX_VPH_TLB_ENTRIES		128
+#define	ARM_MAX_VPH_TLB_ENTRIES		384
 
 
 struct arm_cpu {
@@ -195,6 +191,8 @@ struct arm_cpu {
 	uint32_t		i80321_isrc;	/*  current assertions  */
 	uint32_t		tmr0;
 	uint32_t		tmr1;
+	struct interrupt	tmr0_irq;
+	struct interrupt	tmr1_irq;
 	uint32_t		tcr0;
 	uint32_t		tcr1;
 	uint32_t		trr0;
@@ -235,7 +233,7 @@ struct arm_cpu {
 	 */
 	DYNTRANS_ITC(arm)
 	VPH_TLBS(arm,ARM)
-	VPH32(arm,ARM,uint32_t,uint8_t)
+	VPH32_16BITVPHENTRIES(arm,ARM)
 
 	/*  ARM specific: */
 	uint32_t			is_userpage[N_VPH32_ENTRIES/32];

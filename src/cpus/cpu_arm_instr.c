@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_arm_instr.c,v 1.69 2006/09/09 09:04:32 debug Exp $
+ *  $Id: cpu_arm_instr.c,v 1.77.2.3 2008-06-10 00:18:04 debug Exp $
  *
  *  ARM instructions.
  *
@@ -235,7 +235,7 @@ X(nop)
 /*
  *  b:  Branch (to a different translated page)
  *
- *  arg[0] = relative offset
+ *  arg[0] = relative offset from start of page
  */
 X(b)
 {
@@ -909,6 +909,19 @@ Y(swi)
 
 
 /*
+ * bkpt:  Breakpoint instruction.
+ */
+X(bkpt)
+{
+	/*  Synchronize the program counter first:  */
+	cpu->pc &= 0xfffff000;
+	cpu->pc += ic->arg[0];
+	arm_exception(cpu, ARM_EXCEPTION_PREF_ABT);
+}
+Y(bkpt)
+
+
+/*
  *  und:  Undefined instruction.
  */
 X(und)
@@ -989,8 +1002,9 @@ X(store_w1_word_u1_p0_imm);
 X(store_w0_byte_u1_p0_imm);
 X(store_w0_word_u1_p0_imm);
 X(store_w0_word_u1_p1_imm);
-X(load_w1_word_u1_p0_imm);
 X(load_w0_word_u1_p0_imm);
+X(load_w0_word_u1_p1_imm);
+X(load_w1_word_u1_p0_imm);
 X(load_w0_byte_u1_p1_imm);
 X(load_w0_byte_u1_p1_reg);
 X(load_w1_byte_u1_p1_imm);
@@ -1530,6 +1544,66 @@ X(netbsd_scanc)
 
 	cpu->n_translated_instrs += 2;
 	cpu->cd.arm.next_ic = &ic[3];
+}
+
+
+/*
+ *  netbsd_idle:
+ *
+ *  L:	ldr     rX,[rY]
+ *	teqs    rX,#0
+ *	bne     X (samepage)
+ *	teqs    rZ,#0
+ *	beq     L (samepage)
+ *	....
+ *	X:  somewhere else on the same page
+ */
+X(netbsd_idle)
+{
+	uint32_t rY = reg(ic[0].arg[0]);
+	uint32_t rZ = reg(ic[3].arg[0]);
+	uint32_t *p;
+	uint32_t rX;
+
+	p = (uint32_t *) cpu->cd.arm.host_load[rY >> 12];
+	if (p == NULL) {
+		instr(load_w0_word_u1_p1_imm)(cpu, ic);
+		return;
+	}
+
+	rX = p[(rY & 0xfff) >> 2];
+	/*  No need to convert endianness, since it's only a 0-test.  */
+
+	/*  This makes execution continue on the first teqs instruction,
+	    which is fine.  */
+	if (rX != 0) {
+		instr(load_w0_word_u1_p1_imm)(cpu, ic);
+		return;
+	}
+
+	if (rZ == 0) {
+		static int x = 0;
+
+		/*  Synch the program counter.  */
+		uint32_t low_pc = ((size_t)ic - (size_t)
+		    cpu->cd.arm.cur_ic_page) / sizeof(struct arm_instr_call);
+		cpu->pc &= ~((ARM_IC_ENTRIES_PER_PAGE-1)
+		    << ARM_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << ARM_INSTR_ALIGNMENT_SHIFT);
+
+		/*  Quasi-idle for a while:  */
+		cpu->has_been_idling = 1;
+	        if (cpu->machine->ncpus == 1 && (++x) == 100) {
+			usleep(50);
+			x = 0;
+		}
+
+		cpu->n_translated_instrs += N_SAFE_DYNTRANS_LIMIT / 6;
+		cpu->cd.arm.next_ic = &nothing_call;
+		return;
+	}
+
+	cpu->cd.arm.next_ic = &ic[5];
 }
 
 
@@ -2270,9 +2344,9 @@ void COMBINE(netbsd_copyout)(struct cpu *cpu,
 
 
 /*
- *  Combine: cmps_b():
+ *  Combine: cmps + beq, etc:
  */
-void COMBINE(cmps_b)(struct cpu *cpu,
+void COMBINE(beq_etc)(struct cpu *cpu,
 	struct arm_instr_call *ic, int low_addr)
 {
 	int n_back = (low_addr >> ARM_INSTR_ALIGNMENT_SHIFT)
@@ -2300,6 +2374,20 @@ void COMBINE(cmps_b)(struct cpu *cpu,
 		if (ic[-1].f == instr(tsts) &&
 		    !(ic[-1].arg[1] & 0x80000000)) {
 			ic[-1].f = instr(tsts_lo_beq_samepage);
+		}
+		if (n_back >= 4 &&
+		    ic[-4].f == instr(load_w0_word_u1_p1_imm) &&
+		    ic[-4].arg[0] != ic[-4].arg[2] &&
+		    ic[-4].arg[1] == 0 &&
+		    ic[-4].arg[2] == ic[-3].arg[0] &&
+		    /*  Note: The teqs+bne is already combined!  */
+		    ic[-3].f == instr(teqs_bne_samepage) &&
+		    ic[-3].arg[1] == 0 &&
+		    ic[-2].f == instr(b_samepage__ne) &&
+		    ic[-1].f == instr(teqs) &&
+		    ic[-1].arg[0] != ic[-4].arg[0] &&
+		    ic[-1].arg[1] == 0) {
+			ic[-4].f = instr(netbsd_idle);
 		}
 		if (ic[-1].f == instr(teqs)) {
 			ic[-1].f = instr(teqs_beq_samepage);
@@ -2458,6 +2546,7 @@ X(to_be_translated)
 
 	/*  Read the instruction word from memory:  */
 	page = cpu->cd.arm.host_load[addr >> 12];
+
 	if (page != NULL) {
 		/*  fatal("TRANSLATION HIT! 0x%08x\n", addr);  */
 		memcpy(ib, page + (addr & 0xfff), sizeof(ib));
@@ -2504,8 +2593,9 @@ X(to_be_translated)
 			goto okay;
 		}
 
-		fatal("TODO: ARM condition code 0x%x\n",
-		    condition_code);
+		if (!cpu->translation_readahead)
+			fatal("TODO: ARM condition code 0x%x\n",
+			    condition_code);
 		goto bad;
 	}
 
@@ -2547,7 +2637,8 @@ X(to_be_translated)
 		if ((iword & 0x0f8000f0) == 0x00800090) {
 			/*  Long multiplication:  */
 			if (s_bit) {
-				fatal("TODO: sbit mull\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: sbit mull\n");
 				goto bad;
 			}
 			ic->f = cond_instr(mull);
@@ -2555,7 +2646,8 @@ X(to_be_translated)
 			break;
 		}
 		if ((iword & 0x0f900ff0) == 0x01000050) {
-			fatal("TODO: q{,d}{add,sub}\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: q{,d}{add,sub}\n");
 			goto bad;
 		}
 		if ((iword & 0x0ff000d0) == 0x01200010) {
@@ -2628,7 +2720,8 @@ X(to_be_translated)
 					ic->f = cond_instr(msr_imm);
 			} else {
 				if (rm == ARM_PC) {
-					fatal("msr PC?\n");
+					if (!cpu->translation_readahead)
+						fatal("msr PC?\n");
 					goto bad;
 				}
 				if (iword & 0x00400000)
@@ -2645,7 +2738,8 @@ X(to_be_translated)
 			case 1:	ic->arg[1] = 0x000000ff; break;
 			case 8:	ic->arg[1] = 0xff000000; break;
 			case 9:	ic->arg[1] = 0xff0000ff; break;
-			default:fatal("unimpl a: msr regform\n");
+			default:if (!cpu->translation_readahead)
+					fatal("unimpl a: msr regform\n");
 				goto bad;
 			}
 			break;
@@ -2653,7 +2747,8 @@ X(to_be_translated)
 		if ((iword & 0x0fbf0fff) == 0x010f0000) {
 			/*  mrs: move from CPSR/SPSR to a register:  */
 			if (rd == ARM_PC) {
-				fatal("mrs PC?\n");
+				if (!cpu->translation_readahead)
+					fatal("mrs PC?\n");
 				goto bad;
 			}
 			if (iword & 0x00400000)
@@ -2699,8 +2794,16 @@ X(to_be_translated)
 		}
 
 		if (iword & 0x80 && !(main_opcode & 2) && iword & 0x10) {
-			fatal("reg form blah blah\n");
+			if (!cpu->translation_readahead)
+				fatal("reg form blah blah\n");
 			goto bad;
+		}
+
+		/*  "bkpt", ARMv5 and above  */
+		if ((iword & 0x0ff000f0) == 0x01200070) {
+			ic->f = cond_instr(bkpt);
+			ic->arg[0] = addr & 0xfff;
+			break;
 		}
 
 		/*  "mov pc,lr":  */
@@ -2821,11 +2924,18 @@ X(to_be_translated)
 		else
 			ic->arg[1] = (size_t)(void *)arm_r[iword & 0xfff];
 		if ((iword & 0x0e000010) == 0x06000010) {
-			fatal("Not a Load/store TODO\n");
+#if 0
+			if (!cpu->translation_readahead)
+				fatal("Not a Load/store TODO\n");
 			goto bad;
+#else
+			/*  GDB uses this for breakpoints.  */
+			ic->f = cond_instr(und);
+			ic->arg[0] = addr & 0xfff;
+#endif
 		}
 		/*  Special case: pc-relative load within the same page:  */
-		if (rn == ARM_PC && rd != ARM_PC && main_opcode < 6) {
+		if (rn == ARM_PC && rd != ARM_PC && main_opcode < 6 && l_bit) {
 			int ofs = (addr & 0xfff) + 8, max = 0xffc;
 			int b_bit = iword & 0x00400000;
 			if (b_bit)
@@ -2844,25 +2954,27 @@ X(to_be_translated)
 				/*  ic->f = cond_instr(mov);  */
 				ic->f = arm_dpi_instr[condition_code + 16*0xd];
 				ic->arg[2] = (size_t)(&cpu->cd.arm.r[rd]);
-				p = cpu->cd.arm.host_load[a >> 12];
+				p = page;
 				if (p != NULL) {
 					memcpy(c, p + (a & 0xfff), len);
 				} else {
-					if (!cpu->memory_rw(cpu, cpu->mem, a,
-					    c, len, MEM_READ, CACHE_DATA)) {
-						fatal("to_be_translated(): "
-						    "read failed X: TODO\n");
+					if (!cpu->memory_rw(cpu, cpu->mem, a, &c[0],
+					    sizeof(c), MEM_READ, CACHE_DATA)) {
+						fatal("Hm? Internal error in "
+						    "cpu_arm_instr.c!\n");
 						goto bad;
 					}
 				}
-				if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
-					x = c[0] + (c[1]<<8) +
-					    (c[2]<<16) + (c[3]<<24);
-				else
-					x = c[3] + (c[2]<<8) +
-					    (c[1]<<16) + (c[0]<<24);
-				if (b_bit)
+				if (b_bit) {
 					x = c[0];
+				} else {
+					if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+						x = c[0] + (c[1]<<8) +
+						    (c[2]<<16) + (c[3]<<24);
+					else
+						x = c[3] + (c[2]<<8) +
+						    (c[1]<<16) + (c[0]<<24);
+				}
 				ic->arg[1] = x;
 			}
 		}
@@ -2910,7 +3022,8 @@ X(to_be_translated)
 		}
 #endif
 		if (rn == ARM_PC) {
-			fatal("TODO: bdt with PC as base\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: bdt with PC as base\n");
 			goto bad;
 		}
 		break;
@@ -2920,6 +3033,12 @@ X(to_be_translated)
 		if (main_opcode == 0x0a) {
 			ic->f = cond_instr(b);
 			samepage_function = cond_instr(b_samepage);
+
+			/*  Abort read-ahead on unconditional branches:  */
+			if (condition_code == 0xe &&
+			    cpu->translation_readahead > 1)
+                                cpu->translation_readahead = 1;
+
 			if (iword == 0xcaffffed)
 				cpu->cd.arm.combination_check =
 				    COMBINE(netbsd_memset);
@@ -2984,7 +3103,7 @@ X(to_be_translated)
 		if (main_opcode == 0xa && (condition_code <= 1
 		    || condition_code == 3 || condition_code == 8
 		    || condition_code == 12 || condition_code == 13))
-			cpu->cd.arm.combination_check = COMBINE(cmps_b);
+			cpu->cd.arm.combination_check = COMBINE(beq_etc);
 
 		if (iword == 0x1afffffc)
 			cpu->cd.arm.combination_check = COMBINE(strlen);
@@ -3003,13 +3122,15 @@ X(to_be_translated)
 		 */
 		if ((iword & 0x0fe00fff) == 0x0c400000) {
 			/*  Special case: mar/mra DSP instructions  */
-			fatal("TODO: mar/mra DSP instructions!\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: mar/mra DSP instructions!\n");
 			/*  Perhaps these are actually identical to MCRR/MRRC */
 			goto bad;
 		}
 
 		if ((iword & 0x0fe00000) == 0x0c400000) {
-			fatal("MCRR/MRRC: TODO\n");
+			if (!cpu->translation_readahead)
+				fatal("MCRR/MRRC: TODO\n");
 			goto bad;
 		}
 
@@ -3019,11 +3140,12 @@ X(to_be_translated)
 		 *  For now, treat as Undefined instructions. This causes e.g.
 		 *  Linux/ARM to emulate these instructions (floating point).
 		 */
-#if 0
+#if 1
 		ic->f = cond_instr(und);
 		ic->arg[0] = addr & 0xfff;
 #else
-		fatal("LDC/STC: TODO\n");
+		if (!cpu->translation_readahead)
+			fatal("LDC/STC: TODO\n");
 		goto bad;
 #endif
 		break;
@@ -3032,7 +3154,8 @@ X(to_be_translated)
 		if ((iword & 0x0ff00ff0) == 0x0e200010) {
 			/*  Special case: mia* DSP instructions  */
 			/*  See Intel's 27343601.pdf, page 16-20  */
-			fatal("TODO: mia* DSP instructions!\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: mia* DSP instructions!\n");
 			goto bad;
 		}
 		if (iword & 0x10) {
@@ -3065,7 +3188,8 @@ X(to_be_translated)
 				ic->arg[0] = iword & 0x00ffffff;
 				ic->f = cond_instr(swi_useremul);
 			} else {
-				fatal("Bad userland SWI?\n");
+				if (!cpu->translation_readahead)
+					fatal("Bad userland SWI?\n");
 				goto bad;
 			}
 		}

@@ -1,4 +1,8 @@
-$Id: README_DYNTRANS,v 1.12 2006/10/13 05:01:19 debug Exp $
+$Id: README_DYNTRANS,v 1.17 2007-05-12 08:25:43 debug Exp $
+
+This README is old. Hm.
+
+---------------------
 
 Dyntrans TODO:
 
@@ -14,62 +18,22 @@ Dyntrans TODO:
 	F-CPU		?				?		?
 	H8		16-bit				8/16		no
 	HPPA		32-bit				64/32		yes
+	i860		?				?		yes(?)
 	i960		32-bit + variable		32		?
 	IA64		128-bit				64		no
 	M68K		16-bit + variable		32		no
-	M88K		32-bit (+var?)			32		?
+	M88K		32-bit				32		yes
 	MIPS		32-bit, 16-bit (MIPS16)		64/32		yes
 	OpenRISC	?				?		?
 	PC532		?				32 (?)		?
 	POWER/PPC	32-bit				64/32		no
+	RCA180x		8-bit (+ variable on 1805)	8-16 (?)	no
 	SH		32-bit, 16-bit (SHcompact)	64/32		yes(*)
 	SPARC		32-bit				64/32		yes
 	Transputer	8-bit				32/16		no
-	x86		8-bit + variable		64/32/16	no
+	x86/AMD64	8-bit + variable		64/32/16	no
+	Z80000		16-bit + variable		32		no(?)
 	VAX		8-bit + variable		32		no
 
-	(*) Delay slot in SHcompact?
-
-
-  x)  instr_call sequence analysis support? (For handtuning combinations.)
-
-  x)  opcode statistics support?
-		TODO: is instr_call statistics enough?
-
-  x)  load/stores:
-		o)  perhaps refactor/reuse common load/store code?
-		o)  support for archs that allow transparent
-		    unaligned load/stores (ppc, x86 etc)
-		o)  alignment checks ==> exceptions
-		o)  native byte order ==> faster loads, etc.
-
-  x)  actual cache emulation
-
-  x)  SMP: detect when an instruction such as ll/sc or cas is used,
-	    and "synchronize" approximately the number of executed instructions
-	    (or cycles) across all CPUs.
-      Problem: devices such as dev_mp don't work well with such a synch.
-		scheme.
-
-  x)  support for variable-length instructions (x86, m68k, i960, ...)
-		Current solution: ic->arg[0] contains the length of the
-				instruction (in bytes), and next_ic is
-				automatically updated.
-		Problem: what about instructions crossing a (virtual)
-			page boundary? They cannot be translated once
-			and for all :( and must be interpreted slowly!
-
-  x)  support for THUMB, MIPS16, userland SH  (arm, mips, sh)
-
-  x)  support for Delay slots!  (mips, sparc, hppa, SHcompact?)
-
-  x)  various register-window archs (SPARC etc)
-
-  x)  Alpha: hahaha, zapnot and inserts/extracts don't
-	    compile into very nice code :-|  fix this
-		Solution: if short assembly language snippets can be
-		compiled on the current host, then compile such snippets
-		for alpha_instr_zapnot etc.
-
-  x)  pc532? 6502? 6800? etc
+	(*) Delay slot in SHcompact/32-bit-mode
 

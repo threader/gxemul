@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,10 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_mc146818.c,v 1.91 2006/10/07 03:20:19 debug Exp $
+ *  $Id: dev_mc146818.c,v 1.99.2.1 2008-01-18 19:12:29 debug Exp $
  *  
- *  MC146818 real-time clock, used by many different machines types.
+ *  COMMENT: MC146818 real-time clock
+ *
  *  (DS1687 as used in some other machines is also similar to the MC146818.)
  *
  *  This device contains Date/time, the machine's ethernet address (on
@@ -58,7 +59,7 @@
 
 /*  #define MC146818_DEBUG  */
 
-#define	TICK_SHIFT	14
+#define	MC146818_TICK_SHIFT	14
 
 
 /*  256 on DECstation, SGI uses reg at 72*4 as the Century  */
@@ -76,7 +77,7 @@ struct mc_data {
 	int		timebase_hz;
 	int		interrupt_hz;
 	int		old_interrupt_hz;
-	int		irq_nr;
+	struct interrupt irq;
 	struct timer	*timer;
 	volatile int	pending_timer_interrupts;
 
@@ -119,13 +120,6 @@ DEVICE_TICK(mc146818)
 	int pti = d->pending_timer_interrupts;
 
 	if ((d->reg[MC_REGB * 4] & MC_REGB_PIE) && pti > 0) {
-		static int warned = 0;
-		if (pti > 800 && !warned) {
-			warned = 1;
-			fatal("[ WARNING: MC146818 interrupts lost, "
-			    "host too slow? ]\n");
-		}
-
 #if 0
 		/*  For debugging, to see how much the interrupts are
 		    lagging behind the real clock:  */
@@ -139,7 +133,7 @@ DEVICE_TICK(mc146818)
 		}
 #endif
 
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 
 		d->reg[MC_REGC * 4] |= MC_REGC_PF;
 	}
@@ -157,9 +151,7 @@ DEVICE_TICK(mc146818)
  *  It seems like JAZZ machines accesses the mc146818 by writing one byte to
  *  0x90000070 and then reading or writing another byte at 0x......0004000.
  */
-int dev_mc146818_jazz_access(struct cpu *cpu, struct memory *mem,
-	uint64_t relative_addr, unsigned char *data, size_t len,
-	int writeflag, void *extra)
+DEVICE_ACCESS(mc146818_jazz)
 {
 	struct mc_data *d = extra;
 
@@ -284,20 +276,14 @@ static void mc146818_update_time(struct mc_data *d)
 }
 
 
-/*
- *  dev_mc146818_access():
- *
- *  TODO: This access function only handles 8-bit accesses!
- */
-int dev_mc146818_access(struct cpu *cpu, struct memory *mem,
-	uint64_t r, unsigned char *data, size_t len,
-	int writeflag, void *extra)
+DEVICE_ACCESS(mc146818)
 {
+	struct mc_data *d = extra;
 	struct tm *tmp;
 	time_t timet;
-	struct mc_data *d = extra;
-	int relative_addr = r;
 	size_t i;
+
+	/*  NOTE/TODO: This access function only handles 8-bit accesses!  */
 
 	relative_addr /= d->addrdiv;
 
@@ -472,7 +458,7 @@ int dev_mc146818_access(struct cpu *cpu, struct memory *mem,
 		case MC_REGB*4:
 			d->reg[MC_REGB*4] = data[0];
 			if (!(data[0] & MC_REGB_PIE)) {
-				cpu_interrupt_ack(cpu, d->irq_nr);
+				INTERRUPT_DEASSERT(d->irq);
 			}
 
 			/*  debug("[ mc146818: write to MC_REGB, data[0] "
@@ -566,13 +552,14 @@ int dev_mc146818_access(struct cpu *cpu, struct memory *mem,
 		data[0] = d->reg[relative_addr];
 
 		if (relative_addr == MC_REGC*4) {
-			cpu_interrupt_ack(cpu, d->irq_nr);
+			INTERRUPT_DEASSERT(d->irq);
 
 			/*
 			 *  Acknowledging an interrupt decreases the
 			 *  number of pending "real world" timer ticks.
 			 */
-			if (d->reg[MC_REGC * 4] & MC_REGC_PF)
+			if (d->reg[MC_REGC * 4] & MC_REGC_PF &&
+			    d->pending_timer_interrupts > 0)
 				d->pending_timer_interrupts --;
 
 			d->reg[MC_REGC * 4] = 0x00;
@@ -600,22 +587,19 @@ int dev_mc146818_access(struct cpu *cpu, struct memory *mem,
  *  so it contains both rtc related stuff and the station's Ethernet address.
  */
 void dev_mc146818_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int access_style, int addrdiv)
+	uint64_t baseaddr, char *irq_path, int access_style, int addrdiv)
 {
 	unsigned char ether_address[6];
 	int i, dev_len;
 	struct mc_data *d;
 
-	d = malloc(sizeof(struct mc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-
+	CHECK_ALLOCATION(d = malloc(sizeof(struct mc_data)));
 	memset(d, 0, sizeof(struct mc_data));
-	d->irq_nr        = irq_nr;
+
 	d->access_style  = access_style;
 	d->addrdiv       = addrdiv;
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
 
 	d->use_bcd = 0;
 	switch (access_style) {
@@ -632,9 +616,9 @@ void dev_mc146818_init(struct machine *machine, struct memory *mem,
 	}
 
 	if (access_style == MC146818_DEC) {
-	/*  Station Ethernet Address, on DECstation 3100:  */
-	for (i=0; i<6; i++)
-		ether_address[i] = 0x10 * (i+1);
+		/*  Station Ethernet Address, on DECstation 3100:  */
+		for (i=0; i<6; i++)
+			ether_address[i] = 0x10 * (i+1);
 
 		d->reg[0x01] = ether_address[0];
 		d->reg[0x05] = ether_address[1];
@@ -701,6 +685,6 @@ void dev_mc146818_init(struct machine *machine, struct memory *mem,
 	mc146818_update_time(d);
 
 	machine_add_tickfunction(machine, dev_mc146818_tick, d,
-	    TICK_SHIFT, 0.0);
+	    MC146818_TICK_SHIFT);
 }
 

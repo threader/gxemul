@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_cons.c,v 1.37 2006/07/23 14:37:34 debug Exp $
+ *  $Id: dev_cons.c,v 1.42.2.1 2008-01-18 19:12:28 debug Exp $
  *  
- *  A simple console device, useful for simple tests.
+ *  COMMENT: A simple console device, for the test machines
  *
  *  This device provides memory mapped I/O for a simple console supporting
  *  putchar (writing to memory) and getchar (reading from memory), and
@@ -42,26 +42,29 @@
 #include "console.h"
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
 
 #include "testmachine/dev_cons.h"
 
-
 #define	CONS_TICK_SHIFT		14
+
+struct cons_data {
+	int			console_handle;
+	int			in_use;
+	struct interrupt	irq;
+};
 
 
 DEVICE_TICK(cons)
 {
-	struct cpu *c = cpu->machine->cpus[0];
 	struct cons_data *d = extra;
 
-	cpu_interrupt_ack(c, d->irq_nr);
-
 	if (console_charavail(d->console_handle))
-		cpu_interrupt(c, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
+	else
+		INTERRUPT_DEASSERT(d->irq);
 }
 
 
@@ -115,27 +118,20 @@ DEVINIT(cons)
 	char *name3;
 	size_t nlen;
 
-	d = malloc(sizeof(struct cons_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct cons_data)));
 	memset(d, 0, sizeof(struct cons_data));
 
 	nlen = strlen(devinit->name) + 10;
 	if (devinit->name2 != NULL)
 		nlen += strlen(devinit->name2) + 10;
-	name3 = malloc(nlen);
-	if (name3 == NULL) {
-		fprintf(stderr, "out of memory in dev_cons_init()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name3 = malloc(nlen));
 	if (devinit->name2 != NULL && devinit->name2[0])
 		snprintf(name3, nlen, "%s [%s]", devinit->name, devinit->name2);
 	else
 		snprintf(name3, nlen, "%s", devinit->name);
 
-	d->irq_nr = devinit->irq_nr;
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
+
 	d->in_use = devinit->in_use;
 	d->console_handle = console_start_slave(devinit->machine, name3,
 	    d->in_use);
@@ -144,7 +140,7 @@ DEVINIT(cons)
 	    devinit->addr, DEV_CONS_LENGTH, dev_cons_access, d,
 	    DM_DEFAULT, NULL);
 	machine_add_tickfunction(devinit->machine, dev_cons_tick,
-	    d, CONS_TICK_SHIFT, 0.0);
+	    d, CONS_TICK_SHIFT);
 
 	/*  NOTE: Ugly cast into pointer  */
 	devinit->return_ptr = (void *)(size_t)d->console_handle;

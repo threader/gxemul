@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_malta_lcd.c,v 1.7 2006/03/04 12:38:47 debug Exp $
+ *  $Id: dev_malta_lcd.c,v 1.12.2.1 2008-01-18 19:12:29 debug Exp $
  *
- *  Malta (evbmips) LCD thingy. Mostly a dummy device.
+ *  COMMENT: Malta (evbmips) LCD display
+ *
+ *  TODO: Write output to somewhere else, not just as a debug message.
  */
 
 #include <stdio.h>
@@ -36,28 +38,27 @@
 
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "emul.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
 
+#include "maltareg.h"
+
 
 #define	DEV_MALTA_LCD_LENGTH		0x80
-#define	MALTA_LCD_TICK_SHIFT		15
+#define	MALTA_LCD_TICK_SHIFT		16
 #define	LCD_LEN				8
 
 struct malta_lcd_data {
+	uint64_t	base_addr;
+
 	int		display_modified;
 	unsigned char	display[LCD_LEN];
 };
 
 
-
-/*
- *  dev_malta_lcd_tick():
- */     
-void dev_malta_lcd_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(malta_lcd)
 { 
 	struct malta_lcd_data *d = extra;
 	int i;
@@ -68,44 +69,51 @@ void dev_malta_lcd_tick(struct cpu *cpu, void *extra)
 		d->display_modified = 2;
 		return;
 	}
-	debug("[ malta_lcd:  ");
+
+	debug("[ malta_lcd: \"");
 	for (i=0; i<LCD_LEN; i++)
 		if (d->display[i] >= ' ')
 			debug("%c", d->display[i]);
-	debug("  ]\n");
+		else
+			debug("?");
+	debug("\" ]\n");
+
 	d->display_modified = 0;
 }
 
 
-/*
- *  dev_malta_lcd_access():
- */
 DEVICE_ACCESS(malta_lcd)
 {
-	struct malta_lcd_data *d = (struct malta_lcd_data *) extra;
+	struct malta_lcd_data *d = extra;
 	uint64_t idata = 0, odata = 0;
-	int i;
+	int pos;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
 
+	relative_addr += d->base_addr;
+
 	switch (relative_addr) {
-	case 0x18:
-	case 0x20:
-	case 0x28:
-	case 0x30:
-	case 0x38:
-	case 0x40:
-	case 0x48:
-	case 0x50:
-		i = (relative_addr - 0x18) / 8;
+
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS0:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS1:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS2:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS3:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS4:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS5:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS6:
+	case MALTA_ASCII_BASE + MALTA_ASCIIPOS7:
+		pos = (relative_addr - MALTA_ASCII_BASE) / 8;
 		if (writeflag == MEM_WRITE) {
-			d->display[i] = idata;
+			d->display[pos] = idata;
 			d->display_modified = 1;
-		} else
-			odata = d->display[i];
+		} else {
+			odata = d->display[pos];
+		}
 		break;
-	default:if (writeflag == MEM_WRITE) {
+
+	default:
+		if (writeflag == MEM_WRITE) {
 			fatal("[ malta_lcd: unimplemented write to "
 			    "offset 0x%x: data=0x%02x ]\n", (int)
 			    relative_addr, (int)idata);
@@ -124,20 +132,19 @@ DEVICE_ACCESS(malta_lcd)
 
 DEVINIT(malta_lcd)
 {
-	struct malta_lcd_data *d = malloc(sizeof(struct malta_lcd_data));
+	struct malta_lcd_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct malta_lcd_data)));
 	memset(d, 0, sizeof(struct malta_lcd_data));
+
+	d->base_addr = devinit->addr;
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    devinit->addr, DEV_MALTA_LCD_LENGTH,
 	    dev_malta_lcd_access, (void *)d, DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(devinit->machine, dev_malta_lcd_tick,
-	    d, MALTA_LCD_TICK_SHIFT, 0.0);
+	    d, MALTA_LCD_TICK_SHIFT);
 
 	return 1;
 }

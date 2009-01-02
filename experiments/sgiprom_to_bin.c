@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: sgiprom_to_bin.c,v 1.5 2005/02/21 07:18:10 debug Exp $
+ *  $Id: sgiprom_to_bin.c,v 1.5 2005-02-21 07:18:10 debug Exp $
  *
  *  sgiprom_to_bin.c
  *

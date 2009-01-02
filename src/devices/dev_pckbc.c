@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pckbc.c,v 1.70 2006/08/22 15:13:03 debug Exp $
+ *  $Id: dev_pckbc.c,v 1.74.2.1 2008-01-18 19:12:29 debug Exp $
  *  
- *  Standard 8042 PC keyboard controller (and a 8242WB PS2 keyboard/mouse
- *  controller), including the 8048 keyboard chip.
+ *  COMMENT: 8042 PC keyboard controller (+ 8242WB Keyboard/Mouse controller)
+ *
+ *  This module includes emulation of the 8048 keyboard chip too.
  *
  *  Quick source of good info: http://my.execpc.com/~geezer/osd/kbd/kbd.txt
  *
@@ -75,8 +76,9 @@ struct pckbc_data {
 	int		in_use;
 
 	int		reg[DEV_PCKBC_LENGTH];
-	int		keyboard_irqnr;
-	int		mouse_irqnr;
+
+	struct interrupt irq_keyboard;
+	struct interrupt irq_mouse;
 	int		currently_asserted[2];
 	int		type;
 	int		pc_style_flag;
@@ -436,10 +438,7 @@ static void ascii_to_pc_scancodes_type2(int a, struct pckbc_data *d)
 }
 
 
-/*
- *  dev_pckbc_tick():
- */
-void dev_pckbc_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(pckbc)
 {
 	struct pckbc_data *d = extra;
 	int port_nr, ch, ints_enabled;
@@ -460,15 +459,21 @@ void dev_pckbc_tick(struct cpu *cpu, void *extra)
 	for (port_nr=0; port_nr<2; port_nr++) {
 		/*  Cause receive interrupt, if there's something in the
 		    receive buffer: (Otherwise deassert the interrupt.)  */
-		int irq = port_nr==0? d->keyboard_irqnr : d->mouse_irqnr;
 
 		if (d->head[port_nr] != d->tail[port_nr] && ints_enabled) {
 			debug("[ pckbc: interrupt port %i ]\n", port_nr);
-			cpu_interrupt(cpu, irq);
+			if (port_nr == 0)
+				INTERRUPT_ASSERT(d->irq_keyboard);
+			else
+				INTERRUPT_ASSERT(d->irq_mouse);
 			d->currently_asserted[port_nr] = 1;
 		} else {
-			if (d->currently_asserted[port_nr])
-				cpu_interrupt_ack(cpu, irq);
+			if (d->currently_asserted[port_nr]) {
+				if (port_nr == 0)
+					INTERRUPT_DEASSERT(d->irq_keyboard);
+				else
+					INTERRUPT_DEASSERT(d->irq_mouse);
+			}
 			d->currently_asserted[port_nr] = 0;
 		}
 	}
@@ -615,10 +620,10 @@ static void dev_pckbc_command(struct pckbc_data *d, int port_nr)
 
 DEVICE_ACCESS(pckbc)
 {
+	struct pckbc_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int port_nr = 0;
 	size_t i;
-	struct pckbc_data *d = extra;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -899,17 +904,13 @@ if (x&1)
  *  Type should be PCKBC_8042 or PCKBC_8242.
  */
 int dev_pckbc_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int type, int keyboard_irqnr, int mouse_irqnr,
-	int in_use, int pc_style_flag)
+	uint64_t baseaddr, int type, char *keyboard_irqpath,
+	char *mouse_irqpath, int in_use, int pc_style_flag)
 {
 	struct pckbc_data *d;
 	int len = DEV_PCKBC_LENGTH;
 
-	d = malloc(sizeof(struct pckbc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pckbc_data)));
 	memset(d, 0, sizeof(struct pckbc_data));
 
 	if (type == PCKBC_8242)
@@ -920,9 +921,10 @@ int dev_pckbc_init(struct machine *machine, struct memory *mem,
 		len = DEV_PCKBC_LENGTH + 0x60;
 	}
 
+	INTERRUPT_CONNECT(keyboard_irqpath, d->irq_keyboard);
+	INTERRUPT_CONNECT(mouse_irqpath, d->irq_mouse);
+
 	d->type              = type;
-	d->keyboard_irqnr    = keyboard_irqnr;
-	d->mouse_irqnr       = mouse_irqnr;
 	d->in_use            = in_use;
 	d->pc_style_flag     = pc_style_flag;
 	d->translation_table = 2;
@@ -935,7 +937,7 @@ int dev_pckbc_init(struct machine *machine, struct memory *mem,
 	memory_device_register(mem, "pckbc", baseaddr,
 	    len, dev_pckbc_access, d, DM_DEFAULT, NULL);
 	machine_add_tickfunction(machine, dev_pckbc_tick, d,
-	    PCKBC_TICKSHIFT, 0.0);
+	    PCKBC_TICKSHIFT);
 
 	return d->console_handle;
 }

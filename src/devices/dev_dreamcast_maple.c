@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dreamcast_maple.c,v 1.9 2006/10/31 08:27:26 debug Exp $
+ *  $Id: dev_dreamcast_maple.c,v 1.17.2.1 2008-01-18 19:12:28 debug Exp $
  *  
- *  Dreamcast "Maple" bus controller.
+ *  COMMENT: Dreamcast Maple bus controller
  *
  *  The Maple bus has 4 ports (A-D), and each port has up to 6 possible "units"
  *  (where unit 0 is the main unit). Communication is done using DMA; each
@@ -41,6 +41,7 @@
  *
  *  TODO:
  *	Unit numbers / IDs for real Maple devices.
+ *	The Controller (up/down/left/right, buttons, etc).
  */
 
 #include <stdio.h>
@@ -51,7 +52,6 @@
 #include "console.h"
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -96,6 +96,7 @@ struct dreamcast_maple_data {
  *
  *  TODO: Figure out strings and numbers of _real_ Maple devices.
  */
+#if 0
 static struct maple_device maple_device_controller = {
 	{
 		BE32_TO_HOST(MAPLE_FUNC(MAPLE_FN_CONTROLLER)),	/*  di_func  */
@@ -108,6 +109,7 @@ static struct maple_device maple_device_controller = {
 		LE16_TO_HOST(100)		/*  di_max_power  */
 	}
 };
+#endif
 static struct maple_device maple_device_keyboard = {
 	{
 		BE32_TO_HOST(MAPLE_FUNC(MAPLE_FN_KEYBOARD)),/*  di_func  */
@@ -139,16 +141,22 @@ static struct maple_device maple_device_mouse = {
 DEVICE_TICK(maple)
 {
 	struct dreamcast_maple_data *d = (struct dreamcast_maple_data *) extra;
-	int control_bits, key = console_readchar(d->console_handle);
+	int key;
 
-	if (key < 0)
-		return;
+	while ((key = console_readchar(d->console_handle)) >= 0) {
+		/*  Add to the keyboard queue:  */
+		d->char_queue[d->char_queue_head] = key;
+		d->char_queue_head = (d->char_queue_head + 1) % MAX_CHARS;
+		if (d->char_queue_head == d->char_queue_tail)
+			fatal("[ dreamcast_maple: KEYBOARD QUEUE OVERRUN! ]\n");
+	}
 
-	/*  Add to the keyboard queue:  */
-	d->char_queue[d->char_queue_head] = key;
-	d->char_queue_head = (d->char_queue_head + 1) % MAX_CHARS;
-	if (d->char_queue_head == d->char_queue_tail)
-		fatal("[ dreamcast_maple: KEYBOARD QUEUE OVERRUN! ]\n");
+#if 0
+	/*
+	 *  NOTE/TODO:
+	 *
+	 *  Implement the controller in a reasonable way!
+	 */
 
 	control_bits = 0;
 	switch (key) {
@@ -206,6 +214,7 @@ DEVICE_TICK(maple)
 			fatal("[ dreamcast_maple: CONTROLLER QUEUE "
 			    "OVERRUN! ]\n");
 	}
+#endif
 }
 
 
@@ -311,7 +320,7 @@ static void maple_getcond_keyboard_response(struct dreamcast_maple_data *d,
 	key = get_key(d);
 
 	/*
-	 *  buf[0] = shift keys (1 = ctrl, 2 = shift)
+	 *  buf[0] = shift keys (1 = left ctrl, 2 = shift, 0x10 = right ctrl)
 	 *  buf[1] = led state
 	 *  buf[2] = key
 	 */
@@ -468,7 +477,7 @@ void maple_do_dma_xfer(struct cpu *cpu, struct dreamcast_maple_data *d)
 				    NO_EXCEPTIONS | PHYSICAL);
 			} else {
 				/*  Device present:  */
-				int i;
+				unsigned int i;
 				struct maple_devinfo *di =
 				    &d->device[port]->devinfo;
 				/*  debug("[ dreamcast_maple: response="
@@ -529,7 +538,7 @@ void maple_do_dma_xfer(struct cpu *cpu, struct dreamcast_maple_data *d)
 
 DEVICE_ACCESS(dreamcast_maple)
 {
-	struct dreamcast_maple_data *d = (struct dreamcast_maple_data *) extra;
+	struct dreamcast_maple_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 
 	if (writeflag == MEM_WRITE)
@@ -615,29 +624,26 @@ DEVICE_ACCESS(dreamcast_maple)
 
 DEVINIT(dreamcast_maple)
 {
-	struct machine *machine = devinit->machine;
-	struct dreamcast_maple_data *d =
-	    malloc(sizeof(struct dreamcast_maple_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct dreamcast_maple_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dreamcast_maple_data)));
 	memset(d, 0, sizeof(struct dreamcast_maple_data));
 
-	memory_device_register(machine->memory, devinit->name,
+	memory_device_register(devinit->machine->memory, devinit->name,
 	    0x5f6c00, 0x100, dev_dreamcast_maple_access, d, DM_DEFAULT, NULL);
 
 	/*  Devices connected to port A..D:  */
-	d->device[0] = &maple_device_controller;
+	d->device[0] = NULL;	/*  &maple_device_controller;  */
 	d->device[1] = NULL;
 	d->device[2] = &maple_device_keyboard;
 	d->device[3] = NULL;	/*  TODO:  &maple_device_mouse;  */
 
-	d->console_handle = console_start_slave_inputonly(machine, "maple", 1);
-	machine->main_console_handle = d->console_handle;
+	d->console_handle = console_start_slave_inputonly(
+	    devinit->machine, "maple", 1);
+	devinit->machine->main_console_handle = d->console_handle;
 
 	machine_add_tickfunction(devinit->machine, dev_maple_tick, d,
-	    MAPLE_TICK_SHIFT, 0.0);
+	    MAPLE_TICK_SHIFT);
 
 	return 1;
 }

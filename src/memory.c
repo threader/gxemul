@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory.c,v 1.199 2006/10/24 09:32:48 debug Exp $
+ *  $Id: memory.c,v 1.206.2.2 2008-01-18 19:12:24 debug Exp $
  *
  *  Functions for handling the memory of an emulated machine.
  */
@@ -43,6 +43,7 @@
 
 
 extern int verbose;
+extern int quiet_mode;
 
 
 /*
@@ -129,11 +130,7 @@ void *zeroed_alloc(size_t s)
 		    " environment.\n");
 		exit(1);
 #else
-		p = malloc(s);
-		if (p == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
+		CHECK_ALLOCATION(p = malloc(s));
 		memset(p, 0, s);
 #endif
 	}
@@ -157,12 +154,7 @@ struct memory *memory_new(uint64_t physical_max, int arch)
 	int max_bits = MAX_BITS;
 	size_t s;
 
-	mem = malloc(sizeof(struct memory));
-	if (mem == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-
+	CHECK_ALLOCATION(mem = malloc(sizeof(struct memory)));
 	memset(mem, 0, sizeof(struct memory));
 
 	/*  Check bits_per_pagetable and bits_per_memblock for sanity:  */
@@ -182,11 +174,7 @@ struct memory *memory_new(uint64_t physical_max, int arch)
 	mem->pagetable = (unsigned char *) mmap(NULL, s,
 	    PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (mem->pagetable == NULL) {
-		mem->pagetable = malloc(s);
-		if (mem->pagetable == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
+		CHECK_ALLOCATION(mem->pagetable = malloc(s));
 		memset(mem->pagetable, 0, s);
 	}
 
@@ -425,12 +413,8 @@ void memory_device_register(struct memory *mem, const char *device_name,
 
 	mem->n_mmapped_devices++;
 
-	mem->devices = realloc(mem->devices, sizeof(struct memory_device)
-	    * mem->n_mmapped_devices);
-	if (mem->devices == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(mem->devices = realloc(mem->devices,
+	    sizeof(struct memory_device) * mem->n_mmapped_devices));
 
 	/*  Make space for the new entry:  */
 	if (newi + 1 != mem->n_mmapped_devices)
@@ -438,17 +422,12 @@ void memory_device_register(struct memory *mem, const char *device_name,
 		    sizeof(struct memory_device)
 		    * (mem->n_mmapped_devices - newi - 1));
 
-	mem->devices[newi].name = strdup(device_name);
+	CHECK_ALLOCATION(mem->devices[newi].name = strdup(device_name));
 	mem->devices[newi].baseaddr = baseaddr;
 	mem->devices[newi].endaddr = baseaddr + len;
 	mem->devices[newi].length = len;
 	mem->devices[newi].flags = flags;
 	mem->devices[newi].dyntrans_data = dyntrans_data;
-
-	if (mem->devices[newi].name == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
 
 	if (flags & (DM_DYNTRANS_OK | DM_DYNTRANS_WRITE_OK)
 	    && !(flags & DM_EMULATED_RAM) && dyntrans_data == NULL) {
@@ -461,7 +440,7 @@ void memory_device_register(struct memory *mem, const char *device_name,
 		fprintf(stderr, "memory_device_register():"
 		    " dyntrans_data not aligned correctly (%p)\n",
 		    dyntrans_data);
-		exit(1);
+		abort();
 	}
 
 	mem->devices[newi].dyntrans_write_low = (uint64_t)-1;
@@ -509,7 +488,7 @@ void memory_device_remove(struct memory *mem, int i)
 
 #define MEMORY_RW	userland_memory_rw
 #define MEM_USERLAND
-#include "memory_rw.c"
+#include "cpus/memory_rw.c"
 #undef MEM_USERLAND
 #undef MEMORY_RW
 
@@ -562,11 +541,7 @@ unsigned char *memory_paddr_to_hostaddr(struct memory *mem,
 		table[entry] = (void *) mmap(NULL, alloclen,
 		    PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 		if (table[entry] == NULL) {
-			table[entry] = malloc(alloclen);
-			if (table[entry] == NULL) {
-				fatal("out of memory\n");
-				exit(1);
-			}
+			CHECK_ALLOCATION(table[entry] = malloc(alloclen));
 			memset(table[entry], 0, alloclen);
 		}
 	}
@@ -600,7 +575,7 @@ uint64_t memory_checksum(struct memory *mem)
 {
 	uint64_t internal_state = 0x80624185376feff2ULL;
 	uint64_t checksum = 0xcb9a87d5c010072cULL;
-	const int n_entries = (1 << BITS_PER_PAGETABLE) - 1;
+	const size_t n_entries = (1 << BITS_PER_PAGETABLE) - 1;
 	const size_t len = (1 << BITS_PER_MEMBLOCK) / sizeof(uint64_t);
 	size_t entry, i;
 
@@ -618,5 +593,420 @@ uint64_t memory_checksum(struct memory *mem)
 	}
 
 	return checksum;
+}
+
+
+/*
+ *  memory_warn_about_unimplemented_addr():
+ *
+ *  Called from memory_rw whenever memory outside of the physical address space
+ *  is accessed (and quiet_mode isn't set).
+ */
+void memory_warn_about_unimplemented_addr(struct cpu *cpu, struct memory *mem,
+	int writeflag, uint64_t paddr, uint8_t *data, size_t len)
+{
+	uint64_t offset, old_pc = cpu->pc;
+	char *symbol;
+
+	/*
+	 *  This allows guest OS kernels to probe memory a few KBs past the
+	 *  end of memory, without giving too many warnings.
+	 */
+	if (paddr < mem->physical_max + 0x40000)
+		return;
+
+	if (!cpu->machine->halt_on_nonexistant_memaccess && quiet_mode)
+		return;
+
+	fatal("[ memory_rw(): %s ", writeflag? "write":"read");
+
+	if (writeflag) {
+		unsigned int i;
+		debug("data={", writeflag);
+		if (len > 16) {
+			int start2 = len-16;
+			for (i=0; i<16; i++)
+				debug("%s%02x", i?",":"", data[i]);
+			debug(" .. ");
+			if (start2 < 16)
+				start2 = 16;
+			for (i=start2; i<len; i++)
+				debug("%s%02x", i?",":"", data[i]);
+		} else
+			for (i=0; i<len; i++)
+				debug("%s%02x", i?",":"", data[i]);
+		debug("} ");
+	}
+
+	fatal("paddr=0x%"PRIx64" >= physical_max; pc=", paddr);
+	if (cpu->is_32bit)
+		fatal("0x%08"PRIx32, (uint32_t) old_pc);
+	else
+		fatal("0x%016"PRIx64, (uint64_t) old_pc);
+	symbol = get_symbol_name(&cpu->machine->symbol_context,
+	    old_pc, &offset);
+	fatal(" <%s> ]\n", symbol? symbol : " no symbol ");
+
+	if (cpu->machine->halt_on_nonexistant_memaccess) {
+		/*  TODO: Halt in a nicer way. Not possible with the
+		    current dyntrans system...  */
+		exit(1);
+	}
+}
+
+
+/*
+ *  dump_mem_string():
+ *
+ *  Dump the contents of emulated RAM as readable text.  Bytes that aren't
+ *  readable are dumped in [xx] notation, where xx is in hexadecimal.
+ *  Dumping ends after DUMP_MEM_STRING_MAX bytes, or when a terminating
+ *  zero byte is found.
+ */
+#define DUMP_MEM_STRING_MAX	45
+void dump_mem_string(struct cpu *cpu, uint64_t addr)
+{
+	int i;
+	for (i=0; i<DUMP_MEM_STRING_MAX; i++) {
+		unsigned char ch = '\0';
+
+		cpu->memory_rw(cpu, cpu->mem, addr + i, &ch, sizeof(ch),
+		    MEM_READ, CACHE_DATA | NO_EXCEPTIONS);
+		if (ch == '\0')
+			return;
+		if (ch >= ' ' && ch < 126)
+			debug("%c", ch);  
+		else
+			debug("[%02x]", ch);
+	}
+}
+
+
+/*
+ *  store_byte():
+ *
+ *  Stores a byte in emulated ram. (Helper function.)
+ */
+void store_byte(struct cpu *cpu, uint64_t addr, uint8_t data)
+{
+	if ((addr >> 32) == 0)
+		addr = (int64_t)(int32_t)addr;
+	cpu->memory_rw(cpu, cpu->mem,
+	    addr, &data, sizeof(data), MEM_WRITE, CACHE_DATA);
+}
+
+
+/*
+ *  store_string():
+ *
+ *  Stores chars into emulated RAM until a zero byte (string terminating
+ *  character) is found. The zero byte is also copied.
+ *  (strcpy()-like helper function, host-RAM-to-emulated-RAM.)
+ */
+void store_string(struct cpu *cpu, uint64_t addr, char *s)
+{
+	do {
+		store_byte(cpu, addr++, *s);
+	} while (*s++);
+}
+
+
+/*
+ *  add_environment_string():
+ *
+ *  Like store_string(), but advances the pointer afterwards. The most
+ *  obvious use is to place a number of strings (such as environment variable
+ *  strings) after one-another in emulated memory.
+ */
+void add_environment_string(struct cpu *cpu, char *s, uint64_t *addr)
+{
+	store_string(cpu, *addr, s);
+	(*addr) += strlen(s) + 1;
+}
+
+
+/*
+ *  add_environment_string_dual():
+ *
+ *  Add "dual" environment strings, one for the variable name and one for the
+ *  value, and update pointers afterwards.
+ */
+void add_environment_string_dual(struct cpu *cpu,
+	uint64_t *ptrp, uint64_t *addrp, char *s1, char *s2)
+{
+	uint64_t ptr = *ptrp, addr = *addrp;
+
+	store_32bit_word(cpu, ptr, addr);
+	ptr += sizeof(uint32_t);
+	if (addr != 0) {
+		store_string(cpu, addr, s1);
+		addr += strlen(s1) + 1;
+	}
+	store_32bit_word(cpu, ptr, addr);
+	ptr += sizeof(uint32_t);
+	if (addr != 0) {
+		store_string(cpu, addr, s2);
+		addr += strlen(s2) + 1;
+	}
+
+	*ptrp = ptr;
+	*addrp = addr;
+}
+
+
+/*
+ *  store_64bit_word():
+ *
+ *  Stores a 64-bit word in emulated RAM.  Byte order is taken into account.
+ *  Helper function.
+ */
+int store_64bit_word(struct cpu *cpu, uint64_t addr, uint64_t data64)
+{
+	unsigned char data[8];
+	if ((addr >> 32) == 0)
+		addr = (int64_t)(int32_t)addr;
+	data[0] = (data64 >> 56) & 255;
+	data[1] = (data64 >> 48) & 255;
+	data[2] = (data64 >> 40) & 255;
+	data[3] = (data64 >> 32) & 255;
+	data[4] = (data64 >> 24) & 255;
+	data[5] = (data64 >> 16) & 255;
+	data[6] = (data64 >> 8) & 255;
+	data[7] = (data64) & 255;
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[7]; data[7] = tmp;
+		tmp = data[1]; data[1] = data[6]; data[6] = tmp;
+		tmp = data[2]; data[2] = data[5]; data[5] = tmp;
+		tmp = data[3]; data[3] = data[4]; data[4] = tmp;
+	}
+	return cpu->memory_rw(cpu, cpu->mem,
+	    addr, data, sizeof(data), MEM_WRITE, CACHE_DATA);
+}
+
+
+/*
+ *  store_32bit_word():
+ *
+ *  Stores a 32-bit word in emulated RAM.  Byte order is taken into account.
+ *  (This function takes a 64-bit word as argument, to suppress some
+ *  warnings, but only the lowest 32 bits are used.)
+ */
+int store_32bit_word(struct cpu *cpu, uint64_t addr, uint64_t data32)
+{
+	unsigned char data[4];
+
+	data[0] = (data32 >> 24) & 255;
+	data[1] = (data32 >> 16) & 255;
+	data[2] = (data32 >> 8) & 255;
+	data[3] = (data32) & 255;
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[3]; data[3] = tmp;
+		tmp = data[1]; data[1] = data[2]; data[2] = tmp;
+	}
+	return cpu->memory_rw(cpu, cpu->mem,
+	    addr, data, sizeof(data), MEM_WRITE, CACHE_DATA);
+}
+
+
+/*
+ *  store_16bit_word():
+ *
+ *  Stores a 16-bit word in emulated RAM.  Byte order is taken into account.
+ *  (This function takes a 64-bit word as argument, to suppress some
+ *  warnings, but only the lowest 16 bits are used.)
+ */
+int store_16bit_word(struct cpu *cpu, uint64_t addr, uint64_t data16)
+{
+	unsigned char data[2];
+
+	data[0] = (data16 >> 8) & 255;
+	data[1] = (data16) & 255;
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[1]; data[1] = tmp;
+	}
+	return cpu->memory_rw(cpu, cpu->mem,
+	    addr, data, sizeof(data), MEM_WRITE, CACHE_DATA);
+}
+
+
+/*
+ *  store_buf():
+ *
+ *  memcpy()-like helper function, from host RAM to emulated RAM.
+ */
+void store_buf(struct cpu *cpu, uint64_t addr, char *s, size_t len)
+{
+	size_t psize = 1024;	/*  1024 256 64 16 4 1  */
+
+	while (len != 0) {
+		if ((addr & (psize-1)) == 0) {
+			while (len >= psize) {
+				cpu->memory_rw(cpu, cpu->mem, addr,
+				    (unsigned char *)s, psize, MEM_WRITE,
+				    CACHE_DATA);
+				addr += psize;
+				s += psize;
+				len -= psize;
+			}
+		}
+		psize >>= 2;
+	}
+
+	while (len-- != 0)
+		store_byte(cpu, addr++, *s++);
+}
+
+
+/*
+ *  store_pointer_and_advance():
+ *
+ *  Stores a 32-bit or 64-bit pointer in emulated RAM, and advances the
+ *  target address. (Useful for e.g. ARCBIOS environment initialization.)
+ */
+void store_pointer_and_advance(struct cpu *cpu, uint64_t *addrp,
+	uint64_t data, int flag64)
+{
+	uint64_t addr = *addrp;
+	if (flag64) {
+		store_64bit_word(cpu, addr, data);
+		addr += 8;
+	} else {
+		store_32bit_word(cpu, addr, data);
+		addr += 4;
+	}
+	*addrp = addr;
+}
+
+
+/*
+ *  load_64bit_word():
+ *
+ *  Helper function. Emulated byte order is taken into account.
+ */
+uint64_t load_64bit_word(struct cpu *cpu, uint64_t addr)
+{
+	unsigned char data[8];
+
+	cpu->memory_rw(cpu, cpu->mem,
+	    addr, data, sizeof(data), MEM_READ, CACHE_DATA);
+
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[7]; data[7] = tmp;
+		tmp = data[1]; data[1] = data[6]; data[6] = tmp;
+		tmp = data[2]; data[2] = data[5]; data[5] = tmp;
+		tmp = data[3]; data[3] = data[4]; data[4] = tmp;
+	}
+
+	return
+	    ((uint64_t)data[0] << 56) + ((uint64_t)data[1] << 48) +
+	    ((uint64_t)data[2] << 40) + ((uint64_t)data[3] << 32) +
+	    ((uint64_t)data[4] << 24) + ((uint64_t)data[5] << 16) +
+	    ((uint64_t)data[6] << 8) + (uint64_t)data[7];
+}
+
+
+/*
+ *  load_32bit_word():
+ *
+ *  Helper function. Emulated byte order is taken into account.
+ */
+uint32_t load_32bit_word(struct cpu *cpu, uint64_t addr)
+{
+	unsigned char data[4];
+
+	cpu->memory_rw(cpu, cpu->mem,
+	    addr, data, sizeof(data), MEM_READ, CACHE_DATA);
+
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[3]; data[3] = tmp;
+		tmp = data[1]; data[1] = data[2]; data[2] = tmp;
+	}
+
+	return (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+}
+
+
+/*
+ *  load_16bit_word():
+ *
+ *  Helper function. Emulated byte order is taken into account.
+ */
+uint16_t load_16bit_word(struct cpu *cpu, uint64_t addr)
+{
+	unsigned char data[2];
+
+	cpu->memory_rw(cpu, cpu->mem,
+	    addr, data, sizeof(data), MEM_READ, CACHE_DATA);
+
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[1]; data[1] = tmp;
+	}
+
+	return (data[0] << 8) + data[1];
+}
+
+
+/*
+ *  store_64bit_word_in_host():
+ *
+ *  Stores a 64-bit word in the _host's_ RAM.  Emulated byte order is taken
+ *  into account.  This is useful when building structs in the host's RAM
+ *  which will later be copied into emulated RAM.
+ */
+void store_64bit_word_in_host(struct cpu *cpu,
+	unsigned char *data, uint64_t data64)
+{
+	data[0] = (data64 >> 56) & 255;
+	data[1] = (data64 >> 48) & 255;
+	data[2] = (data64 >> 40) & 255;
+	data[3] = (data64 >> 32) & 255;
+	data[4] = (data64 >> 24) & 255;
+	data[5] = (data64 >> 16) & 255;
+	data[6] = (data64 >> 8) & 255;
+	data[7] = (data64) & 255;
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[7]; data[7] = tmp;
+		tmp = data[1]; data[1] = data[6]; data[6] = tmp;
+		tmp = data[2]; data[2] = data[5]; data[5] = tmp;
+		tmp = data[3]; data[3] = data[4]; data[4] = tmp;
+	}
+}
+
+
+/*
+ *  store_32bit_word_in_host():
+ *
+ *  See comment for store_64bit_word_in_host().
+ *
+ *  (Note:  The data32 parameter is a uint64_t. This is done to suppress
+ *  some warnings.)
+ */
+void store_32bit_word_in_host(struct cpu *cpu,
+	unsigned char *data, uint64_t data32)
+{
+	data[0] = (data32 >> 24) & 255;
+	data[1] = (data32 >> 16) & 255;
+	data[2] = (data32 >> 8) & 255;
+	data[3] = (data32) & 255;
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[3]; data[3] = tmp;
+		tmp = data[1]; data[1] = data[2]; data[2] = tmp;
+	}
+}
+
+
+/*
+ *  store_16bit_word_in_host():
+ *
+ *  See comment for store_64bit_word_in_host().
+ */
+void store_16bit_word_in_host(struct cpu *cpu,
+	unsigned char *data, uint16_t data16)
+{
+	data[0] = (data16 >> 8) & 255;
+	data[1] = (data16) & 255;
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		int tmp = data[0]; data[0] = data[1]; data[1] = tmp;
+	}
 }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ether.c,v 1.15 2006/10/07 00:36:29 debug Exp $
+ *  $Id: dev_ether.c,v 1.19.2.1 2008-01-18 19:12:28 debug Exp $
+ *
+ *  COMMENT: A simple ethernet controller, for the test machines
  *
  *  Basic "ethernet" network device. This is a simple test device which can
  *  be used to send and receive packets to/from a simulated ethernet network.
@@ -49,19 +51,19 @@
 #define	DEV_ETHER_TICK_SHIFT	14
 
 struct ether_data {
-	unsigned char	buf[DEV_ETHER_BUFFER_SIZE];
-	unsigned char	mac[6];
+	unsigned char		buf[DEV_ETHER_BUFFER_SIZE];
+	unsigned char		mac[6];
 
-	int		status;
-	int		packet_len;
+	int			status;
+	int			packet_len;
 
-	int		irq_nr;
+	struct interrupt	irq;
 };
 
 
 DEVICE_TICK(ether)
 {  
-	struct ether_data *d = (struct ether_data *) extra;
+	struct ether_data *d = extra;
 	int r = 0;
 
 	d->status &= ~DEV_ETHER_STATUS_MORE_PACKETS_AVAILABLE;
@@ -71,27 +73,28 @@ DEVICE_TICK(ether)
 		d->status |= DEV_ETHER_STATUS_MORE_PACKETS_AVAILABLE;
 
 	if (d->status)
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 	else
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 }
 
 
 DEVICE_ACCESS(ether_buf)
 {
-	struct ether_data *d = (struct ether_data *) extra;
+	struct ether_data *d = extra;
 
 	if (writeflag == MEM_WRITE)
 		memcpy(d->buf + relative_addr, data, len);
 	else
 		memcpy(data, d->buf + relative_addr, len);
+
 	return 1;
 }
 
 
 DEVICE_ACCESS(ether)
 {
-	struct ether_data *d = (struct ether_data *) extra;
+	struct ether_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	unsigned char *incoming_ptr;
 	int incoming_len;
@@ -108,7 +111,7 @@ DEVICE_ACCESS(ether)
 		if (writeflag == MEM_READ) {
 			odata = d->status;
 			d->status = 0;
-			cpu_interrupt_ack(cpu, d->irq_nr);
+			INTERRUPT_DEASSERT(d->irq);
 		} else
 			fatal("[ ether: WARNING: write to status ]\n");
 		break;
@@ -197,21 +200,19 @@ DEVICE_ACCESS(ether)
 
 DEVINIT(ether)
 {
-	struct ether_data *d = malloc(sizeof(struct ether_data));
+	struct ether_data *d;
 	size_t nlen;
 	char *n1, *n2;
 	char tmp[50];
 
-	nlen = strlen(devinit->name) + 80;
-	n1 = malloc(nlen);
-	n2 = malloc(nlen);
-
-	if (d == NULL || n1 == NULL || n2 == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct ether_data)));
 	memset(d, 0, sizeof(struct ether_data));
-	d->irq_nr = devinit->irq_nr;
+
+	nlen = strlen(devinit->name) + 80;
+	CHECK_ALLOCATION(n1 = malloc(nlen));
+	CHECK_ALLOCATION(n2 = malloc(nlen));
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	net_generate_unique_mac(devinit->machine, d->mac);
 	snprintf(tmp, sizeof(tmp), "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -232,7 +233,7 @@ DEVINIT(ether)
 	net_add_nic(devinit->machine->emul->net, d, d->mac);
 
 	machine_add_tickfunction(devinit->machine,
-	    dev_ether_tick, d, DEV_ETHER_TICK_SHIFT, 0.0);
+	    dev_ether_tick, d, DEV_ETHER_TICK_SHIFT);
 
 	return 1;
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sii.c,v 1.17 2006/03/04 12:38:48 debug Exp $
+ *  $Id: dev_sii.c,v 1.21.2.1 2008-01-18 19:12:30 debug Exp $
  *  
- *  SII SCSI controller, used in some DECstation systems.
+ *  COMMENT: SII SCSI controller, used in some DECstation systems
  *
  *  TODO:  This is huge and ugly. Fix this.
  */
@@ -38,6 +38,7 @@
 
 #include "cpu.h"
 #include "devices.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -49,7 +50,8 @@
 
 
 struct sii_data {
-	int		irq_nr;
+	struct interrupt irq;
+
 	uint64_t	buf_start;
 	uint64_t	buf_end;
 
@@ -91,10 +93,7 @@ void combine_sii_bits(struct sii_data *d)
 }
 
 
-/*
- *  dev_sii_tick():
- */
-void dev_sii_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(sii)
 {
 	struct sii_data *d = extra;
 
@@ -170,15 +169,12 @@ void dev_sii_tick(struct cpu *cpu, void *extra)
 	combine_sii_bits(d);
 
 	if (d->siiregs.csr & SII_IE && d->siiregs.cstat & (SII_CI | SII_DI))
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 	else
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 }
 
 
-/*
- *  dev_sii_access():
- */
 DEVICE_ACCESS(sii)
 {
 	uint64_t idata = 0, odata = 0;
@@ -443,29 +439,24 @@ DEVICE_ACCESS(sii)
 }
 
 
-/*
- *  dev_sii_init():
- */
 void dev_sii_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, uint64_t buf_start, uint64_t buf_end, int irq_nr)
+	uint64_t baseaddr, uint64_t buf_start, uint64_t buf_end,
+	char *irq_path)
 {
-	struct sii_data *d = malloc(sizeof(struct sii_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct sii_data *d;
 
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sii_data)));
 	memset(d, 0, sizeof(struct sii_data));
-	d->irq_nr    = irq_nr;
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
 	d->buf_start = buf_start;
 	d->buf_end   = buf_end;
-
-	d->regs = (uint16_t *) &d->siiregs;
+	d->regs      = (uint16_t *) &d->siiregs;
 
 	memory_device_register(mem, "sii", baseaddr, DEV_SII_LENGTH,
 	    dev_sii_access, (void *)d, DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(machine, dev_sii_tick, d,
-	    SII_TICK_SHIFT, 0.0);
+	    SII_TICK_SHIFT);
 }
 

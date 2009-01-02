@@ -1,5 +1,5 @@
 /*
- *  $Id: new_test_loadstore_b.c,v 1.4 2005/07/22 20:01:25 debug Exp $
+ *  $Id: new_test_loadstore_b.c,v 1.4 2005-07-22 20:01:25 debug Exp $
  *
  *  Experimenting with dynamic-but-not-binary-translation load/store.
  */

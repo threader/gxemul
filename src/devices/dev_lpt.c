@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_lpt.c,v 1.9 2006/03/04 12:38:47 debug Exp $
+ *  $Id: dev_lpt.c,v 1.14.2.1 2008-01-18 19:12:29 debug Exp $
  *
- *  LPT (parallel printer) controller.
+ *  COMMENT: LPT (parallel printer) controller
  */
 
 #include <stdio.h>
@@ -37,6 +37,7 @@
 #include "console.h"
 #include "cpu.h"
 #include "device.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -50,19 +51,16 @@
 #define	DEV_LPT_LENGTH		3
 
 struct lpt_data {
-	int		irqnr;
-	char		*name;
-	int		console_handle;
+	char			*name;
+	struct interrupt	irq;
+	int			console_handle;
 
-	unsigned char	data;
-	unsigned char	control;
+	uint8_t			data;
+	uint8_t			control;
 };
 
 
-/*
- *  dev_lpt_tick():
- */
-void dev_lpt_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(lpt)
 {
 	/*  struct lpt_data *d = extra;  */
 
@@ -70,9 +68,6 @@ void dev_lpt_tick(struct cpu *cpu, void *extra)
 }
 
 
-/*
- *  dev_lpt_access():
- */
 DEVICE_ACCESS(lpt)
 {
 	uint64_t idata = 0, odata=0;
@@ -117,16 +112,15 @@ DEVICE_ACCESS(lpt)
 
 DEVINIT(lpt)
 {
-	struct lpt_data *d = malloc(sizeof(struct lpt_data));
+	struct lpt_data *d;
 	size_t nlen;
 	char *name;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct lpt_data)));
 	memset(d, 0, sizeof(struct lpt_data));
-	d->irqnr	= devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
+
 	d->name		= devinit->name2 != NULL? devinit->name2 : "";
 	d->console_handle = console_start_slave(devinit->machine, devinit->name,
 	    CONSOLE_OUTPUT_ONLY);
@@ -134,11 +128,7 @@ DEVINIT(lpt)
 	nlen = strlen(devinit->name) + 10;
 	if (devinit->name2 != NULL)
 		nlen += strlen(devinit->name2);
-	name = malloc(nlen);
-	if (name == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name = malloc(nlen));
 	if (devinit->name2 != NULL && devinit->name2[0])
 		snprintf(name, nlen, "%s [%s]", devinit->name, devinit->name2);
 	else
@@ -147,7 +137,7 @@ DEVINIT(lpt)
 	memory_device_register(devinit->machine->memory, name, devinit->addr,
 	    DEV_LPT_LENGTH, dev_lpt_access, d, DM_DEFAULT, NULL);
 	machine_add_tickfunction(devinit->machine, dev_lpt_tick, d,
-	    TICK_SHIFT, 0.0);
+	    TICK_SHIFT);
 
 	/*
 	 *  NOTE:  Ugly cast into a pointer, because this is a convenient way

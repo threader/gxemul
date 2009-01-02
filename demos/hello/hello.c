@@ -1,5 +1,5 @@
 /*
- *  $Id: hello.c,v 1.3 2006/05/22 04:53:52 debug Exp $
+ *  $Id: hello.c,v 1.3 2006-05-22 04:53:52 debug Exp $
  *
  *  GXemul demo:  Hello World
  *

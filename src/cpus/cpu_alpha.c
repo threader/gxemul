@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_alpha.c,v 1.23 2006/09/19 10:50:08 debug Exp $
+ *  $Id: cpu_alpha.c,v 1.29.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  Alpha CPU emulation.
  *
@@ -41,6 +41,7 @@
 #include <ctype.h>
 
 #include "cpu.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -54,6 +55,9 @@
 
 /*  Alpha symbolic register names:  */
 static char *alpha_regname[N_ALPHA_REGS] = ALPHA_REG_NAMES; 
+
+void alpha_irq_interrupt_assert(struct interrupt *interrupt);
+void alpha_irq_interrupt_deassert(struct interrupt *interrupt);
 
 
 /*
@@ -112,6 +116,19 @@ int alpha_cpu_new(struct cpu *cpu, struct memory *mem,
 	for (i=0; i<N_ALPHA_REGS; i++)
 		CPU_SETTINGS_ADD_REGISTER64(alpha_regname[i],
 		    cpu->cd.alpha.r[i]);
+
+	/*  Register the CPU interrupt pin:  */
+	{
+		struct interrupt template;
+
+		memset(&template, 0, sizeof(template));
+		template.line = 0;
+		template.name = cpu->path;
+		template.extra = cpu;
+		template.interrupt_assert = alpha_irq_interrupt_assert; 
+		template.interrupt_deassert = alpha_irq_interrupt_deassert; 
+		interrupt_handler_register(&template);
+	}
 
 	return 1;
 }
@@ -195,105 +212,19 @@ void alpha_cpu_tlbdump(struct machine *m, int x, int rawflag)
 }
 
 
-static void add_response_word(struct cpu *cpu, char *r, uint64_t value,
-	size_t maxlen, int len)
-{
-	char *format = (len == 4)? "%08"PRIx64 : "%016"PRIx64;
-	if (len == 4)
-		value &= 0xffffffffULL;
-	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
-		if (len == 4) {
-			value = ((value & 0xff) << 24) +
-				((value & 0xff00) << 8) +
-				((value & 0xff0000) >> 8) +
-				((value & 0xff000000) >> 24);
-		} else {
-			value = ((value & 0xff) << 56) +
-				((value & 0xff00) << 40) +
-				((value & 0xff0000) << 24) +
-				((value & 0xff000000ULL) << 8) +
-				((value & 0xff00000000ULL) >> 8) +
-				((value & 0xff0000000000ULL) >> 24) +
-				((value & 0xff000000000000ULL) >> 40) +
-				((value & 0xff00000000000000ULL) >> 56);
-		}
-	}
-	snprintf(r + strlen(r), maxlen - strlen(r), format, (uint64_t)value);
-}
-
-
 /*
- *  alpha_cpu_gdb_stub():
- *
- *  Execute a "remote GDB" command. Returns a newly allocated response string
- *  on success, NULL on failure.
+ *  alpha_irq_interrupt_assert():
+ *  alpha_irq_interrupt_deassert():
  */
-char *alpha_cpu_gdb_stub(struct cpu *cpu, char *cmd)
+void alpha_irq_interrupt_assert(struct interrupt *interrupt)
 {
-	if (strcmp(cmd, "g") == 0) {
-		int i;
-		char *r;
-		size_t wlen = cpu->is_32bit?
-		    sizeof(uint32_t) : sizeof(uint64_t);
-		size_t len = 1 + 76 * wlen;
-		r = malloc(len);
-		if (r == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
-		r[0] = '\0';
-		for (i=0; i<128; i++)
-			add_response_word(cpu, r, i, len, wlen);
-		return r;
-	}
-
-	if (cmd[0] == 'p') {
-		int regnr = strtol(cmd + 1, NULL, 16);
-		size_t wlen = cpu->is_32bit?
-		    sizeof(uint32_t) : sizeof(uint64_t);
-		size_t len = 2 * wlen + 1;
-		char *r = malloc(len);
-		r[0] = '\0';
-		if (regnr >= 0 && regnr <= 31) {
-			add_response_word(cpu, r,
-			    cpu->cd.alpha.r[regnr], len, wlen);
-		} else if (regnr >= 32 && regnr <= 62) {
-			add_response_word(cpu, r,
-			    cpu->cd.alpha.f[regnr - 32], len, wlen);
-		} else if (regnr == 0x3f) {
-			add_response_word(cpu, r, cpu->cd.alpha.fpcr,
-			    len, wlen);
-		} else if (regnr == 0x40) {
-			add_response_word(cpu, r, cpu->pc, len, wlen);
-		} else {
-			/*  Unimplemented:  */
-			add_response_word(cpu, r, 0xcc000 + regnr, len, wlen);
-		}
-		return r;
-	}
-
-	fatal("alpha_cpu_gdb_stub(): TODO\n");
-	return NULL;
+	struct cpu *cpu = (struct cpu *) interrupt->extra;
+	cpu->cd.alpha.irq_asserted = 1;
 }
-
-
-/*
- *  alpha_cpu_interrupt():
- */
-int alpha_cpu_interrupt(struct cpu *cpu, uint64_t irq_nr)
+void alpha_irq_interrupt_deassert(struct interrupt *interrupt)
 {
-	fatal("alpha_cpu_interrupt(): TODO\n");
-	return 0;
-}
-
-
-/*
- *  alpha_cpu_interrupt_ack():
- */
-int alpha_cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr)
-{
-	/*  fatal("alpha_cpu_interrupt_ack(): TODO\n");  */
-	return 0;
+	struct cpu *cpu = (struct cpu *) interrupt->extra;
+	cpu->cd.alpha.irq_asserted = 0;
 }
 
 
@@ -741,7 +672,7 @@ int alpha_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 #define MEMORY_RW       alpha_userland_memory_rw
 #define MEM_ALPHA
 #define MEM_USERLAND
-#include "../memory_rw.c"
+#include "memory_rw.c"
 #undef MEM_USERLAND
 #undef MEM_ALPHA
 #undef MEMORY_RW

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,12 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: bus_pci.c,v 1.72 2006/10/08 02:28:58 debug Exp $
+ *  $Id: bus_pci.c,v 1.85.2.1 2008-01-18 19:12:27 debug Exp $
  *  
- *  Generic PCI bus framework. This is not a normal "device", but is used by
- *  individual PCI controllers and devices.
+ *  COMMENT: Generic PCI bus framework
+ *
+ *  This is not a normal "device", but is used by individual PCI controllers
+ *  and devices.
  *
  *  See NetBSD's pcidevs.h for more PCI vendor and device identifiers.
  *
@@ -48,6 +50,7 @@
 
 #define BUS_PCI_C
 
+#include "bus_isa.h"
 #include "bus_pci.h"
 #include "cpu.h"
 #include "device.h"
@@ -57,6 +60,7 @@
 #include "memory.h"
 #include "misc.h"
 
+#include "cpc700reg.h"
 #include "wdc.h"
 
 extern int verbose;
@@ -221,7 +225,7 @@ void bus_pci_add(struct machine *machine, struct pci_data *pci_data,
 
 	if (pci_data == NULL) {
 		fatal("bus_pci_add(): pci_data == NULL!\n");
-		exit(1);
+		abort();
 	}
 
 	/*  Find the PCI device:  */
@@ -239,20 +243,15 @@ void bus_pci_add(struct machine *machine, struct pci_data *pci_data,
 		pd = pd->next;
 	}
 
-	pd = malloc(sizeof(struct pci_device));
-	if (pd == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-
+	CHECK_ALLOCATION(pd = malloc(sizeof(struct pci_device)));
 	memset(pd, 0, sizeof(struct pci_device));
 
 	/*  Add the new device first in the PCI bus' chain:  */
 	pd->next = pci_data->first_device;
 	pci_data->first_device = pd;
 
+	CHECK_ALLOCATION(pd->name = strdup(name));
 	pd->pcibus   = pci_data;
-	pd->name     = strdup(name);
 	pd->bus      = bus;
 	pd->device   = device;
 	pd->function = function;
@@ -338,45 +337,13 @@ static void allocate_device_space(struct pci_device *pd,
 }
 
 
-static void bus_pci_debug_dump__2(struct pci_device *pd)
-{
-	if (pd == NULL)
-		return;
-	bus_pci_debug_dump__2(pd->next);
-	debug("bus %3i, dev %2i, func %i: %s\n",
-	    pd->bus, pd->device, pd->function, pd->name);
-}
-
-
-/*
- *  bus_pci_debug_dump():
- *
- *  Lists the attached PCI devices (in reverse).
- */
-void bus_pci_debug_dump(void *extra)
-{
-	struct pci_data *d = (struct pci_data *) extra;
-	int iadd = DEBUG_INDENTATION;
-
-	debug("pci:\n");
-	debug_indentation(iadd);
-
-	if (d->first_device == NULL)
-		debug("no devices!\n");
-	else
-		bus_pci_debug_dump__2(d->first_device);
-
-	debug_indentation(-iadd);
-}
-
-
 /*
  *  bus_pci_init():
  *
  *  This doesn't register a device, but instead returns a pointer to a struct
  *  which should be passed to other bus_pci functions when accessing the bus.
  *
- *  irq_nr is the (optional) IRQ nr that this PCI bus interrupts at.
+ *  irq_path is the interrupt path to the PCI controller.
  *
  *  pci_portbase, pci_membase, and pci_irqbase are the port, memory, and
  *  interrupt bases for PCI devices (as found in the configuration registers).
@@ -387,35 +354,35 @@ void bus_pci_debug_dump(void *extra)
  *  isa_portbase, isa_membase, and isa_irqbase are the port, memory, and
  *  interrupt bases for legacy ISA devices.
  */
-struct pci_data *bus_pci_init(struct machine *machine, int irq_nr,
+struct pci_data *bus_pci_init(struct machine *machine, char *irq_path,
 	uint64_t pci_actual_io_offset, uint64_t pci_actual_mem_offset,
-	uint64_t pci_portbase, uint64_t pci_membase, int pci_irqbase,
-	uint64_t isa_portbase, uint64_t isa_membase, int isa_irqbase)
+	uint64_t pci_portbase, uint64_t pci_membase, char *pci_irqbase,
+	uint64_t isa_portbase, uint64_t isa_membase, char *isa_irqbase)
 {
 	struct pci_data *d;
 
-	d = malloc(sizeof(struct pci_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pci_data)));
 	memset(d, 0, sizeof(struct pci_data));
-	d->irq_nr                = irq_nr;
+
+	CHECK_ALLOCATION(d->irq_path     = strdup(irq_path));
+	CHECK_ALLOCATION(d->irq_path_isa = strdup(isa_irqbase));
+	CHECK_ALLOCATION(d->irq_path_pci = strdup(pci_irqbase));
+
 	d->pci_actual_io_offset  = pci_actual_io_offset;
 	d->pci_actual_mem_offset = pci_actual_mem_offset;
 	d->pci_portbase          = pci_portbase;
 	d->pci_membase           = pci_membase;
-	d->pci_irqbase           = pci_irqbase;
 	d->isa_portbase          = isa_portbase;
 	d->isa_membase           = isa_membase;
-	d->isa_irqbase           = isa_irqbase;
 
-	/*  Register the bus:  */
-	machine_bus_register(machine, "pci", bus_pci_debug_dump, d);
+	d->cur_pci_portbase = d->pci_portbase;
+	d->cur_pci_membase  = d->pci_membase;
 
 	/*  Assume that the first 64KB could be used by legacy ISA devices:  */
-	d->cur_pci_portbase = d->pci_portbase + 0x10000;
-	d->cur_pci_membase  = d->pci_membase + 0x10000;
+	if (d->isa_portbase != 0 || d->isa_membase != 0) {
+		d->cur_pci_portbase += 0x10000;
+		d->cur_pci_membase  += 0x10000;
+	}
 
 	return d;
 }
@@ -509,11 +476,21 @@ PCIINIT(ali_m1543)
 	/*  Linux uses these to detect which IRQ the IDE controller uses:  */
 	PCI_SET_DATA(0x44, 0x0000000e);
 	PCI_SET_DATA(0x58, 0x00000003);
+
+	switch (machine->machine_type) {
+	case MACHINE_CATS:
+		bus_isa_init(machine, pd->pcibus->irq_path_isa,
+		    BUS_ISA_PCKBC_FORCE_USE | BUS_ISA_PCKBC_NONPCSTYLE,
+		    0x7c000000, 0x80000000);
+		break;
+	default:fatal("ali_m1543 init: unimplemented machine type\n");
+		exit(1);
+	}
 }
 
 PCIINIT(ali_m5229)
 {
-	char tmpstr[300];
+	char tmpstr[300], irqstr[300];
 
 	PCI_SET_DATA(PCI_ID_REG,
 	    PCI_ID_CODE(PCI_VENDOR_ALI, PCI_PRODUCT_ALI_M5229));
@@ -521,11 +498,21 @@ PCIINIT(ali_m5229)
 	PCI_SET_DATA(PCI_CLASS_REG, PCI_CLASS_CODE(PCI_CLASS_MASS_STORAGE,
 	    PCI_SUBCLASS_MASS_STORAGE_IDE, 0x60) + 0xc1);
 
+	switch (machine->machine_type) {
+	case MACHINE_CATS:
+		/*  CATS ISA interrupts are at footbridge irq 10:  */
+		snprintf(irqstr, sizeof(irqstr), "%s.10.isa",
+		    pd->pcibus->irq_path);
+		break;
+	default:fatal("ali_m5229 init: unimplemented machine type\n");
+		exit(1);
+	}
+
 	if (diskimage_exist(machine, 0, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 1, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s.%i",
 		    (long long)(pd->pcibus->isa_portbase + 0x1f0),
-		    pd->pcibus->isa_irqbase + 14);
+		    irqstr, 14);
 		device_add(machine, tmpstr);
 	}
 
@@ -730,9 +717,9 @@ PCIINIT(i31244)
 	if (diskimage_exist(machine, 0, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 1, DISKIMAGE_IDE)) {
 		char tmpstr[150];
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s.%i",
 		    (long long)(pd->pcibus->pci_actual_io_offset + 0),
-		    pd->pcibus->pci_irqbase + 0);
+		    pd->pcibus->irq_path_pci, irq & 255);
 		device_add(machine, tmpstr);
 	}
 }
@@ -818,28 +805,24 @@ PCIINIT(piix3_ide)
 	/*  channel 0 and 1 enabled as IDE  */
 	PCI_SET_DATA(0x40, 0x80008000);
 
-	pd->extra = malloc(sizeof(struct piix_ide_extra));
-	if (pd->extra == NULL) {
-		fatal("Out of memory.\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(pd->extra = malloc(sizeof(struct piix_ide_extra)));
 	((struct piix_ide_extra *)pd->extra)->wdc0 = NULL;
 	((struct piix_ide_extra *)pd->extra)->wdc1 = NULL;
 
 	if (diskimage_exist(machine, 0, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 1, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x1f0),
-		    pd->pcibus->isa_irqbase + 14);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx "
+		    "irq=%s.isa.%i", (long long)(pd->pcibus->isa_portbase +
+		    0x1f0), pd->pcibus->irq_path_isa, 14);
 		((struct piix_ide_extra *)pd->extra)->wdc0 =
 		    device_add(machine, tmpstr);
 	}
 
 	if (diskimage_exist(machine, 2, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 3, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x170),
-		    pd->pcibus->isa_irqbase + 15);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx "
+		    "irq=%s.isa.%i", (long long)(pd->pcibus->isa_portbase +
+		    0x170), pd->pcibus->irq_path_isa, 15);
 		((struct piix_ide_extra *)pd->extra)->wdc1 =
 		    device_add(machine, tmpstr);
 	}
@@ -856,34 +839,30 @@ PCIINIT(piix4_ide)
 
 	/*  Possibly not correct:  */
 	PCI_SET_DATA(PCI_CLASS_REG, PCI_CLASS_CODE(PCI_CLASS_MASS_STORAGE,
-	    PCI_SUBCLASS_MASS_STORAGE_IDE, 0x00) + 0x01);
+	    PCI_SUBCLASS_MASS_STORAGE_IDE, 0x80) + 0x01);
 
 	/*  PIIX_IDETIM (see NetBSD's pciide_piix_reg.h)  */
 	/*  channel 0 and 1 enabled as IDE  */
 	PCI_SET_DATA(0x40, 0x80008000);
 
-	pd->extra = malloc(sizeof(struct piix_ide_extra));
-	if (pd->extra == NULL) {
-		fatal("Out of memory.\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(pd->extra = malloc(sizeof(struct piix_ide_extra)));
 	((struct piix_ide_extra *)pd->extra)->wdc0 = NULL;
 	((struct piix_ide_extra *)pd->extra)->wdc1 = NULL;
 
 	if (diskimage_exist(machine, 0, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 1, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x1f0),
-		    pd->pcibus->isa_irqbase + 14);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s."
+		    "isa.%i", (long long)(pd->pcibus->isa_portbase + 0x1f0),
+		    pd->pcibus->irq_path_isa, 14);
 		((struct piix_ide_extra *)pd->extra)->wdc0 =
 		    device_add(machine, tmpstr);
 	}
 
 	if (diskimage_exist(machine, 2, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 3, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x170),
-		    pd->pcibus->isa_irqbase + 15);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s."
+		    "isa.%i", (long long)(pd->pcibus->isa_portbase + 0x170),
+		    pd->pcibus->irq_path_isa, 15);
 		((struct piix_ide_extra *)pd->extra)->wdc1 =
 		    device_add(machine, tmpstr);
 	}
@@ -1002,28 +981,24 @@ PCIINIT(vt82c586_ide)
 	/*  channel 0 and 1 enabled  */
 	PCI_SET_DATA(0x40, 0x00000003);
 
-	pd->extra = malloc(sizeof(struct vt82c586_ide_extra));
-	if (pd->extra == NULL) {
-		fatal("Out of memory.\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(pd->extra = malloc(sizeof(struct vt82c586_ide_extra)));
 	((struct vt82c586_ide_extra *)pd->extra)->wdc0 = NULL;
 	((struct vt82c586_ide_extra *)pd->extra)->wdc1 = NULL;
 
 	if (diskimage_exist(machine, 0, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 1, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x1f0),
-		    pd->pcibus->isa_irqbase + 14);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s."
+		    "isa.%i", (long long)(pd->pcibus->isa_portbase + 0x1f0),
+		    pd->pcibus->irq_path_isa, 14);
 		((struct vt82c586_ide_extra *)pd->extra)->wdc0 =
 		    device_add(machine, tmpstr);
 	}
 
 	if (diskimage_exist(machine, 2, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 3, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x170),
-		    pd->pcibus->isa_irqbase + 15);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s."
+		    "isa.%i", (long long)(pd->pcibus->isa_portbase + 0x170),
+		    pd->pcibus->irq_path_isa, 15);
 		((struct vt82c586_ide_extra *)pd->extra)->wdc1 =
 		    device_add(machine, tmpstr);
 	}
@@ -1052,6 +1027,15 @@ PCIINIT(symphony_83c553)
 
 	PCI_SET_DATA(PCI_BHLC_REG,
 	    PCI_BHLC_CODE(0,0, 1 /* multi-function */, 0x40,0));
+
+	switch (machine->machine_type) {
+	case MACHINE_NETWINDER:
+		bus_isa_init(machine, pd->pcibus->irq_path_isa,
+		    0, 0x7c000000, 0x80000000);
+		break;
+	default:fatal("symphony_83c553 init: unimplemented machine type\n");
+		exit(1);
+	}
 }
 
 struct symphony_82c105_extra {
@@ -1110,33 +1094,75 @@ PCIINIT(symphony_82c105)
 	/*  channel 0 and 1 enabled  */
 	PCI_SET_DATA(0x40, 0x00000003);
 
-	pd->extra = malloc(sizeof(struct symphony_82c105_extra));
-	if (pd->extra == NULL) {
-		fatal("Out of memory.\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(pd->extra =
+	    malloc(sizeof(struct symphony_82c105_extra)));
 	((struct symphony_82c105_extra *)pd->extra)->wdc0 = NULL;
 	((struct symphony_82c105_extra *)pd->extra)->wdc1 = NULL;
 
 	if (diskimage_exist(machine, 0, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 1, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x1f0),
-		    pd->pcibus->isa_irqbase + 14);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s."
+		    "isa.%i", (long long)(pd->pcibus->isa_portbase + 0x1f0),
+		    pd->pcibus->irq_path_isa, 14);
 		((struct symphony_82c105_extra *)pd->extra)->wdc0 =
 		    device_add(machine, tmpstr);
 	}
 
 	if (diskimage_exist(machine, 2, DISKIMAGE_IDE) ||
 	    diskimage_exist(machine, 3, DISKIMAGE_IDE)) {
-		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-		    (long long)(pd->pcibus->isa_portbase + 0x170),
-		    pd->pcibus->isa_irqbase + 15);
+		snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s."
+		    "isa.%i", (long long)(pd->pcibus->isa_portbase + 0x170),
+		    pd->pcibus->irq_path_isa, 15);
 		((struct symphony_82c105_extra *)pd->extra)->wdc1 =
 		    device_add(machine, tmpstr);
 	}
 
 	pd->cfg_reg_write = symphony_82c105_cfg_reg_write;
+}
+
+
+
+/*
+ *  Realtek 8139C+ PCI ethernet.
+ */
+
+#define PCI_VENDOR_REALTEK		0x10ec
+#define	PCI_PRODUCT_REALTEK_RT8139	0x8139
+
+PCIINIT(rtl8139c)
+{
+	uint64_t port, memaddr;
+	int pci_int_line = 0x101, irq = 0;
+	char irqstr[200];
+	char tmpstr[200];
+
+	PCI_SET_DATA(PCI_ID_REG, PCI_ID_CODE(PCI_VENDOR_REALTEK,
+	    PCI_PRODUCT_REALTEK_RT8139));
+
+	PCI_SET_DATA(PCI_CLASS_REG, PCI_CLASS_CODE(PCI_CLASS_NETWORK,
+	    PCI_SUBCLASS_NETWORK_ETHERNET, 0x00) + 0x20);
+
+	switch (machine->machine_type) {
+	case MACHINE_LANDISK:
+		irq = 5;
+		pci_int_line = 0x105;
+		break;
+	default:fatal("rtl8139c for this machine has not been "
+		    "implemented yet\n");
+		exit(1);
+	}
+
+	PCI_SET_DATA(PCI_INTERRUPT_REG, 0x28140000 | pci_int_line);
+
+	allocate_device_space(pd, 0x100, 0, &port, &memaddr);
+
+	snprintf(irqstr, sizeof(irqstr), "%s.%i",
+	    pd->pcibus->irq_path_pci, irq);
+
+	snprintf(tmpstr, sizeof(tmpstr), "rtl8139c addr=0x%llx "
+	    "irq=%s pci_little_endian=1", (long long)port, irqstr);
+
+	device_add(machine, tmpstr);
 }
 
 
@@ -1151,8 +1177,8 @@ PCIINIT(symphony_82c105)
 PCIINIT(dec21143)
 {
 	uint64_t port, memaddr;
-	int irq = 0;		/*  TODO  */
-	int pci_int_line = 0x101;
+	int pci_int_line = 0x101, irq = 0, isa = 0;
+	char irqstr[200];
 	char tmpstr[200];
 
 	PCI_SET_DATA(PCI_ID_REG, PCI_ID_CODE(PCI_VENDOR_DEC,
@@ -1176,24 +1202,20 @@ PCIINIT(dec21143)
 		irq = 8 + 7;
 		pci_int_line = 0x407;
 		break;
-	case MACHINE_ALGOR:
-		/*  TODO  */
-		irq = 8 + 7;
-		pci_int_line = 0x407;
-		break;
 	case MACHINE_PREP:
-		irq = 32 + 10;
+		irq = 10;
+		isa = 1;
 		pci_int_line = 0x20a;
 		break;
 	case MACHINE_MVMEPPC:
 		/*  TODO  */
-		irq = 32 + 10;
+		irq = 10;
 		pci_int_line = 0x40a;
 		break;
 	case MACHINE_PMPPC:
 		/*  TODO, not working yet  */
-		irq = 31 - 21;
-		pci_int_line = 0x201;
+		irq = 31 - CPC_IB_EXT1;
+		pci_int_line = 0x101;
 		break;
 	case MACHINE_MACPPC:
 		/*  TODO, not working yet  */
@@ -1206,9 +1228,17 @@ PCIINIT(dec21143)
 
 	allocate_device_space(pd, 0x100, 0x100, &port, &memaddr);
 
+	if (isa)
+		snprintf(irqstr, sizeof(irqstr), "%s.isa.%i",
+		    pd->pcibus->irq_path_isa, irq);
+	else
+		snprintf(irqstr, sizeof(irqstr), "%s.%i",
+		    pd->pcibus->irq_path_pci, irq);
+
 	snprintf(tmpstr, sizeof(tmpstr), "dec21143 addr=0x%llx addr2=0x%llx "
-	    "irq=%i pci_little_endian=1", (long long)port, (long long)memaddr,
-	    irq);
+	    "irq=%s pci_little_endian=1", (long long)port,
+	    (long long)memaddr, irqstr);
+
 	device_add(machine, tmpstr);
 }
 

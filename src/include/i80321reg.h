@@ -1,4 +1,4 @@
-/*  GXemul: $Id: i80321reg.h,v 1.1 2005/10/17 05:32:21 debug Exp $  */
+/*  GXemul: $Id: i80321reg.h,v 1.1 2005-10-17 05:32:21 debug Exp $  */
 /*  $NetBSD: i80321reg.h,v 1.14 2003/12/19 10:08:11 gavan Exp $  */
 
 /*

@@ -1,4 +1,4 @@
-/* GXemul: $Id: alpha_autoconf.h,v 1.2 2006/06/17 09:35:37 debug Exp $ */
+/* GXemul: $Id: alpha_autoconf.h,v 1.2 2006-06-17 09:35:37 debug Exp $ */
 /* $NetBSD: autoconf.h,v 1.22 2005/12/11 12:16:16 christos Exp $ */
 
 #ifndef	ALPHA_AUTOCONF_H

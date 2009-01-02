@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-#  $Id: test_netbsd_pmax_install.r4400.sh,v 1.1 2006/07/22 12:19:58 debug Exp $
+#  $Id: test_netbsd_pmax_install.r4400.sh,v 1.1 2006-07-22 12:19:58 debug Exp $
 #
 #  Litet enkelt test för att mäta hur lång tid det tar att installera
 #  en full NetBSD/pmax 3.0 för R4400, utan interaktion.

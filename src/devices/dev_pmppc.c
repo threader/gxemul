@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pmppc.c,v 1.6 2006/01/01 13:17:17 debug Exp $
+ *  $Id: dev_pmppc.c,v 1.9.2.1 2008-01-18 19:12:29 debug Exp $
  *  
- *  PM/PPC devices.
+ *  COMMENT: Artesyn PM/PPC motherboard registers
  *
- *  TODO
+ *  NOTE/TODO: Only enough to boot NetBSD/pmppc has been implemented.
  */
 
 #include <stdio.h>
@@ -37,7 +37,7 @@
 #include <string.h>
 
 #include "cpu.h"
-#include "devices.h"
+#include "device.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -53,9 +53,6 @@ struct pmppc_data {
 };
 
 
-/*
- *  dev_pmppc_board_access():
- */
 DEVICE_ACCESS(pmppc_board)
 {
 	struct pmppc_data *d = extra;
@@ -67,6 +64,7 @@ DEVICE_ACCESS(pmppc_board)
 	relative_addr += PMPPC_CONFIG0;
 
 	switch (relative_addr) {
+
 	case PMPPC_CONFIG0:
 		if (writeflag==MEM_READ) {
 			odata = d->config0;
@@ -75,6 +73,7 @@ DEVICE_ACCESS(pmppc_board)
 			    " 0x%02x ]\n", (int)idata);
 		}
 		break;
+
 	case PMPPC_CONFIG1:
 		if (writeflag==MEM_READ) {
 			odata = d->config1;
@@ -83,6 +82,7 @@ DEVICE_ACCESS(pmppc_board)
 			    " 0x%02x ]\n", (int)idata);
 		}
 		break;
+
 	case PMPPC_RESET:
 		if (writeflag==MEM_READ) {
 			odata = d->reset_reg;
@@ -96,6 +96,7 @@ DEVICE_ACCESS(pmppc_board)
 			d->reset_reg = idata;
 		}
 		break;
+
 	default:
 		if (writeflag==MEM_READ) {
 			debug("[ pmppc: UNIMPLEMENTED read from 0x%08lx ]\n",
@@ -113,18 +114,12 @@ DEVICE_ACCESS(pmppc_board)
 }
 
 
-/*
- *  dev_pmppc_init():
- */
-void dev_pmppc_init(struct memory *mem)
+DEVINIT(pmppc)
 {
 	struct pmppc_data *d;
+	struct memory *mem = devinit->machine->memory;
 
-	d = malloc(sizeof(struct pmppc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pmppc_data)));
 	memset(d, 0, sizeof(struct pmppc_data));
 
 	/*
@@ -164,5 +159,7 @@ void dev_pmppc_init(struct memory *mem)
 
 	memory_device_register(mem, "pmppc_board",
 	    PMPPC_CONFIG0, 0x10, dev_pmppc_board_access, d, DM_DEFAULT, NULL);
+
+	return 1;
 }
 

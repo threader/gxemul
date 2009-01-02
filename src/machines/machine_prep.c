@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_prep.c,v 1.8 2006/06/24 11:03:20 debug Exp $
+ *  $Id: machine_prep.c,v 1.20.2.1 2008-01-18 19:12:33 debug Exp $
  *
- *  Machines conforming to the PowerPC Reference Platform specs.
+ *  COMMENT: Machines conforming to the PowerPC Reference Platform specs
  */
 
 #include <stdio.h>
@@ -40,7 +40,6 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -48,6 +47,8 @@
 
 MACHINE_SETUP(prep)
 {
+	char tmpstr[300];
+
 	struct pci_data *pci_data;
 	char *model_name = "";
 
@@ -56,26 +57,23 @@ MACHINE_SETUP(prep)
 	case MACHINE_PREP_IBM6050:
 		machine->machine_name =
 		    "PowerPC Reference Platform, IBM 6050/6070";
-		machine->stable = 1;
 		model_name = "IBM PPS Model 6050/6070 (E)";
 
 		if (machine->emulated_hz == 0)
 			machine->emulated_hz = 20000000;
 
-		machine->md_int.prep_data = device_add(machine, "prep");
-		machine->isa_pic_data.native_irq = 1;	/*  Semi-bogus  */
-		machine->md_interrupt = isa32_interrupt;
+		snprintf(tmpstr, sizeof(tmpstr), "prep irq=%s.cpu[%i]",
+		    machine->path, machine->bootstrap_cpu);
+		device_add(machine, tmpstr);
 
-		pci_data = dev_eagle_init(machine, machine->memory,
-		    32 /*  isa irq base */, 0 /*  pci irq: TODO */);
-
-		bus_isa_init(machine, BUS_ISA_IDE0 | BUS_ISA_IDE1,
-		    0x80000000, 0xc0000000, 32, 48);
+		snprintf(tmpstr, sizeof(tmpstr), "eagle irq=%s.cpu[%i]",
+		    machine->path, machine->bootstrap_cpu);
+		pci_data = device_add(machine, tmpstr);
 
 		bus_pci_add(machine, pci_data, machine->memory,
 		    0, 13, 0, "dec21143");
 
-		if (machine->use_x11) {
+		if (machine->x11_md.in_use) {
 			bus_pci_add(machine, pci_data, machine->memory,
 			    0, 14, 0, "s3_virge");
 		}
@@ -87,15 +85,13 @@ MACHINE_SETUP(prep)
 		/*  TODO: _EXACT_ model name for mvme2400?  */
 		model_name = "MOT MVME2400";
 
-		machine->md_int.prep_data = device_add(machine, "prep");
-		machine->isa_pic_data.native_irq = 1;	/*  Semi-bogus  */
-		machine->md_interrupt = isa32_interrupt;
+		snprintf(tmpstr, sizeof(tmpstr), "prep irq=%s.cpu[%i]",
+		    machine->path, machine->bootstrap_cpu);
+		device_add(machine, tmpstr);
 
-		pci_data = dev_eagle_init(machine, machine->memory,
-		    32 /*  isa irq base */, 0 /*  pci irq: TODO */);
-
-		bus_isa_init(machine, BUS_ISA_IDE0 | BUS_ISA_IDE1,
-		    0x80000000, 0xc0000000, 32, 48);
+		snprintf(tmpstr, sizeof(tmpstr), "eagle irq=%s.cpu[%i]",
+		    machine->path, machine->bootstrap_cpu);
+		pci_data = device_add(machine, tmpstr);
 
 		break;
 
@@ -136,7 +132,8 @@ MACHINE_SETUP(prep)
 	/*  type: console  */
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+12, 20);
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+16, 1);
-	store_buf(cpu, cpu->cd.ppc.gpr[6]+20, machine->use_x11? "vga":"com", 4);
+	store_buf(cpu, cpu->cd.ppc.gpr[6]+20,
+	    machine->x11_md.in_use? "vga":"com", 4);
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+24, 0x3f8);/*  addr  */
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+28, 9600);/*  speed  */
 

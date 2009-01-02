@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_playstation2.c,v 1.6 2006/06/30 20:22:54 debug Exp $
+ *  $Id: machine_playstation2.c,v 1.12.2.1 2008-01-18 19:12:33 debug Exp $
+ *
+ *  COMMENT: Sony PlayStation 2
  */
 
 #include <stdio.h>
@@ -38,7 +40,6 @@
 #include "devices.h"
 #include "diskimage.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -55,6 +56,7 @@ static int int_to_bcd(int i)
 
 MACHINE_SETUP(playstation2)
 {
+	char tmpstr[200];
 	int tmplen;
 	char *tmp;
 	time_t timet;
@@ -66,7 +68,7 @@ MACHINE_SETUP(playstation2)
 	if (machine->physical_ram_in_mb != 32)
 		fprintf(stderr, "WARNING! Playstation 2 machines are supposed "
 		    "to have exactly 32 MB RAM. Continuing anyway.\n");
-	if (!machine->use_x11)
+	if (!machine->x11_md.in_use)
 		fprintf(stderr, "WARNING! Playstation 2 without -X is pretty "
 		    "meaningless. Continuing anyway.\n");
 
@@ -84,18 +86,17 @@ MACHINE_SETUP(playstation2)
 	 *	ohci0: OHCI version 1.0
 	 */
 
-	machine->md_int.ps2_data = dev_ps2_stuff_init(machine,
-	    machine->memory, 0x10000000);
+	device_add(machine, "ps2 addr=0x10000000");
 	device_add(machine, "ps2_gs addr=0x12000000");
 	device_add(machine, "ps2_ether addr=0x14001000");
 
 	/*  TODO: how much?  */
 	dev_ram_init(machine, 0x1c000000, 4 * 1048576, DEV_RAM_RAM, 0);
 
-	/*  irq = 8 + 32 + 1 (SBUS/USB)  */
-	device_add(machine, "ohci addr=0x1f801600 irq=41");
-
-	machine->md_interrupt = ps2_interrupt;
+	/*  OHCI at SBUS irq 1:  */
+	snprintf(tmpstr, sizeof(tmpstr), "ohci addr=0x1f801600 irq="
+	    "%s.cpu[%i].ps2_sbus.1", machine->path, machine->bootstrap_cpu);
+	device_add(machine, tmpstr);
 
 	/*  Set the Harddisk controller present flag, if either
 	    disk 0 or 1 is present:  */
@@ -104,7 +105,7 @@ MACHINE_SETUP(playstation2)
 		if (machine->prom_emulation)
 			store_32bit_word(cpu, 0xa0000000 + machine->
 			    physical_ram_in_mb*1048576 - 0x1000 + 0x0, 0x100);
-		dev_ps2_spd_init(machine, machine->memory, 0x14000000);
+		device_add(machine, "ps2_spd addr=0x14000000");
 	}
 
 	if (!machine->prom_emulation)
@@ -112,7 +113,7 @@ MACHINE_SETUP(playstation2)
 
 
 	tmplen = 1000;
-	tmp = malloc(tmplen);
+	CHECK_ALLOCATION(tmp = malloc(tmplen));
 
 	add_symbol_name(&machine->symbol_context,
 	    PLAYSTATION2_SIFBIOS, 0x10000, "[SIFBIOS entry]", 0, 0);
@@ -125,10 +126,6 @@ MACHINE_SETUP(playstation2)
 
 	store_32bit_word(cpu, 0xa0000000 + machine->physical_ram_in_mb
 	    * 1048576 - 0x1000 + 0x4, PLAYSTATION2_OPTARGS);
-	if (tmp == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
 
 	strlcpy(tmp, "root=/dev/hda1 crtmode=vesa0,60", tmplen);
 

@@ -1,4 +1,4 @@
-/*  gxemul: $Id: i82365reg.h,v 1.1 2005/03/13 10:32:14 debug Exp $  */
+/*  gxemul: $Id: i82365reg.h,v 1.1 2005-03-13 10:32:14 debug Exp $  */
 /*  $NetBSD: i82365reg.h,v 1.9 2004/07/06 14:04:51 mycroft Exp $  */
 
 #ifndef	I82365REG_H

@@ -1,4 +1,4 @@
-/*  gxemul: $Id: sccreg.h,v 1.3 2005/03/05 12:34:03 debug Exp $  */
+/*  gxemul: $Id: sccreg.h,v 1.3 2005-03-05 12:34:03 debug Exp $  */
 
 #ifndef SCCREG_H
 #define	SCCREG_H

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: net.c,v 1.6 2006/09/05 06:58:29 debug Exp $
+ *  $Id: net.c,v 1.12.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  Emulated network.
  *
@@ -76,15 +76,11 @@ struct ethernet_packet_link *net_allocate_ethernet_packet_link(
 {
 	struct ethernet_packet_link *lp;
 
-	lp = malloc(sizeof(struct ethernet_packet_link));
-	if (lp == NULL)
-		goto fail;
+	CHECK_ALLOCATION(lp = malloc(sizeof(struct ethernet_packet_link)));
 
 	lp->len = len;
 	lp->extra = extra;
-	lp->data = malloc(len);
-	if (lp->data == NULL)
-		goto fail;
+	CHECK_ALLOCATION(lp->data = malloc(len));
 
 	lp->next = NULL;
 
@@ -97,10 +93,6 @@ struct ethernet_packet_link *net_allocate_ethernet_packet_link(
 	net->last_ethernet_packet = lp;
 
 	return lp;
-
-fail:
-	fprintf(stderr, "net_allocate_ethernet_packet_link(): out of memory\n");
-	exit(1);
 }
 
 
@@ -592,7 +584,7 @@ static void parse_resolvconf(struct net *net)
 			if (i < len)
 				buf[i] = '\0';
 			/*  fatal("DOMAIN='%s'\n", buf + start);  */
-			net->domain_name = strdup(buf + start);
+			CHECK_ALLOCATION(net->domain_name = strdup(buf+start));
 			break;
 		}
 }
@@ -615,12 +607,8 @@ void net_add_nic(struct net *net, void *extra, unsigned char *macaddr)
 	}
 
 	net->n_nics ++;
-	net->nic_extra = realloc(net->nic_extra, sizeof(void *)
-	    * net->n_nics);
-	if (net->nic_extra == NULL) {
-		fprintf(stderr, "net_add_nic(): out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(net->nic_extra = realloc(net->nic_extra, sizeof(void *)
+	    * net->n_nics));
 
 	net->nic_extra[net->n_nics - 1] = extra;
 }
@@ -670,33 +658,33 @@ void net_dumpinfo(struct net *net)
 	int iadd = DEBUG_INDENTATION;
 	struct remote_net *rnp;
 
-	debug("net: simulating ");
+	debug("net:\n");
 
+	debug_indentation(iadd);
+
+	debug("simulated network: ");
 	net_debugaddr(&net->netmask_ipv4, NET_ADDR_IPV4);
 	debug("/%i", net->netmask_ipv4_len);
 
 	debug(" (max outgoing: TCP=%i, UDP=%i)\n",
 	    MAX_TCP_CONNECTIONS, MAX_UDP_CONNECTIONS);
 
-	debug_indentation(iadd);
-
-	debug("simulated gateway: ");
+	debug("simulated gateway+nameserver: ");
 	net_debugaddr(&net->gateway_ipv4_addr, NET_ADDR_IPV4);
 	debug(" (");
 	net_debugaddr(&net->gateway_ethernet_addr, NET_ADDR_ETHERNET);
 	debug(")\n");
 
-	debug_indentation(iadd);
 	if (!net->nameserver_known) {
-		debug("(could not determine nameserver)");
+		debug("(could not determine nameserver)\n");
 	} else {
-		debug("using nameserver ");
+		debug("simulated nameserver uses real nameserver ");
 		net_debugaddr(&net->nameserver_ipv4, NET_ADDR_IPV4);
+		debug("\n");
 	}
+
 	if (net->domain_name != NULL && net->domain_name[0])
-		debug(", domain \"%s\"", net->domain_name);
-	debug("\n");
-	debug_indentation(-iadd);
+		debug("domain: %s\n", net->domain_name);
 
 	rnp = net->remote_nets;
 	if (net->local_port != 0)
@@ -738,12 +726,7 @@ struct net *net_init(struct emul *emul, int init_flags,
 	struct net *net;
 	int res;
 
-	net = malloc(sizeof(struct net));
-	if (net == NULL) {
-		fprintf(stderr, "net_init(): out of memory\n");
-		exit(1);
-	}
-
+	CHECK_ALLOCATION(net = malloc(sizeof(struct net)));
 	memset(net, 0, sizeof(struct net));
 
 	/*  Set the back pointer:  */
@@ -786,7 +769,7 @@ struct net *net_init(struct emul *emul, int init_flags,
 			exit(1);
 		}
 
-		memset((char *)&si_self, sizeof(si_self), 0);
+		memset((char *)&si_self, 0, sizeof(si_self));
 		si_self.sin_family = AF_INET;
 		si_self.sin_port = htons(local_port);
 		si_self.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -806,13 +789,14 @@ struct net *net_init(struct emul *emul, int init_flags,
 			struct hostent *hp;
 
 			/*  debug("adding '%s'\n", remote[n_remote]);  */
-			rnp = malloc(sizeof(struct remote_net));
+			CHECK_ALLOCATION(rnp =
+			    malloc(sizeof(struct remote_net)));
 			memset(rnp, 0, sizeof(struct remote_net));
 
 			rnp->next = net->remote_nets;
 			net->remote_nets = rnp;
 
-			rnp->name = strdup(remote[n_remote]);
+			CHECK_ALLOCATION(rnp->name = strdup(remote[n_remote]));
 			if (strchr(rnp->name, ':') != NULL)
 				strchr(rnp->name, ':')[0] = '\0';
 
@@ -826,7 +810,7 @@ struct net *net_init(struct emul *emul, int init_flags,
 			free(rnp->name);
 
 			/*  And again:  */
-			rnp->name = strdup(remote[n_remote]);
+			CHECK_ALLOCATION(rnp->name = strdup(remote[n_remote]));
 			if (strchr(rnp->name, ':') == NULL) {
 				fprintf(stderr, "Remote network '%s' is not "
 				    "'host:portnr'?\n", rnp->name);

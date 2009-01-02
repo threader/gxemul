@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,12 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_rtc.c,v 1.3 2006/10/14 23:46:17 debug Exp $
+ *  $Id: dev_rtc.c,v 1.7.2.1 2008-01-18 19:12:30 debug Exp $
  *
- *  An experimental Real-Time Clock device. It can be used to retrieve the
- *  current system time, and to cause periodic interrupts.
+ *  COMMENT: A generic Real-Time Clock device, for the test machines
+ *
+ *  It can be used to retrieve the current system time, and to cause periodic
+ *  interrupts.
  */
 
 #include <stdio.h>
@@ -50,12 +52,13 @@
 #define	DEV_RTC_TICK_SHIFT	14
 
 struct rtc_data {
-	int		hz;
-	int		irq_nr;
-	int		pending_interrupts;
-	struct timer	*timer;
+	struct interrupt	irq;
+	int			pending_interrupts;
 
-	struct timeval	cur_time;	
+	int			hz;
+	struct timer		*timer;
+
+	struct timeval		cur_time;	
 };
 
 
@@ -73,18 +76,18 @@ static void timer_tick(struct timer *t, void *extra)
 
 DEVICE_TICK(rtc)
 {  
-	struct rtc_data *d = (struct rtc_data *) extra;
+	struct rtc_data *d = extra;
 
 	if (d->pending_interrupts > 0)
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 	else
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 }
 
 
 DEVICE_ACCESS(rtc)
 {
-	struct rtc_data *d = (struct rtc_data *) extra;
+	struct rtc_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 
 	if (writeflag == MEM_WRITE)
@@ -132,7 +135,7 @@ DEVICE_ACCESS(rtc)
 		if (d->pending_interrupts > 0)
 			d->pending_interrupts --;
 
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 
 		/*  TODO: Reassert the interrupt here, if
 		    d->pending_interrupts is still above zero?  */
@@ -158,21 +161,19 @@ DEVICE_ACCESS(rtc)
 
 DEVINIT(rtc)
 {
-	struct rtc_data *d = malloc(sizeof(struct rtc_data));
+	struct rtc_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct rtc_data)));
 	memset(d, 0, sizeof(struct rtc_data));
-	d->irq_nr = devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    devinit->addr, DEV_RTC_LENGTH, dev_rtc_access, (void *)d,
 	    DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(devinit->machine,
-	    dev_rtc_tick, d, DEV_RTC_TICK_SHIFT, 0.0);
+	    dev_rtc_tick, d, DEV_RTC_TICK_SHIFT);
 
 	return 1;
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: lk201.c,v 1.27 2006/09/06 04:55:35 debug Exp $
- *  
- *  LK201 keyboard and mouse specifics, used by the dc7085 and scc serial
- *  controller devices.
+ *  $Id: lk201.c,v 1.29.2.1 2008-01-18 19:12:31 debug Exp $
+ *
+ *  COMMENT: LK201 keyboard and mouse, used by the dc7085 and scc controllers
  */
 
 #include <stdio.h>

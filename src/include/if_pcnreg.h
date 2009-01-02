@@ -1,4 +1,4 @@
-/*  GXemul: $Id: if_pcnreg.h,v 1.1 2006/07/26 07:42:03 debug Exp $  */
+/*  GXemul: $Id: if_pcnreg.h,v 1.1 2006-07-26 07:42:03 debug Exp $  */
 /*	$NetBSD: if_pcnreg.h,v 1.3 2002/09/04 01:36:07 thorpej Exp $	*/
 
 /*

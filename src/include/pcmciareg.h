@@ -1,4 +1,4 @@
-/*  gxemul: $Id: pcmciareg.h,v 1.1 2005/03/15 09:54:06 debug Exp $  */
+/*  gxemul: $Id: pcmciareg.h,v 1.1 2005-03-15 09:54:06 debug Exp $  */
 /*  $NetBSD: pcmciareg.h,v 1.7 1998/10/29 09:45:52 enami Exp $  */
 
 #ifndef PCMCIAREG_H

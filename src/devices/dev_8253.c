@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_8253.c,v 1.16 2006/08/22 15:13:03 debug Exp $
+ *  $Id: dev_8253.c,v 1.20.2.1 2008-01-18 19:12:27 debug Exp $
  *
- *  Intel 8253/8254 Programmable Interval Timer
+ *  COMMENT: Intel 8253/8254 Programmable Interval Timer
  *
  *  TODO/NOTE:
  *	The timers don't really count down. Timer 0 causes clock interrupts
@@ -44,6 +44,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "emul.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -52,7 +53,7 @@
 #include "i8253reg.h"
 
 
-#define debug fatal
+/*  #define debug fatal  */
 
 #define	DEV_8253_LENGTH		4
 #define	TICK_SHIFT		14
@@ -70,25 +71,23 @@ struct pit8253_data {
 	int		hz[3];
 
 	struct timer	*timer0;
-	int		irq0_nr;
+	struct interrupt irq;
 	int		pending_interrupts_timer0;
 };
 
 
 static void timer0_tick(struct timer *t, void *extra)
 {
-	struct pit8253_data *d = (struct pit8253_data *) extra;
+	struct pit8253_data *d = extra;
 	d->pending_interrupts_timer0 ++;
 
-#if 0
-	printf("%i ", d->pending_interrupts_timer0); fflush(stdout);
-#endif
+	/*  printf("%i ", d->pending_interrupts_timer0); fflush(stdout);  */
 }
 
 
 DEVICE_TICK(8253)
 {
-	struct pit8253_data *d = (struct pit8253_data *) extra;
+	struct pit8253_data *d = extra;
 
 	if (!d->in_use)
 		return;
@@ -97,7 +96,7 @@ DEVICE_TICK(8253)
 
 	case I8253_TIMER_INTTC:
 		if (d->pending_interrupts_timer0 > 0)
-			cpu_interrupt(cpu, d->irq0_nr);
+			INTERRUPT_ASSERT(d->irq);
 		break;
 
 	case I8253_TIMER_SQWAVE:
@@ -240,15 +239,14 @@ DEVICE_ACCESS(8253)
 
 DEVINIT(8253)
 {
-	struct pit8253_data *d = malloc(sizeof(struct pit8253_data));
+	struct pit8253_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pit8253_data)));
 	memset(d, 0, sizeof(struct pit8253_data));
-	d->irq0_nr = devinit->irq_nr;
+
 	d->in_use = devinit->in_use;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	/*  Don't cause interrupt, by default.  */
 	d->mode[0] = I8253_TIMER_RATEGEN;
@@ -263,7 +261,7 @@ DEVINIT(8253)
 	    DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(devinit->machine, dev_8253_tick,
-	    d, TICK_SHIFT, 0.0);
+	    d, TICK_SHIFT);
 
 	return 1;
 }

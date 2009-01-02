@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,12 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_scc.c,v 1.35 2006/08/30 16:10:02 debug Exp $
- *  
- *  Serial controller on some DECsystems and SGI machines. (Z8530 ?)
- *  Most of the code in here is written for DECsystem emulation, though.
+ *  $Id: dev_scc.c,v 1.40.2.1 2008-01-18 19:12:30 debug Exp $
+ *
+ *  COMMENT: Serial controller used in some DECsystem and SGI machines
+ *
+ *  Hm... Same as Z8530? Most of the code in here is written for DECsystem
+ *  emulation, though.
  *
  *  NOTE:
  *	Each scc device is responsible for two lines; the first scc device
@@ -149,8 +151,8 @@ static unsigned char rx_nextchar(struct scc_data *d, int portnr)
 
 DEVICE_TICK(scc)
 {
+	struct scc_data *d = extra;
 	int i;
-	struct scc_data *d = (struct scc_data *) extra;
 
 	/*  Add keystrokes to the rx queue:  */
 	if (d->use_fb == 0 && d->scc_nr == 1) {
@@ -184,8 +186,11 @@ DEVICE_TICK(scc)
 				if (d->scc_register_r[i * N_SCC_REGS + SCC_RR3]
 				    & SCC_RR3_TX_IP_A ||
 				    d->scc_register_r[i * N_SCC_REGS + SCC_RR3]
-				    & SCC_RR3_TX_IP_B)
-					cpu_interrupt(cpu, d->irq_nr);
+				    & SCC_RR3_TX_IP_B) {
+fatal("TODO: legacy rewrite!\n");
+abort();
+//					cpu_interrupt(cpu, d->irq_nr);
+				}
 			}
 
 			/*  RX interrupts?  */
@@ -204,8 +209,11 @@ DEVICE_TICK(scc)
 				if (d->scc_register_r[i * N_SCC_REGS + SCC_RR3]
 				    & SCC_RR3_RX_IP_A ||
 				    d->scc_register_r[i * N_SCC_REGS + SCC_RR3]
-				    & SCC_RR3_RX_IP_B)
-					cpu_interrupt(cpu, d->irq_nr);
+				    & SCC_RR3_RX_IP_B) {
+fatal("TODO: legacy rewrite!\n");
+abort();
+//					cpu_interrupt(cpu, d->irq_nr);
+				}
 			}
 
 			if (d->scc_register_w[N_SCC_REGS + SCC_WR1] &
@@ -227,9 +235,11 @@ DEVICE_TICK(scc)
 				    d->scc_register_r[i * N_SCC_REGS + SCC_RR3]
 				    & SCC_RR3_EXT_IP_B)
 {
-					cpu_interrupt(cpu, d->irq_nr);
+fatal("TODO: legacy rewrite!\n");
+abort();
+//					cpu_interrupt(cpu, d->irq_nr);
 /*  TODO: huh?  */
-cpu_interrupt(cpu, 8 + 0x02000000);
+//cpu_interrupt(cpu, 8 + 0x02000000);
 }
 			}
 		}
@@ -297,7 +307,7 @@ int dev_scc_dma_func(struct cpu *cpu, void *extra, uint64_t addr,
 
 DEVICE_ACCESS(scc)
 {
-	struct scc_data *d = (struct scc_data *) extra;
+	struct scc_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int port;
 	int ultrix_mode = 0;
@@ -346,7 +356,10 @@ DEVICE_ACCESS(scc)
 
 				d->scc_register_r[port * N_SCC_REGS +
 				    SCC_RR3] = 0;
-				cpu_interrupt_ack(cpu, d->irq_nr);
+
+fatal("TODO: legacy rewrite!\n");
+abort();
+//				cpu_interrupt_ack(cpu, d->irq_nr);
 			}
 
 #ifdef SCC_DEBUG
@@ -393,10 +406,13 @@ DEVICE_ACCESS(scc)
 
 			/*  TODO:  perhaps only clear the RX part of RR3?  */
 			d->scc_register_r[N_SCC_REGS + SCC_RR3] = 0;
-			cpu_interrupt_ack(cpu, d->irq_nr);
 
-			debug("[ scc: (port %i) read from 0x%08lx: 0x%02x ]\n",
-			    port, (long)relative_addr, (int)odata);
+fatal("TODO: legacy rewrite!\n");
+abort();
+//			cpu_interrupt_ack(cpu, d->irq_nr);
+
+//			debug("[ scc: (port %i) read from 0x%08lx: 0x%02x ]\n",
+//			    port, (long)relative_addr, (int)odata);
 		} else {
 			/*  debug("[ scc: (port %i) write to  0x%08lx: "
 			    "0x%08x ]\n", port, (long)relative_addr,
@@ -460,12 +476,9 @@ void *dev_scc_init(struct machine *machine, struct memory *mem,
 {
 	struct scc_data *d;
 
-	d = malloc(sizeof(struct scc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct scc_data)));
 	memset(d, 0, sizeof(struct scc_data));
+
 	d->irq_nr  = irq_nr;
 	d->scc_nr  = scc_nr;
 	d->use_fb  = use_fb;
@@ -477,7 +490,7 @@ void *dev_scc_init(struct machine *machine, struct memory *mem,
 
 	memory_device_register(mem, "scc", baseaddr, DEV_SCC_LENGTH,
 	    dev_scc_access, d, DM_DEFAULT, NULL);
-	machine_add_tickfunction(machine, dev_scc_tick, d, SCC_TICK_SHIFT, 0.0);
+	machine_add_tickfunction(machine, dev_scc_tick, d, SCC_TICK_SHIFT);
 
 	return (void *) d;
 }

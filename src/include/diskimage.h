@@ -2,7 +2,7 @@
 #define	DISKIMAGE_H
 
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: diskimage.h,v 1.32 2006/09/05 06:13:27 debug Exp $
+ *  $Id: diskimage.h,v 1.36.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Generic disk image functions.  (See diskimage.c for more info.)
  */
@@ -45,13 +45,28 @@
 
 #define	DISKIMAGE_TYPES		{ "(NONE)", "SCSI", "IDE", "FLOPPY" }
 
+
+/*  512 bytes per overlay block. Don't change this.  */
+#define	OVERLAY_BLOCK_SIZE	512
+
+struct diskimage_overlay {
+	char		*overlay_basename;
+	FILE		*f_data;
+	FILE		*f_bitmap;
+};
+
 struct diskimage {
 	struct diskimage *next;
 	int		type;		/*  DISKIMAGE_SCSI, etc  */
 	int		id;		/*  SCSI id  */
 
+	/*  Filename in host's file system:  */
 	char		*fname;
 	FILE		*f;
+
+	/*  Overlays:  */
+	int		nr_of_overlays;
+	struct diskimage_overlay *overlays;
 
 	int		chs_override;
 	int		cylinders;
@@ -59,6 +74,7 @@ struct diskimage {
 	int		sectors_per_track;
 
 	off_t		total_size;
+	int64_t		override_base_offset;
 	int		logical_block_size;
 
 	int		writable;
@@ -103,19 +119,27 @@ struct scsi_transfer {
 
 struct machine;
 
+
+/*  diskimage_scsicmd.c:  */
 struct scsi_transfer *scsi_transfer_alloc(void);
 void scsi_transfer_free(struct scsi_transfer *);
 void scsi_transfer_allocbuf(size_t *lenp, unsigned char **pp,
 	size_t want_len, int clearflag);
-
-
-int64_t diskimage_getsize(struct machine *machine, int id, int type);
-void diskimage_getchs(struct machine *machine, int id, int type,
-	int *c, int *h, int *s);
 int diskimage_scsicommand(struct cpu *cpu, int id, int type,
 	struct scsi_transfer *);
+
+
+/*  diskimage.c:  */
+int64_t diskimage_getsize(struct machine *machine, int id, int type);
+int64_t diskimage_get_baseoffset(struct machine *machine, int id, int type);
+void diskimage_getchs(struct machine *machine, int id, int type,
+	int *c, int *h, int *s);
+int diskimage__internal_access(struct diskimage *d, int writeflag,
+	off_t offset, unsigned char *buf, size_t len);
 int diskimage_access(struct machine *machine, int id, int type, int writeflag,
 	off_t offset, unsigned char *buf, size_t len);
+void diskimage_add_overlay(struct diskimage *d, char *overlay_basename);
+void diskimage_recalc_size(struct diskimage *d);
 int diskimage_exist(struct machine *machine, int id, int type);
 int diskimage_bootdev(struct machine *machine, int *typep);
 int diskimage_add(struct machine *machine, char *fname);
@@ -124,6 +148,7 @@ int diskimage_getname(struct machine *machine, int id, int type,
 int diskimage_is_a_cdrom(struct machine *machine, int id, int type);
 int diskimage_is_a_tape(struct machine *machine, int id, int type);
 void diskimage_dump_info(struct machine *machine);
+
 
 /*
  *  SCSI commands: 

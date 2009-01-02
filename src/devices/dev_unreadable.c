@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_unreadable.c,v 1.13 2006/02/25 12:55:20 debug Exp $
+ *  $Id: dev_unreadable.c,v 1.15.2.1 2008-01-18 19:12:30 debug Exp $
  *  
- *  A simple device which returns an error for all accesses (both reads and
- *  writes).
+ *  COMMENT: A simple device which returns an error for all reads/writes
  */
 
 #include <stdio.h>

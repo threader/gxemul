@@ -1,4 +1,4 @@
-/*  gxemul: $Id: dec_maxine.h,v 1.3 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: dec_maxine.h,v 1.3 2005-03-05 12:34:02 debug Exp $  */
 /*	$NetBSD: maxine.h,v 1.8 2000/02/29 04:41:57 nisimura Exp $	*/
 
 /*-

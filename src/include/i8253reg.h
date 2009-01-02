@@ -1,4 +1,4 @@
-/*  GXemul: $Id: i8253reg.h,v 1.1 2006/07/18 19:48:03 debug Exp $  */
+/*  GXemul: $Id: i8253reg.h,v 1.1 2006-07-18 19:48:03 debug Exp $  */
 /*	$NetBSD: i8253reg.h,v 1.9 2005/12/11 12:21:26 christos Exp $	*/
 
 #ifndef I8253REG_H

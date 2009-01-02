@@ -1,4 +1,4 @@
-/*  GXemul: $Id: dreamcast_pvr.h,v 1.6 2006/10/31 08:27:26 debug Exp $  */
+/*  GXemul: $Id: dreamcast_pvr.h,v 1.6 2006-10-31 08:27:26 debug Exp $  */
 /*	$NetBSD: pvr.c,v 1.22 2006/04/12 19:38:22 jmmv Exp $	*/
 
 #ifndef	DREAMCAST_PVR_H

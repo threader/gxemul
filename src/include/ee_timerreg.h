@@ -1,4 +1,4 @@
-/*  gxemul: $Id: ee_timerreg.h,v 1.3 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: ee_timerreg.h,v 1.3 2005-03-05 12:34:02 debug Exp $  */
 /*	$NetBSD: timerreg.h,v 1.1 2001/10/16 15:38:40 uch Exp $	*/
 
 /*-

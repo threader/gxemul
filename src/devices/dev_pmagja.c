@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pmagja.c,v 1.19 2006/01/01 13:17:16 debug Exp $
+ *  $Id: dev_pmagja.c,v 1.22.2.1 2008-01-18 19:12:29 debug Exp $
  *  
- *  TURBOchannel PMAG-JA graphics device.
+ *  COMMENT: TURBOchannel PMAG-JA graphics card
  *
  *  TODO
  */
@@ -50,27 +50,24 @@
 /*  #define JA_DEBUG  */
 
 struct pmagja_data {
-	int		irq_nr;
-	struct memory	*fb_mem;
-	struct vfb_data	*vfb_data;
+	struct interrupt	irq;
+	struct memory		*fb_mem;
+	struct vfb_data		*vfb_data;
 
-	unsigned char	pixeldata[XSIZE * YSIZE];
+	unsigned char		pixeldata[XSIZE * YSIZE];
 
-	int		current_r;
-	int		current_g;
-	int		current_b;
+	int			current_r;
+	int			current_g;
+	int			current_b;
 
-	int		pip_offset;
+	int			pip_offset;
 };
 
 
-/*
- *  dev_pmagja_access():
- */
 DEVICE_ACCESS(pmagja)
 {
-	uint64_t idata = 0, odata = 0;
 	struct pmagja_data *d = extra;
+	uint64_t idata = 0, odata = 0;
 	size_t i, res = 1;
 
 	if (writeflag == MEM_WRITE)
@@ -198,22 +195,15 @@ for (i=0; i<len; i++)
 }
 
 
-/*
- *  dev_pmagja_init():
- */
 void dev_pmagja_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr)
+	uint64_t baseaddr, char *irq_path)
 {
 	struct pmagja_data *d;
 
-	d = malloc(sizeof(struct pmagja_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct pmagja_data)));
 	memset(d, 0, sizeof(struct pmagja_data));
 
-	d->irq_nr = irq_nr;
+	INTERRUPT_CONNECT(irq_path, d->irq);
 
 	d->fb_mem = memory_new(XSIZE * YSIZE * 3, machine->arch);
 	if (d->fb_mem == NULL) {
@@ -229,7 +219,7 @@ void dev_pmagja_init(struct machine *machine, struct memory *mem,
 
 	/*  TODO: not bt459, but a bt463:  */
 	dev_bt459_init(machine, mem, baseaddr + 0x40000, 0, d->vfb_data, 8,
-	    irq_nr, 0);	/*  palette  (TODO: type)  */
+	    irq_path, 0);	/*  palette  (TODO: type)  */
 	dev_bt431_init(mem, baseaddr + 0x40010, d->vfb_data, 8);  /*  cursor  */
 
 	memory_device_register(mem, "pmagja", baseaddr + PMAGJA_FIRSTOFFSET,

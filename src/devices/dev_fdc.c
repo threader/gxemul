@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_fdc.c,v 1.18 2006/02/09 20:02:59 debug Exp $
+ *  $Id: dev_fdc.c,v 1.21.2.1 2008-01-18 19:12:28 debug Exp $
  *  
- *  PC-style floppy controller.
+ *  COMMENT: PC-style floppy controller
  *
  *  TODO!  (This is just a dummy skeleton right now.)
  *
@@ -42,6 +42,7 @@
 #include <string.h>
 
 #include "device.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -51,19 +52,16 @@
 
 
 struct fdc_data {
-	unsigned char	reg[DEV_FDC_LENGTH];
-	int		irqnr;
+	uint8_t			reg[DEV_FDC_LENGTH];
+	struct interrupt	irq;
 };
 
 
-/*
- *  dev_fdc_access():
- */
 DEVICE_ACCESS(fdc)
 {
+	struct fdc_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	size_t i;
-	struct fdc_data *d = extra;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -95,13 +93,10 @@ DEVINIT(fdc)
 {
 	struct fdc_data *d;
 
-	d = malloc(sizeof(struct fdc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct fdc_data)));
 	memset(d, 0, sizeof(struct fdc_data));
-	d->irqnr = devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    devinit->addr, DEV_FDC_LENGTH, dev_fdc_access, d,

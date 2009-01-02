@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_hpcmips.c,v 1.3 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_hpcmips.c,v 1.9.2.1 2008-01-18 19:12:33 debug Exp $
+ *
+ *  COMMENT: Handheld MIPS-based machines
  */
 
 #include <stdio.h>
@@ -36,7 +38,6 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -83,13 +84,11 @@ MACHINE_SETUP(hpcmips)
 
 		/*  TODO: irq?  */
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=0 addr=0x"
-		    "0a008680 addr_mult=4 in_use=%i", machine->use_x11? 0 : 1);
+		    "0a008680 addr_mult=4 in_use=%i", !machine->x11_md.in_use);
 		machine->main_console_handle = (size_t)
 		    device_add(machine, tmpstr);
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4131);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4131);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -115,13 +114,11 @@ MACHINE_SETUP(hpcmips)
 
 		/*  TODO: irq?  */
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=0 addr=0x"
-		    "0a008680 addr_mult=4 in_use=%i", machine->use_x11? 0 : 1);
+		    "0a008680 addr_mult=4 in_use=%i", !machine->x11_md.in_use);
 		machine->main_console_handle = (size_t)
 		    device_add(machine, tmpstr);
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4121);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4121);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -136,7 +133,6 @@ MACHINE_SETUP(hpcmips)
 	case MACHINE_HPCMIPS_NEC_MOBILEPRO_770:
 		/*  131 MHz VR4121  */
 		machine->machine_name = "NEC MobilePro 770";
-		machine->stable = 1;
 		hpc_fb_addr = 0xa000000;
 		hpc_fb_xsize = 640;
 		hpc_fb_ysize = 240;
@@ -145,9 +141,7 @@ MACHINE_SETUP(hpcmips)
 		hpc_fb_bits = 16;
 		hpc_fb_encoding = BIFB_D16_0000;
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4121);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4121);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -162,7 +156,6 @@ MACHINE_SETUP(hpcmips)
 	case MACHINE_HPCMIPS_NEC_MOBILEPRO_780:
 		/*  166 (or 168) MHz VR4121  */
 		machine->machine_name = "NEC MobilePro 780";
-		machine->stable = 1;
 		hpc_fb_addr = 0xa180100;
 		hpc_fb_xsize = 640;
 		hpc_fb_ysize = 240;
@@ -171,9 +164,7 @@ MACHINE_SETUP(hpcmips)
 		hpc_fb_bits = 16;
 		hpc_fb_encoding = BIFB_D16_0000;
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4121);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4121);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -188,7 +179,6 @@ MACHINE_SETUP(hpcmips)
 	case MACHINE_HPCMIPS_NEC_MOBILEPRO_800:
 		/*  131 MHz VR4121  */
 		machine->machine_name = "NEC MobilePro 800";
-		machine->stable = 1;
 		hpc_fb_addr = 0xa000000;
 		hpc_fb_xsize = 800;
 		hpc_fb_ysize = 600;
@@ -197,9 +187,7 @@ MACHINE_SETUP(hpcmips)
 		hpc_fb_bits = 16;
 		hpc_fb_encoding = BIFB_D16_0000;
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4121);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4121);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -214,7 +202,6 @@ MACHINE_SETUP(hpcmips)
 	case MACHINE_HPCMIPS_NEC_MOBILEPRO_880:
 		/*  168 MHz VR4121  */
 		machine->machine_name = "NEC MobilePro 880";
-		machine->stable = 1;
 		hpc_fb_addr = 0xa0ea600;
 		hpc_fb_xsize = 800;
 		hpc_fb_ysize = 600;
@@ -223,9 +210,7 @@ MACHINE_SETUP(hpcmips)
 		hpc_fb_bits = 16;
 		hpc_fb_encoding = BIFB_D16_0000;
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4121);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4121);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -249,9 +234,7 @@ MACHINE_SETUP(hpcmips)
 		hpc_fb_bits = 4;
 		hpc_fb_encoding = BIFB_D4_M2L_F;
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4181);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4181);
 
 		/*  TODO: Hm... irq 17 according to linux, but
 		    VRIP_INTR_SIU (=9) here?  */
@@ -261,7 +244,7 @@ MACHINE_SETUP(hpcmips)
 			    "ns16550 irq=%i addr=0x0c000010", 8+VRIP_INTR_SIU);
 			x = (size_t)device_add(machine, tmpstr);
 
-			if (!machine->use_x11)
+			if (!machine->x11_md.in_use)
 				machine->main_console_handle = x;
 		}
 
@@ -290,9 +273,7 @@ MACHINE_SETUP(hpcmips)
 		hpc_fb_bits = 16;
 		hpc_fb_encoding = BIFB_D16_0000;
 
-		machine->md_int.vr41xx_data = dev_vr41xx_init(machine,
-		    machine->memory, 4121);
-		machine->md_interrupt = vr41xx_interrupt;
+		dev_vr41xx_init(machine, machine->memory, 4121);
 
 		hpc_platid_cpu_arch = 1;	/*  MIPS  */
 		hpc_platid_cpu_series = 1;	/*  VR  */
@@ -315,11 +296,6 @@ MACHINE_SETUP(hpcmips)
 	store_32bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.
 	    platid_machine, (hpc_platid_vendor << 22) + (hpc_platid_series<<16)
 	    + (hpc_platid_model <<  8) + hpc_platid_submodel);
-
-	if (machine->use_x11) {
-		machine->main_console_handle =
-		    machine->md_int.vr41xx_data->kiu_console_handle;
-	}
 
 	if (hpc_fb_addr != 0) {
 		dev_fb_init(machine, machine->memory, hpc_fb_addr, VFB_HPC,
@@ -371,7 +347,7 @@ MACHINE_SETUP(hpcmips)
 		    "res:240,bpp:4,gray,hpck:3084,inv ether=0,0x03fe0300,eth0");
 		tmp[tmplen-1] = '\0';
 
-		if (!machine->use_x11)
+		if (!machine->x11_md.in_use)
 			snprintf(tmp+strlen(tmp), tmplen-strlen(tmp),
 			    " console=ttyS0,115200");
 		tmp[tmplen-1] = '\0';
