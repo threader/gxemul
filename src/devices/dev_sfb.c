@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sfb.c,v 1.11.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sfb.c,v 1.11.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: SFB TURBOchannel framebuffer (graphics card)
  *

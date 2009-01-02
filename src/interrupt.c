@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: interrupt.c,v 1.13.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: interrupt.c,v 1.13.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  The interrupt subsystem.
  *

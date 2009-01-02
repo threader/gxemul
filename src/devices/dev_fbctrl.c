@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_fbctrl.c,v 1.6.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_fbctrl.c,v 1.6.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: Framebuffer controller device (control's dev_fb in test machines)
  *

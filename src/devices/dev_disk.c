@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_disk.c,v 1.15.2.2 2008/02/24 05:43:17 debug Exp $
+ *  $Id: dev_disk.c,v 1.15.2.2 2008-02-24 05:43:17 debug Exp $
  *
  *  COMMENT: A simple disk controller device, for the test machines
  *

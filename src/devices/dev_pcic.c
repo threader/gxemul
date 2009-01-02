@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pcic.c,v 1.20.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_pcic.c,v 1.20.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: Intel 82365SL PC Card Interface Controller
  *

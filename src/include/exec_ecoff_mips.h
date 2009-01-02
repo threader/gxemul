@@ -1,4 +1,4 @@
-/*  gxemul: $Id: exec_ecoff_mips.h,v 1.7 2005/03/05 12:34:02 debug Exp $
+/*  gxemul: $Id: exec_ecoff_mips.h,v 1.7 2005-03-05 12:34:02 debug Exp $
  *  Addition of some ECOFF magin numbers, and ECOFF_BADMAG has been commented
  *  out to avoid warnings on Solaris.
  */

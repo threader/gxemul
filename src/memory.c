@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory.c,v 1.206.2.2 2008/01/18 19:12:24 debug Exp $
+ *  $Id: memory.c,v 1.206.2.2 2008-01-18 19:12:24 debug Exp $
  *
  *  Functions for handling the memory of an emulated machine.
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_8259.c,v 1.30.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: dev_8259.c,v 1.30.2.1 2008-01-18 19:12:27 debug Exp $
  *  
  *  COMMENT: Intel 8259 Programmable Interrupt Controller
  *

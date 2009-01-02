@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_arc.c,v 1.20.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: machine_arc.c,v 1.20.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  COMMENT: ARC (Advanced RISC Computing) machines
  */

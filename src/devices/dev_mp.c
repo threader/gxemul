@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_mp.c,v 1.42.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_mp.c,v 1.42.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: Generic Multi-processor controller for the test machines
  *

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: x11.c,v 1.3.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: x11.c,v 1.3.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  X11-related functions.
  */

@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu.h,v 1.143.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: cpu.h,v 1.143.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  CPU-related definitions.
  */

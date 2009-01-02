@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dreamcast_rtc.c,v 1.4.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dreamcast_rtc.c,v 1.4.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Dreamcast Real-Time Clock
  *

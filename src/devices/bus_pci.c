@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: bus_pci.c,v 1.85.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: bus_pci.c,v 1.85.2.1 2008-01-18 19:12:27 debug Exp $
  *  
  *  COMMENT: Generic PCI bus framework
  *

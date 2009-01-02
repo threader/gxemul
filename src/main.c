@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: main.c,v 1.311.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: main.c,v 1.311.2.1 2008-01-18 19:12:24 debug Exp $
  */
 
 #include <stdio.h>

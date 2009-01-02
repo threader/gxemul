@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_dreamcast.c,v 1.33.2.2 2008/02/24 05:43:17 debug Exp $
+ *  $Id: machine_dreamcast.c,v 1.33.2.2 2008-02-24 05:43:17 debug Exp $
  *
  *  COMMENT: SEGA Dreamcast
  */

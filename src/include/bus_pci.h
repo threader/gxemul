@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: bus_pci.h,v 1.33.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: bus_pci.h,v 1.33.2.1 2008-01-18 19:12:31 debug Exp $
  */
 
 #include "misc.h"

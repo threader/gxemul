@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_sparc.c,v 1.3.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_sparc.c,v 1.3.2.1 2008-01-18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>

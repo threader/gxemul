@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_gbe.c,v 1.37.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sgi_gbe.c,v 1.37.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: SGI "gbe", graphics controller + framebuffer
  *

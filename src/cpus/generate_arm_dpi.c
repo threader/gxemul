@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_arm_dpi.c,v 1.6.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: generate_arm_dpi.c,v 1.6.2.1 2008-01-18 19:12:26 debug Exp $
  */
 
 #include <stdio.h>

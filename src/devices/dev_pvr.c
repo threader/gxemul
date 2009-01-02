@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pvr.c,v 1.24.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_pvr.c,v 1.24.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: PowerVR CLX2 (graphics controller used in the Dreamcast)
  *

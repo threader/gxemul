@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_vr41xx.c,v 1.47.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_vr41xx.c,v 1.47.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: VR41xx (VR4122 and VR4131) misc functions
  *

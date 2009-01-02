@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_pmax.c,v 1.29.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_pmax.c,v 1.29.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: Digital DECstation ("PMAX") machines
  */

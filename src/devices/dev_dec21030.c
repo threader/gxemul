@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec21030.c,v 1.7.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dec21030.c,v 1.7.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: DEC 21030 "TGA" graphics card
  *

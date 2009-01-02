@@ -27,7 +27,7 @@
 #  SUCH DAMAGE.
 #
 #
-#  $Id: configure,v 1.278.2.1 2008/01/18 19:12:22 debug Exp $
+#  $Id: configure,v 1.278.2.1 2008-01-18 19:12:22 debug Exp $
 #
 #  This is a minimal configure script, hardcoded for GXemul. This script
 #  figures out which compiler flags will work, and creates Makefiles in

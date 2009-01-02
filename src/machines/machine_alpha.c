@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_alpha.c,v 1.14.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: machine_alpha.c,v 1.14.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  COMMENT: DEC Alpha machines
  */

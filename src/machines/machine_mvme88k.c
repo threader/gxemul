@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_mvme88k.c,v 1.11.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_mvme88k.c,v 1.11.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: MVME88K machines (MVME187)
  *

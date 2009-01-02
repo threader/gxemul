@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: autodev_head.c,v 1.7.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: autodev_head.c,v 1.7.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Automatically register all devices from the devices/ subdir.
  *

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_pcc2.c,v 1.6.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_pcc2.c,v 1.6.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: Peripheral Channel Controller (PCC2) bus (used in MVME machines)
  *

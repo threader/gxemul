@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_ip22.c,v 1.33.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sgi_ip22.c,v 1.33.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: SGI IP22 stuff
  */

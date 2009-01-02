@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_m32r.c,v 1.2.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_m32r.c,v 1.2.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Virtual to physical memory translation for M32R emulation.
  *

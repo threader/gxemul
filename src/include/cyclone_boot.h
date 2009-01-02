@@ -1,4 +1,4 @@
-/*  GXemul: $Id: cyclone_boot.h,v 1.1 2005/08/20 12:47:06 debug Exp $  */
+/*  GXemul: $Id: cyclone_boot.h,v 1.1 2005-08-20 12:47:06 debug Exp $  */
 /*	$NetBSD: cyclone_boot.h,v 1.1 2001/06/20 22:14:34 chris Exp $	*/
 
 #ifndef CYCLONE_BOOT_H

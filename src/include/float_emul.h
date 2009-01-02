@@ -27,7 +27,7 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *  $Id: float_emul.h,v 1.4.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: float_emul.h,v 1.4.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Floating point emulation. See src/float_emul.c for the details.
  */

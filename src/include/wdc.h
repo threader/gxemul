@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: wdc.h,v 1.2.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: wdc.h,v 1.2.2.1 2008-01-18 19:12:32 debug Exp $
  */
 
 /*

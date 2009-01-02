@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_bt455.c,v 1.12.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_bt455.c,v 1.12.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Brooktree BT455, used by TURBOchannel graphics cards
  *

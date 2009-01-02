@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_kn230.c,v 1.19.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_kn230.c,v 1.19.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: DEC KN230 (MIPSMATE 5100) stuff
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_tail.c,v 1.21.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: generate_tail.c,v 1.21.2.1 2008-01-18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>

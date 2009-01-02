@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_uninorth.c,v 1.9.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_uninorth.c,v 1.9.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: Uni-North PCI controller (used by MacPPC machines)
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ether.c,v 1.19.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_ether.c,v 1.19.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: A simple ethernet controller, for the test machines
  *

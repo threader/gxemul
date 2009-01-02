@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_gt.c,v 1.53.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_gt.c,v 1.53.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Galileo Technology GT-64xxx PCI controller
  *

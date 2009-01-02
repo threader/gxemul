@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_zero.c,v 1.8.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: dev_zero.c,v 1.8.2.1 2008-01-18 19:12:31 debug Exp $
  *  
  *  COMMENT: A simple device which returns zero for reads, discards all writes
  */

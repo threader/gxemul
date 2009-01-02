@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_test.c,v 1.40.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_test.c,v 1.40.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: Various test machines
  *

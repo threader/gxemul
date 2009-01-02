@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_cons.c,v 1.42.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_cons.c,v 1.42.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: A simple console device, for the test machines
  *

@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: sh4_dmacreg.h,v 1.2.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: sh4_dmacreg.h,v 1.2.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  SH4 DMAC (DMA Controller) registers, as listed in the SH-7750 manual.
  */

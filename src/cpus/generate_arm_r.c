@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_arm_r.c,v 1.6.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: generate_arm_r.c,v 1.6.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Generate functions for computing "reg" operands.
  */

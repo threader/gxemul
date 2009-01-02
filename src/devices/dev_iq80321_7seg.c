@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_iq80321_7seg.c,v 1.4.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_iq80321_7seg.c,v 1.4.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: IQ80321 LED device
  *

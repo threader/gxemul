@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ram.c,v 1.25.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_ram.c,v 1.25.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: A generic RAM (memory) device
  *

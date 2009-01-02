@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_mips_v2p.c,v 1.17.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_mips_v2p.c,v 1.17.2.1 2008-01-18 19:12:27 debug Exp $
  */
 
 

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_hammerhead.c,v 1.6.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_hammerhead.c,v 1.6.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Hammerhead controller, for the secondary CPU on MacPPC machines
  */

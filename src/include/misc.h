@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: misc.h,v 1.259.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: misc.h,v 1.259.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Misc. definitions for gxemul.
  */

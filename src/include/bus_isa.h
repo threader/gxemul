@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: bus_isa.h,v 1.9.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: bus_isa.h,v 1.9.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  ISA bus.
  */

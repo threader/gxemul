@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_ppc.c,v 1.27.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_ppc.c,v 1.27.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Included from cpu_ppc.c.
  */

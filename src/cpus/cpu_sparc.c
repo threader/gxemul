@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sparc.c,v 1.47.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: cpu_sparc.c,v 1.47.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  SPARC CPU emulation.
  */

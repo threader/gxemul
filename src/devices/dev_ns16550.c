@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ns16550.c,v 1.62.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_ns16550.c,v 1.62.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: NS16550 serial controller
  *

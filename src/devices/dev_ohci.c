@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ohci.c,v 1.11.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_ohci.c,v 1.11.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: USB Open Host Controller Interface
  *

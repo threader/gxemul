@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_ppc_instr.c,v 1.77.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: cpu_ppc_instr.c,v 1.77.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  POWER/PowerPC instructions.
  *

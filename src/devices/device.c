@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: device.c,v 1.2.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: device.c,v 1.2.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  COMMENT: Device registry framework
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sii.c,v 1.21.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sii.c,v 1.21.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: SII SCSI controller, used in some DECstation systems
  *

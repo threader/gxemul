@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: console.c,v 1.3.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: console.c,v 1.3.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  Generic console support functions.
  *

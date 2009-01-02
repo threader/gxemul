@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: experiment_arm_multi.c,v 1.2.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: experiment_arm_multi.c,v 1.2.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  Given a list of common ARM load/store multiple opcodes, figure out (using 
  *  simple brute force), which n bits (where n is low, e.g. 7) that cause the

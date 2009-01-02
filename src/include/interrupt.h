@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: interrupt.h,v 1.5.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: interrupt.h,v 1.5.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Definitions related to the Interrupt subsystem.
  */

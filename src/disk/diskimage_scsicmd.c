@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: diskimage_scsicmd.c,v 1.2.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: diskimage_scsicmd.c,v 1.2.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Disk image support: SCSI command emulation.
  *

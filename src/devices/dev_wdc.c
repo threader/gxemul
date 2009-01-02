@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_wdc.c,v 1.76.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_wdc.c,v 1.76.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: Standard "wdc" IDE controller
  */

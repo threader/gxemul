@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_m8820x.c,v 1.9.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_m8820x.c,v 1.9.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: M88200/M88204 CMMU (Cache/Memory Management Unit)
  */

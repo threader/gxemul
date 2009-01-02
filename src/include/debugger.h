@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: debugger.h,v 1.10.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: debugger.h,v 1.10.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  See src/debugger/debugger.c.
  */

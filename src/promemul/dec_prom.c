@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dec_prom.c,v 1.14.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: dec_prom.c,v 1.14.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: DECstation PROM emulation
  *

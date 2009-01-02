@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec21143.c,v 1.31.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dec21143.c,v 1.31.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: DEC 21143 "Tulip" ethernet controller
  *

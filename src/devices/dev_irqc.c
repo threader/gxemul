@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_irqc.c,v 1.3.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_irqc.c,v 1.3.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: Generic IRQ controller for the test machines
  */

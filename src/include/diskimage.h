@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: diskimage.h,v 1.36.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: diskimage.h,v 1.36.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Generic disk image functions.  (See diskimage.c for more info.)
  */

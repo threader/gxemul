@@ -1,4 +1,4 @@
-/* GXemul: $Id: alpha_lcareg.h,v 1.2 2006/06/16 18:31:26 debug Exp $ */
+/* GXemul: $Id: alpha_lcareg.h,v 1.2 2006-06-16 18:31:26 debug Exp $ */
 /* $NetBSD: lcareg.h,v 1.8 1997/09/05 02:14:31 thorpej Exp $ */
 
 #ifndef ALPHA_LCAREG_H

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_m32r_instr.c,v 1.1.2.1 2008/01/18 19:12:25 debug Exp $
+ *  $Id: cpu_m32r_instr.c,v 1.1.2.1 2008-01-18 19:12:25 debug Exp $
  *
  *  M32R instructions.
  *

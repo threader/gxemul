@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh.c,v 1.76.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: cpu_sh.c,v 1.76.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  Hitachi SuperH ("SH") CPU emulation.
  *

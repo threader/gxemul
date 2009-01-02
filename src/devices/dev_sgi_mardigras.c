@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_mardigras.c,v 1.25.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sgi_mardigras.c,v 1.25.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: MardiGras graphics controller on SGI IP30 (Octane)
  *

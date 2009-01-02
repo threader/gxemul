@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: yamon.c,v 1.14.2.1 2008/01/18 19:12:34 debug Exp $
+ *  $Id: yamon.c,v 1.14.2.1 2008-01-18 19:12:34 debug Exp $
  *
  *  COMMENT: YAMON emulation
  *

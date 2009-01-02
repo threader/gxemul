@@ -1,4 +1,4 @@
-/*  GXemul: $Id: errno_netbsd.h,v 1.1 2007/06/15 01:08:13 debug Exp $  */
+/*  GXemul: $Id: errno_netbsd.h,v 1.1 2007-06-15 01:08:13 debug Exp $  */
 /*	$NetBSD: errno.h,v 1.39 2006/10/31 00:38:07 cbiere NETBSD_Exp $	*/
 
 #ifndef ERRNO_NETBSD_H

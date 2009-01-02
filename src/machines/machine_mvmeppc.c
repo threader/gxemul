@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_mvmeppc.c,v 1.22.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_mvmeppc.c,v 1.22.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: MVMEPPC machines
  *

@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips.h,v 1.61.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: cpu_mips.h,v 1.61.2.1 2008-01-18 19:12:31 debug Exp $
  */
 
 #include "interrupt.h"

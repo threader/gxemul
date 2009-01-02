@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_cpc700.c,v 1.12.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_cpc700.c,v 1.12.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: IBM CPC700 bridge (PCI and interrupt controller)
  */

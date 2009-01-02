@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_sparc.c,v 1.6.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_sparc.c,v 1.6.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: SUN SPARC machines
  */

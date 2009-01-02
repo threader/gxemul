@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_kn02.c,v 1.28.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_kn02.c,v 1.28.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: DEC KN02 mainbus (TurboChannel interrupt controller)
  *

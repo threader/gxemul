@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_ppc.c,v 1.72.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: cpu_ppc.c,v 1.72.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  PowerPC/POWER CPU emulation.
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_iq80321.c,v 1.26.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_iq80321.c,v 1.26.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: Intel IQ80321 (ARM)
  */

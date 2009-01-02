@@ -1,4 +1,4 @@
-/*  GXemul: $Id: alpha_cpu.h,v 1.2 2006/09/01 16:40:57 debug Exp $  */
+/*  GXemul: $Id: alpha_cpu.h,v 1.2 2006-09-01 16:40:57 debug Exp $  */
 /* $NetBSD: alpha_cpu.h,v 1.48 2006/02/16 20:17:13 perry Exp $ */
 
 #ifndef __ALPHA_ALPHA_CPU_H__

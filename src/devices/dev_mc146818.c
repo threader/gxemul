@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_mc146818.c,v 1.99.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_mc146818.c,v 1.99.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: MC146818 real-time clock
  *

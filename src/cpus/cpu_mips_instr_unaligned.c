@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips_instr_unaligned.c,v 1.4.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: cpu_mips_instr_unaligned.c,v 1.4.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  MIPS unaligned load/store instructions; the following args are used:
  *  

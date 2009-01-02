@@ -1,4 +1,4 @@
-/*  gxemul: $Id: dec_prom.h,v 1.7 2006/04/22 08:40:45 debug Exp $  */
+/*  gxemul: $Id: dec_prom.h,v 1.7 2006-04-22 08:40:45 debug Exp $  */
 #ifndef _PMAX_DEC_PROM_H_
 #define _PMAX_DEC_PROM_H_
 

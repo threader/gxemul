@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: net_ip.c,v 1.6.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: net_ip.c,v 1.6.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  Internet Protocol related networking stuff.
  */

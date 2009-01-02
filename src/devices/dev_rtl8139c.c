@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_rtl8139c.c,v 1.5.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_rtl8139c.c,v 1.5.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: Realtek 8139 ethernet controller
  *

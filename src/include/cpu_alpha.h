@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_alpha.h,v 1.49.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: cpu_alpha.h,v 1.49.2.1 2008-01-18 19:12:31 debug Exp $
  */
 
 #include "misc.h"

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_colorplanemask.c,v 1.14.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_colorplanemask.c,v 1.14.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Color plane mask, used in the DECstation 3100 machine
  *

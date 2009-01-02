@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_m88k_loadstore.c,v 1.1.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: generate_m88k_loadstore.c,v 1.1.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Automatic generation of M88K loads and stores:
  *

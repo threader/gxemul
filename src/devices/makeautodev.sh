@@ -27,7 +27,7 @@
 #  SUCH DAMAGE.
 #
 #
-#  $Id: makeautodev.sh,v 1.8.2.1 2008/01/18 19:12:31 debug Exp $
+#  $Id: makeautodev.sh,v 1.8.2.1 2008-01-18 19:12:31 debug Exp $
 
 
 printf "Generating autodev.c... "

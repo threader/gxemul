@@ -1,4 +1,4 @@
-/*  gxemul: $Id: exec_elf.h,v 1.7 2007/07/20 09:03:33 debug Exp $  */
+/*  gxemul: $Id: exec_elf.h,v 1.7 2007-07-20 09:03:33 debug Exp $  */
 
 #ifndef	__EXEC_ELF_H
 #define	__EXEC_ELF_H

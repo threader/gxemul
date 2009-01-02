@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: devices.h,v 1.242.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: devices.h,v 1.242.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Memory mapped devices.
  *

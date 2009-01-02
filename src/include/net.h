@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: net.h,v 1.17.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: net.h,v 1.17.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Emulated network support.  (See net.c for more info.)
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_rs5c313.c,v 1.3.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_rs5c313.c,v 1.3.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: RICOH RS5C313 Real Time Clock
  *

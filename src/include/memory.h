@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory.h,v 1.57.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: memory.h,v 1.57.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Memory related functions.
  */

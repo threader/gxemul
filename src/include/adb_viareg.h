@@ -1,4 +1,4 @@
-/*  GXemul: $Id: adb_viareg.h,v 1.1 2005/11/29 05:25:29 debug Exp $  */
+/*  GXemul: $Id: adb_viareg.h,v 1.1 2005-11-29 05:25:29 debug Exp $  */
 /*	$NetBSD: viareg.h,v 1.4 2001/06/19 12:02:56 simonb Exp $	*/
 
 #ifndef	ADB_VIAREG_H

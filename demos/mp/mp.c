@@ -1,5 +1,5 @@
 /*
- *  $Id: mp.c,v 1.1 2007/02/11 09:19:27 debug Exp $
+ *  $Id: mp.c,v 1.1 2007-02-11 09:19:27 debug Exp $
  *
  *  GXemul demo:  Multi-Processor test
  *

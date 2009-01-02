@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_8253.c,v 1.20.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: dev_8253.c,v 1.20.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  COMMENT: Intel 8253/8254 Programmable Interval Timer
  *

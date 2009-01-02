@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_alpha_instr_loadstore.c,v 1.6.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: cpu_alpha_instr_loadstore.c,v 1.6.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  Alpha load/store instructions.  (Included from cpu_alpha_instr_inc.c.)
  *

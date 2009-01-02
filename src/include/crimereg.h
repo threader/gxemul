@@ -1,4 +1,4 @@
-/*  gxemul: $Id: crimereg.h,v 1.2 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: crimereg.h,v 1.2 2005-03-05 12:34:02 debug Exp $  */
 /*	$NetBSD: crimereg.h,v 1.3 2002/03/13 13:12:26 simonb Exp $	*/
 
 /*

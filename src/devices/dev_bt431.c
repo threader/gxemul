@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_bt431.c,v 1.13.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_bt431.c,v 1.13.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Brooktree BT431, used by TURBOchannel graphics cards
  *

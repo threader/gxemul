@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_rw.c,v 1.1.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_rw.c,v 1.1.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Generic memory_rw(), with special hacks for specific CPU families.
  *

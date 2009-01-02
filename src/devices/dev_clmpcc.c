@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_clmpcc.c,v 1.6.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_clmpcc.c,v 1.6.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: Cirrus Logic 4-Channel Communications Controller (CD2400/CD2401)
  *

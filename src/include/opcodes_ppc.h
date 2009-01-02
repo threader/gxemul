@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: opcodes_ppc.h,v 1.50.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: opcodes_ppc.h,v 1.50.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *
  *  PPC and POWER opcodes. These are gathered from various sources.

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_mb8696x.c,v 1.4.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_mb8696x.c,v 1.4.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: Fujitsu MB8696x Ethernet interface (used in the Dreamcast)
  *

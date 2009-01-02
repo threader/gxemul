@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_arm_multi.c,v 1.15.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: generate_arm_multi.c,v 1.15.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Generation of commonly used ARM load/store multiple instructions.
  *

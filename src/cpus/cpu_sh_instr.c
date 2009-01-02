@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh_instr.c,v 1.64.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: cpu_sh_instr.c,v 1.64.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  SH instructions.
  *

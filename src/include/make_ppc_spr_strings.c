@@ -24,7 +24,7 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *  $Id: make_ppc_spr_strings.c,v 1.4.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: make_ppc_spr_strings.c,v 1.4.2.1 2008-01-18 19:12:32 debug Exp $
  */
 
 #include <stdio.h>

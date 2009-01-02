@@ -1,5 +1,5 @@
 /*
- *  $Id: fb_include.c,v 1.3 2006/10/17 07:55:53 debug Exp $
+ *  $Id: fb_include.c,v 1.3 2006-10-17 07:55:53 debug Exp $
  *
  *  Included from dev_fb.c.
  *

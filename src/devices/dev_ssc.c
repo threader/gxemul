@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ssc.c,v 1.31.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_ssc.c,v 1.31.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: System Support Chip serial controller
  *

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_random.c,v 1.9.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_random.c,v 1.9.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: A device which returns random data for reads, discards all writes
  */

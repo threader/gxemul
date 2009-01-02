@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_arm_coproc.c,v 1.28.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: cpu_arm_coproc.c,v 1.28.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  ARM coprocessor emulation.
  */

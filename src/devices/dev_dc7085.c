@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dc7085.c,v 1.62.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dc7085.c,v 1.62.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: DC7085 serial controller, used in some DECstation models
  */

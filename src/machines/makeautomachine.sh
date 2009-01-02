@@ -27,7 +27,7 @@
 #  SUCH DAMAGE.
 #
 #
-#  $Id: makeautomachine.sh,v 1.5.2.1 2008/01/18 19:12:33 debug Exp $
+#  $Id: makeautomachine.sh,v 1.5.2.1 2008-01-18 19:12:33 debug Exp $
 
 
 printf "Generating automachine.c... "

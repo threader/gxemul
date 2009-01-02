@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_kn220.c,v 1.8.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_kn220.c,v 1.8.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: DEC KN220 (DECsystem 5500) devices
  *

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: useremul.c,v 1.6.2.1 2008/01/18 19:12:34 debug Exp $
+ *  $Id: useremul.c,v 1.6.2.1 2008-01-18 19:12:34 debug Exp $
  *
  *  COMMENT: Userland (syscall) emulation framework
  */

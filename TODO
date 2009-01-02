@@ -1,43 +1,20 @@
 
-NOTE!
-
-I have begun working on GXemul 0.5.0, which is a total rewrite of GXemul
-from scratch. This is the _OLD_ todo file.
-
-===============================================================================
-
-
-
-$Id: TODO,v 1.560.2.2 2008/01/18 19:12:22 debug Exp $
-
 Some things, in no specific order, that I'd like to fix:
 (Some items in this list are perhaps already fixed.)
 
 -------------------------------------------------------------------------------
 
-NetBSD 4.0 regression testing:
-
-OK:
-	X  pmax 	including X Windows out-of-the-box! :)
-	X  arc  	1.6.2 -> 4.0! Yay!
-	X  hpcmips	works? but clock is standing still? (install says
-				50 MB/second!)
-	X  landisk	works fine :)
-	X  dreamcast	works fine
-	X  cats		ok, but with EXTREMELY LONG delays during boot
-	X  evbmips	works, but clock is going too fast.
-	X  macppc	ok
-
-Failed / Not tested:
-	   algor	iso is missing from ftp.netbsd.org
-	   cobalt	iso is missing from ftp.netbsd.org
-	   netwinder	iso is missing from ftp.netbsd.org
-
-Not tested: (lack of time, or no ISO image available?)
-	   sgimips
-	   evbarm
-	   prep
-	   pmppc
+0.4.6.6:
+	README
+	RELEASE NOTES
+	Send SVN dump to Sourceforge
+	Tarball creation
+	Sourceforge file release
+	Home page update
+	Freshmeat
+	Wikipedia page (version number and date)
+	#GXemul (version number in topic)
+	gxemul-users mail
 
 -------------------------------------------------------------------------------
 
@@ -135,13 +112,6 @@ SuperH:
 	x)  Floating point exception correctness.
 	x)  Exceptions for unaligned load/stores. OpenBSD/landisk uses
 	    this mechanism for its reboot code (machine_reset).
-
-Landisk SH4:
-	x)  When NetBSD/landisk 4.0 has been released, make sure it works
-	    in the emulator. (Update documentation, etc.)
-	    NetBSD HEAD (as of April 2007) hangs during bootup, because it
-	    turns on/off interrupts in an unfortunately synchronized way
-	    with dyntrans. This needs to be fixed.
 
 Dreamcast:
 	x)  G2 DMA
@@ -281,9 +251,6 @@ Debugger:
 	o)  Ctrl-C doesn't enter the debugger on some OSes (HP-UX?)...
 
 Dyntrans:
-	x)  NOTE: ARM etc. that load pc-relative constants, on writes to
-	    pages that contain translations, the ENTIRE page must be
-	    invalidated, not just the 1/32th that was code.
 	x)  For 32-bit emulation modes, that have emulated TLBs: tlbindex
 	    arrays of mapped pages? Things to think about:
 		x)  Only 32-bit mode! (64-bit => too much code)

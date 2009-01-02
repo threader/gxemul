@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dreamcast_g2.c,v 1.5.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dreamcast_g2.c,v 1.5.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Dreamcast G2 bus
  *

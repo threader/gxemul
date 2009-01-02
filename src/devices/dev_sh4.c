@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sh4.c,v 1.51.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sh4.c,v 1.51.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: SH4-specific memory mapped registers (0xf0000000 - 0xffffffff)
  *

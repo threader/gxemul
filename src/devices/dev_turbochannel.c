@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_turbochannel.c,v 1.50.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_turbochannel.c,v 1.50.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: TURBOchannel bus framework, used in DECstation machines
  */

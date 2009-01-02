@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips_instr.c,v 1.143.2.1 2008/01/18 19:12:25 debug Exp $
+ *  $Id: cpu_mips_instr.c,v 1.143.2.1 2008-01-18 19:12:25 debug Exp $
  *
  *  MIPS instructions.
  *

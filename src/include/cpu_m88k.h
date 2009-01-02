@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_m88k.h,v 1.22.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: cpu_m88k.h,v 1.22.2.1 2008-01-18 19:12:31 debug Exp $
  */
 
 #include "misc.h"

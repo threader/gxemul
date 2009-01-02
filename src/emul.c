@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: emul.c,v 1.302.2.1 2008/01/18 19:12:23 debug Exp $
+ *  $Id: emul.c,v 1.302.2.1 2008-01-18 19:12:23 debug Exp $
  *
  *  Emulation startup and misc. routines.
  */

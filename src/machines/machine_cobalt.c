@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_cobalt.c,v 1.12.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_cobalt.c,v 1.12.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: Cobalt (MIPS-based)
  */

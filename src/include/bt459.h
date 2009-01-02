@@ -1,4 +1,4 @@
-/*  gxemul: $Id: bt459.h,v 1.3 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: bt459.h,v 1.3 2005-03-05 12:34:02 debug Exp $  */
 
 #ifndef BT459_H
 #define	BT459_H

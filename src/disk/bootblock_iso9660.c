@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: bootblock_iso9660.c,v 1.4.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: bootblock_iso9660.c,v 1.4.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  ISO9660 CD-ROM "bootblock" handling.
  *
@@ -340,7 +340,7 @@ printf("\n");
 	memmove(tmpfname + 1, tmpfname, strlen(tmpfname) + 1);
 	tmpfname[0] = 8;
 
-	(*load_namesp)[*n_loadp - 1] = tmpfname;
+	(*load_namesp)[*n_loadp - 1] = strdup(tmpfname);
 
 	res = 1;
 

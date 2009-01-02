@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_alpha_misc.c,v 1.4.2.1 2008/01/18 19:12:26 debug Exp $
+ *  $Id: generate_alpha_misc.c,v 1.4.2.1 2008-01-18 19:12:26 debug Exp $
  */
 
 #include <stdio.h>

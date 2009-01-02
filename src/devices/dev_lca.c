@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_lca.c,v 1.10.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_lca.c,v 1.10.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: LCA PCI bus, for Alpha machines
  */

@@ -24,7 +24,7 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *   
- *  $Id: dev_gc.c,v 1.14.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_gc.c,v 1.14.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Grand Central Interrupt controller (used by MacPPC)
  */

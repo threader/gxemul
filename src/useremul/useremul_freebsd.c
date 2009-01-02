@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: useremul_freebsd.c,v 1.6.2.1 2008/01/18 19:12:34 debug Exp $
+ *  $Id: useremul_freebsd.c,v 1.6.2.1 2008-01-18 19:12:34 debug Exp $
  *
  *  COMMENT: FreeBSD userland (syscall) emulation implementation
  */

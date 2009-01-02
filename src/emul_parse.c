@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: emul_parse.c,v 1.46.2.1 2008/01/18 19:12:23 debug Exp $
+ *  $Id: emul_parse.c,v 1.46.2.1 2008-01-18 19:12:23 debug Exp $
  *
  *  Set up an emulation by parsing a config file.
  *

@@ -1,4 +1,4 @@
-/*  gxemul: $Id: exec_aout.h,v 1.3 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: exec_aout.h,v 1.3 2005-03-05 12:34:02 debug Exp $  */
 
 #ifndef	__EXEC_AOUT_H
 #define	__EXEC_AOUT_H

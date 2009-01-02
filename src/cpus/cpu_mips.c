@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips.c,v 1.84.2.1 2008/01/18 19:12:25 debug Exp $
+ *  $Id: cpu_mips.c,v 1.84.2.1 2008-01-18 19:12:25 debug Exp $
  *
  *  MIPS core CPU emulation.
  */

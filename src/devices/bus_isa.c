@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: bus_isa.c,v 1.20.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: bus_isa.c,v 1.20.2.1 2008-01-18 19:12:27 debug Exp $
  *  
  *  COMMENT: Generic ISA bus framework
  *

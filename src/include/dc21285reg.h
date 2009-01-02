@@ -1,4 +1,4 @@
-/*  GXemul: $Id: dc21285reg.h,v 1.1 2005/09/13 20:56:54 debug Exp $  */
+/*  GXemul: $Id: dc21285reg.h,v 1.1 2005-09-13 20:56:54 debug Exp $  */
 /*  $NetBSD: dc21285reg.h,v 1.4 2003/01/17 22:29:43 thorpej Exp $  */
 
 #ifndef	DC21285REG_H

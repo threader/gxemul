@@ -1,4 +1,4 @@
-/*  GXemul: $Id: ppc_pte.h,v 1.1 2005/11/22 16:26:39 debug Exp $  */
+/*  GXemul: $Id: ppc_pte.h,v 1.1 2005-11-22 16:26:39 debug Exp $  */
 /*	$NetBSD: pte.h,v 1.5 2003/11/21 22:57:14 matt Exp $	*/
 
 #ifndef	_POWERPC_OEA_PTE_H_

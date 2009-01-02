@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_arm.c,v 1.38.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_arm.c,v 1.38.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *
  *  TODO/NOTE:  The B and/or C bits could also cause the return value to

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_jazz.c,v 1.30.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_jazz.c,v 1.30.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: Microsoft Jazz-related stuff (Acer PICA-61, etc)
  *

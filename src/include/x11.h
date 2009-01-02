@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: x11.h,v 1.7.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: x11.h,v 1.7.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Headerfile for src/x11.c.
  */

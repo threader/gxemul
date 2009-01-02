@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec5800.c,v 1.23.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dec5800.c,v 1.23.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: DECsystem 58x0 devices
  *

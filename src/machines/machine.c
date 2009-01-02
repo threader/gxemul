@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: machine.c,v 1.5.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: machine.c,v 1.5.2.1 2008-01-18 19:12:32 debug Exp $
  */
 
 #include <stdio.h>

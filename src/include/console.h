@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: console.h,v 1.18.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: console.h,v 1.18.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Console functions.  (See console.c for more info.)
  */

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: file.c,v 1.5.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: file.c,v 1.5.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  This module contains functions which load executable images into (emulated)
  *  memory. File formats recognized so far are:

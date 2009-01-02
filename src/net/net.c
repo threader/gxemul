@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: net.c,v 1.12.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: net.c,v 1.12.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  Emulated network.
  *

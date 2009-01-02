@@ -1,4 +1,4 @@
-/*  GXemul: $Id: clmpccreg.h,v 1.1 2007/05/15 12:35:14 debug Exp $  */
+/*  GXemul: $Id: clmpccreg.h,v 1.1 2007-05-15 12:35:14 debug Exp $  */
 /*  $NetBSD: clmpccreg.h,v 1.3 1999/11/28 12:23:18 scw Exp $ */
 
 #ifndef __clmpccreg_h

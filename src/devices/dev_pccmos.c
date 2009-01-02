@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pccmos.c,v 1.31.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_pccmos.c,v 1.31.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: PC CMOS/RTC device (ISA ports 0x70 and 0x71)
  *

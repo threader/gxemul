@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_z8530.c,v 1.16.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_z8530.c,v 1.16.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: Zilog Z8530 "zs" serial controller
  *

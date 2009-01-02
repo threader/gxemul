@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ahc.c,v 1.8.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_ahc.c,v 1.8.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: Adaptec AHC SCSI controller
  *

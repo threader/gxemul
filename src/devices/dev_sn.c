@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sn.c,v 1.19.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_sn.c,v 1.19.2.1 2008-01-18 19:12:30 debug Exp $
  *  
  *  COMMENT: National Semiconductor SONIC ("sn") DP83932 ethernet controller
  *

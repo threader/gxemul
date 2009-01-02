@@ -1,4 +1,4 @@
-/*  GXemul: $Id: cpc700reg.h,v 1.2 2005/11/23 23:31:37 debug Exp $  */
+/*  GXemul: $Id: cpc700reg.h,v 1.2 2005-11-23 23:31:37 debug Exp $  */
 /*	$NetBSD: cpc700reg.h,v 1.3 2003/11/07 17:03:42 augustss Exp $	*/
 
 #ifndef	CPC700REG_H

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_rtc.c,v 1.7.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_rtc.c,v 1.7.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: A generic Real-Time Clock device, for the test machines
  *

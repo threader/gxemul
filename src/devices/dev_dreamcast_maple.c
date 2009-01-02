@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dreamcast_maple.c,v 1.17.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dreamcast_maple.c,v 1.17.2.1 2008-01-18 19:12:28 debug Exp $
  *  
  *  COMMENT: Dreamcast Maple bus controller
  *

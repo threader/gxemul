@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_vme.c,v 1.5.2.1 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_vme.c,v 1.5.2.1 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: VME bus
  *

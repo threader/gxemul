@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: symbol.h,v 1.9.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: symbol.h,v 1.9.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Symbol handling routines.
  */

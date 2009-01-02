@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: settings.c,v 1.16.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: settings.c,v 1.16.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  A generic settings object. (This module should be 100% indepedent of GXemul
  *  and hence easily reusable.)  It is basically a tree structure of nodes,

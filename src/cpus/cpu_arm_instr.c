@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_arm_instr.c,v 1.77.2.1 2008/01/18 19:12:24 debug Exp $
+ *  $Id: cpu_arm_instr.c,v 1.77.2.3 2008-06-10 00:18:04 debug Exp $
  *
  *  ARM instructions.
  *
@@ -906,6 +906,19 @@ X(swi)
 	arm_exception(cpu, ARM_EXCEPTION_SWI);
 }
 Y(swi)
+
+
+/*
+ * bkpt:  Breakpoint instruction.
+ */
+X(bkpt)
+{
+	/*  Synchronize the program counter first:  */
+	cpu->pc &= 0xfffff000;
+	cpu->pc += ic->arg[0];
+	arm_exception(cpu, ARM_EXCEPTION_PREF_ABT);
+}
+Y(bkpt)
 
 
 /*
@@ -2786,6 +2799,13 @@ X(to_be_translated)
 			goto bad;
 		}
 
+		/*  "bkpt", ARMv5 and above  */
+		if ((iword & 0x0ff000f0) == 0x01200070) {
+			ic->f = cond_instr(bkpt);
+			ic->arg[0] = addr & 0xfff;
+			break;
+		}
+
 		/*  "mov pc,lr":  */
 		if ((iword & 0x0fffffff) == 0x01a0f00e) {
 			if (cpu->machine->show_trace_tree)
@@ -2904,12 +2924,18 @@ X(to_be_translated)
 		else
 			ic->arg[1] = (size_t)(void *)arm_r[iword & 0xfff];
 		if ((iword & 0x0e000010) == 0x06000010) {
+#if 0
 			if (!cpu->translation_readahead)
 				fatal("Not a Load/store TODO\n");
 			goto bad;
+#else
+			/*  GDB uses this for breakpoints.  */
+			ic->f = cond_instr(und);
+			ic->arg[0] = addr & 0xfff;
+#endif
 		}
 		/*  Special case: pc-relative load within the same page:  */
-		if (rn == ARM_PC && rd != ARM_PC && main_opcode < 6) {
+		if (rn == ARM_PC && rd != ARM_PC && main_opcode < 6 && l_bit) {
 			int ofs = (addr & 0xfff) + 8, max = 0xffc;
 			int b_bit = iword & 0x00400000;
 			if (b_bit)
@@ -2932,18 +2958,23 @@ X(to_be_translated)
 				if (p != NULL) {
 					memcpy(c, p + (a & 0xfff), len);
 				} else {
-					fatal("Hm? Internal error in "
-					    "cpu_arm_instr.c!\n");
-					goto bad;
+					if (!cpu->memory_rw(cpu, cpu->mem, a, &c[0],
+					    sizeof(c), MEM_READ, CACHE_DATA)) {
+						fatal("Hm? Internal error in "
+						    "cpu_arm_instr.c!\n");
+						goto bad;
+					}
 				}
-				if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
-					x = c[0] + (c[1]<<8) +
-					    (c[2]<<16) + (c[3]<<24);
-				else
-					x = c[3] + (c[2]<<8) +
-					    (c[1]<<16) + (c[0]<<24);
-				if (b_bit)
+				if (b_bit) {
 					x = c[0];
+				} else {
+					if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+						x = c[0] + (c[1]<<8) +
+						    (c[2]<<16) + (c[3]<<24);
+					else
+						x = c[3] + (c[2]<<8) +
+						    (c[1]<<16) + (c[0]<<24);
+				}
 				ic->arg[1] = x;
 			}
 		}
@@ -3109,7 +3140,7 @@ X(to_be_translated)
 		 *  For now, treat as Undefined instructions. This causes e.g.
 		 *  Linux/ARM to emulate these instructions (floating point).
 		 */
-#if 0
+#if 1
 		ic->f = cond_instr(und);
 		ic->arg[0] = addr & 0xfff;
 #else

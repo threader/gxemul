@@ -1,5 +1,5 @@
 /*
- *  $Id: disk.c,v 1.2 2006/05/22 04:53:52 debug Exp $
+ *  $Id: disk.c,v 1.2 2006-05-22 04:53:52 debug Exp $
  *
  *  GXemul demo:  Disk image access
  *

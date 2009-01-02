@@ -1,4 +1,4 @@
-/*  GXemul: $Id: igsfbreg.h,v 1.2 2006/08/11 17:43:30 debug Exp $  */
+/*  GXemul: $Id: igsfbreg.h,v 1.2 2006-08-11 17:43:30 debug Exp $  */
 /*	$NetBSD: igsfbreg.h,v 1.7 2005/12/11 12:21:27 christos Exp $ */
 
 /*

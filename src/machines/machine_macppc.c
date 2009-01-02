@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_macppc.c,v 1.16.2.1 2008/01/18 19:12:33 debug Exp $
+ *  $Id: machine_macppc.c,v 1.16.2.1 2008-01-18 19:12:33 debug Exp $
  *
  *  COMMENT: Generic PowerPC-based Macintosh machines
  *

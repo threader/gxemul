@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh.h,v 1.50.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: cpu_sh.h,v 1.50.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Note 1: Many things here are SH4-specific, so it probably doesn't work
  *          for SH3 emulation.

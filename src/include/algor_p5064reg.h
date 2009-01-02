@@ -1,4 +1,4 @@
-/*  GXemul: $Id: algor_p5064reg.h,v 1.1 2006/02/18 17:55:25 debug Exp $  */
+/*  GXemul: $Id: algor_p5064reg.h,v 1.1 2006-02-18 17:55:25 debug Exp $  */
 /*  $NetBSD: algor_p5064reg.h,v 1.2 2002/02/20 01:34:19 simonb Exp $  */
 
 #ifndef P5064_H

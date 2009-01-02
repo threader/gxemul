@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_asc.c,v 1.86.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_asc.c,v 1.86.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: NCR53C9X "ASC" SCSI controller
  *

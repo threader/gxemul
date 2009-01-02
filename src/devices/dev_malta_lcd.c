@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_malta_lcd.c,v 1.12.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_malta_lcd.c,v 1.12.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: Malta (evbmips) LCD display
  *

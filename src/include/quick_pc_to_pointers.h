@@ -1,4 +1,4 @@
-/*  $Id: quick_pc_to_pointers.h,v 1.1 2005/11/30 16:23:10 debug Exp $  */
+/*  $Id: quick_pc_to_pointers.h,v 1.1 2005-11-30 16:23:10 debug Exp $  */
 
 #ifdef quick_pc_to_pointers
 #undef quick_pc_to_pointers

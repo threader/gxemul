@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: bootblock.c,v 1.4.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: bootblock.c,v 1.4.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Bootblock handling:
  *

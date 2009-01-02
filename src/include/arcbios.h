@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: arcbios.h,v 1.14.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: arcbios.h,v 1.14.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Headerfile for src/arcbios.c.
  *

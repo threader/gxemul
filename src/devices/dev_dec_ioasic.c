@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec_ioasic.c,v 1.18.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_dec_ioasic.c,v 1.18.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: IOASIC device used in the DECstation "3MIN" and "3MAX" machines
  *

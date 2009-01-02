@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: debugger_cmds.c,v 1.14.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: debugger_cmds.c,v 1.14.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Debugger commands. Included from debugger.c.
  */

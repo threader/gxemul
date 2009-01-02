@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_alpha.c,v 1.8.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_alpha.c,v 1.8.2.1 2008-01-18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>

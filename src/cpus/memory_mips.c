@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_mips.c,v 1.11.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_mips.c,v 1.11.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  MIPS-specific memory routines. Included from cpu_mips.c.
  */

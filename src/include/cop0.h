@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cop0.h,v 1.13.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: cop0.h,v 1.13.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Misc. definitions for coprocessor 0.
  */

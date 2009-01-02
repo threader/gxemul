@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: device.h,v 1.21.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: device.h,v 1.21.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  Device registry.  (See device.c for more info.)
  */

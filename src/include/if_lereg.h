@@ -1,4 +1,4 @@
-/*  gxemul: $Id: if_lereg.h,v 1.4 2005/03/05 12:34:02 debug Exp $  */
+/*  gxemul: $Id: if_lereg.h,v 1.4 2005-03-05 12:34:02 debug Exp $  */
 /*	$NetBSD: if_lereg.h,v 1.4 1994/10/26 21:09:08 cgd Exp $	*/
 
 #ifndef IF_LEREG_H

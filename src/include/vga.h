@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: vga.h,v 1.8.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: vga.h,v 1.8.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  VGA register definitions, used by src/devices/dev_vga.c.
  */

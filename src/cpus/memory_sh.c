@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_sh.c,v 1.23.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: memory_sh.c,v 1.23.2.1 2008-01-18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>

@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_vga.c,v 1.104.2.2 2008/01/18 19:12:30 debug Exp $
+ *  $Id: dev_vga.c,v 1.104.2.2 2008-01-18 19:12:30 debug Exp $
  *
  *  COMMENT: VGA framebuffer device (charcell and graphics modes)
  *

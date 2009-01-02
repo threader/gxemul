@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pmagja.c,v 1.22.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_pmagja.c,v 1.22.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: TURBOchannel PMAG-JA graphics card
  *

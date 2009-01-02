@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ps2_ether.c,v 1.8.2.1 2008/01/18 19:12:29 debug Exp $
+ *  $Id: dev_ps2_ether.c,v 1.8.2.1 2008-01-18 19:12:29 debug Exp $
  *  
  *  COMMENT: PlayStation 2 ethernet (smap and emac3)
  *

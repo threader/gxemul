@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: bootblock_apple.c,v 1.1.2.1 2008/01/18 19:12:31 debug Exp $
+ *  $Id: bootblock_apple.c,v 1.1.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  Apple bootblock handling.
  *

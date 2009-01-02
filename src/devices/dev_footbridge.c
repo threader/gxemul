@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_footbridge.c,v 1.57.2.1 2008/01/18 19:12:28 debug Exp $
+ *  $Id: dev_footbridge.c,v 1.57.2.1 2008-01-18 19:12:28 debug Exp $
  *
  *  COMMENT: DC21285 "Footbridge" controller; used in Netwinder and Cats
  *

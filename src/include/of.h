@@ -27,7 +27,7 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *  $Id: of.h,v 1.8.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: of.h,v 1.8.2.1 2008-01-18 19:12:32 debug Exp $
  *
  *  OpenFirmware emulation. (See src/promemul/of.c for details.)
  */

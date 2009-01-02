@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: debugger.c,v 1.27.2.1 2008/01/18 19:12:27 debug Exp $
+ *  $Id: debugger.c,v 1.27.2.1 2008-01-18 19:12:27 debug Exp $
  *
  *  Single-step debugger.
  *

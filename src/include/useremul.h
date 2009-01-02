@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: useremul.h,v 1.1.2.1 2008/01/18 19:12:32 debug Exp $
+ *  $Id: useremul.h,v 1.1.2.1 2008-01-18 19:12:32 debug Exp $
  */
 
 #include "misc.h"
