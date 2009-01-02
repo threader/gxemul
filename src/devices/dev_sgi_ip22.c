@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_ip22.c,v 1.28 2006/03/04 12:38:48 debug Exp $
+ *  $Id: dev_sgi_ip22.c,v 1.33.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  SGI IP22 stuff.
+ *  COMMENT: SGI IP22 stuff
  */
 
 #include <stdio.h>
@@ -46,12 +46,9 @@
 #define	SGI_IP22_TICK_SHIFT		14
 
 
-/*
- *  dev_sgi_ip22_tick():
- */
-void dev_sgi_ip22_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(sgi_ip22)
 {
-	struct sgi_ip22_data *d = (struct sgi_ip22_data *) extra;
+	struct sgi_ip22_data *d = extra;
 
 	if (d->reg[0x38 / 4] != 0)
 		d->reg[0x38 / 4] --;
@@ -65,7 +62,7 @@ void dev_sgi_ip22_tick(struct cpu *cpu, void *extra)
  */
 DEVICE_ACCESS(sgi_ip22_imc)
 {
-	struct sgi_ip22_data *d = (struct sgi_ip22_data *) extra;
+	struct sgi_ip22_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int regnr;
 
@@ -169,7 +166,7 @@ DEVICE_ACCESS(sgi_ip22_imc)
  */
 DEVICE_ACCESS(sgi_ip22_unknown)
 {
-	struct sgi_ip22_data *d = (struct sgi_ip22_data *) extra;
+	struct sgi_ip22_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 
 	idata = memory_readmax64(cpu, data, len);
@@ -212,7 +209,7 @@ DEVICE_ACCESS(sgi_ip22_unknown)
  */
 DEVICE_ACCESS(sgi_ip22_unknown2)
 {
-	struct sgi_ip22_data *d = (struct sgi_ip22_data *) extra;
+	struct sgi_ip22_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int regnr;
 
@@ -244,12 +241,9 @@ DEVICE_ACCESS(sgi_ip22_unknown2)
 }
 
 
-/*
- *  dev_sgi_ip22_sysid_access():
- */
 DEVICE_ACCESS(sgi_ip22_sysid)
 {
-	struct sgi_ip22_data *d = (struct sgi_ip22_data *) extra;
+	struct sgi_ip22_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 
 	idata = memory_readmax64(cpu, data, len);
@@ -281,12 +275,9 @@ DEVICE_ACCESS(sgi_ip22_sysid)
 }
 
 
-/*
- *  dev_sgi_ip22_access():
- */
 DEVICE_ACCESS(sgi_ip22)
 {
-	struct sgi_ip22_data *d = (struct sgi_ip22_data *) extra;
+	struct sgi_ip22_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int regnr;
 
@@ -320,9 +311,13 @@ DEVICE_ACCESS(sgi_ip22)
 			 *  some interrupt which should never be used anyway.
 			 *  (TODO: Fix this.)
 			 */
-			cpu_interrupt_ack(cpu, 8 + 63);
-			debug("[ sgi_ip22: write to local0 IRQ MASK, "
-			    "data=0x%llx ]\n", (long long)idata);
+
+fatal("TODO: ip22 legacy interrupt rewrite!\n");
+abort();
+
+//			cpu_interrupt_ack(cpu, 8 + 63);
+//			debug("[ sgi_ip22: write to local0 IRQ MASK, "
+//			    "data=0x%llx ]\n", (long long)idata);
 		} else {
 			debug("[ sgi_ip22: read from local0 IRQ MASK, "
 			    "data=0x%llx ]\n", (long long)odata);
@@ -340,9 +335,12 @@ DEVICE_ACCESS(sgi_ip22)
 	case 0x0c:	/*  local1 irq mask  */
 		if (writeflag == MEM_WRITE) {
 			/*  See commen above, about local0 irq mask.  */
-			cpu_interrupt_ack(cpu, 8 + 63);
-			debug("[ sgi_ip22: write to local1 IRQ MASK, "
-			    "data=0x%llx ]\n", (long long)idata);
+
+fatal("TODO: ip22 legacy interrupt rewrite!\n");
+abort();
+//			cpu_interrupt_ack(cpu, 8 + 63);
+//			debug("[ sgi_ip22: write to local1 IRQ MASK, "
+//			    "data=0x%llx ]\n", (long long)idata);
 		} else {
 			debug("[ sgi_ip22: read from local1 IRQ MASK, "
 			    "data=0x%llx ]\n", (long long)odata);
@@ -409,18 +407,14 @@ DEVICE_ACCESS(sgi_ip22)
 }
 
 
-/*
- *  dev_sgi_ip22_init():
- */
 struct sgi_ip22_data *dev_sgi_ip22_init(struct machine *machine,
 	struct memory *mem, uint64_t baseaddr, int guiness_flag)
 {
-	struct sgi_ip22_data *d = malloc(sizeof(struct sgi_ip22_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct sgi_ip22_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sgi_ip22_data)));
 	memset(d, 0, sizeof(struct sgi_ip22_data));
+
 	d->guiness_flag = guiness_flag;
 
 	memory_device_register(mem, "sgi_ip22", baseaddr, DEV_SGI_IP22_LENGTH,
@@ -437,7 +431,7 @@ struct sgi_ip22_data *dev_sgi_ip22_init(struct machine *machine,
 	    (void *)d, DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(machine, dev_sgi_ip22_tick, d,
-	    SGI_IP22_TICK_SHIFT, 0.0);
+	    SGI_IP22_TICK_SHIFT);
 
 	return d;
 }

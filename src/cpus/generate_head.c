@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: generate_head.c,v 1.24 2006/10/25 09:24:06 debug Exp $
+ *  $Id: generate_head.c,v 1.30.2.1 2008/01/18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>
@@ -143,14 +143,8 @@ int main(int argc, char *argv[])
 	printf("\tcpu->cd.%s.next_ic --;\n", a);
 	printf("}\n\n");
 
-	/*  Ugly special hacks for Transputer and SH[34]:  */
-	if (strcasecmp(argv[1], "transputer") == 0) {
-	        printf("static struct %s_instr_call nothing_call = { "
-		    "instr(nothing), {0} };\n", a);
-	} else if (strcasecmp(argv[1], "sh") == 0) {
-	        printf("static struct %s_instr_call nothing_call = { "
-		    "instr(nothing), {0,0} };\n", a);
-	} else if (strcasecmp(argv[1], "avr32") == 0) {
+	/*  Ugly special hacks for SH[34]:  */
+	if (strcasecmp(argv[1], "sh") == 0) {
 	        printf("static struct %s_instr_call nothing_call = { "
 		    "instr(nothing), {0,0} };\n", a);
 	} else {

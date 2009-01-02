@@ -2,7 +2,7 @@
 #define	DEBUGGER_H
 
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: debugger.h,v 1.8 2006/10/14 02:30:12 debug Exp $
+ *  $Id: debugger.h,v 1.10.2.1 2008/01/18 19:12:32 debug Exp $
  *
  *  See src/debugger/debugger.c.
  */
@@ -43,7 +43,7 @@ void debugger_activate(int x);
 void debugger_execute_cmd(char *cmd, int cmd_len);
 void debugger(void);
 void debugger_reset(void);
-void debugger_init(struct emul **emuls, int n_emuls);
+void debugger_init(struct emul *emul);
 
 /*  single_step values:  */
 #define	NOT_SINGLE_STEPPING		0

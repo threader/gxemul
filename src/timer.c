@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: timer.c,v 1.5 2006/09/02 06:38:16 debug Exp $
+ *  $Id: timer.c,v 1.11.2.1 2008/01/18 19:12:24 debug Exp $
  *
  *  Timer framework. This is used by emulated clocks.
  */
@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include "misc.h"
 #include "timer.h"
 
 
@@ -63,7 +64,7 @@ static double timer_current_time_step;
 
 static int timer_is_running;
 
-#define	SECONDS_BETWEEN_GETTIMEOFDAY_SYNCH	1.5
+#define	SECONDS_BETWEEN_GETTIMEOFDAY_SYNCH	1.65
 
 
 /*
@@ -76,11 +77,9 @@ static int timer_is_running;
 struct timer *timer_add(double freq, void (*timer_tick)(struct timer *timer,
 	void *extra), void *extra)
 {
-	struct timer *newtimer = malloc(sizeof(struct timer));
-	if (newtimer == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct timer *newtimer;
+
+	CHECK_ALLOCATION(newtimer = malloc(sizeof(struct timer)));
 
 	if (freq <= 0.00000001)
 		freq = 0.00000001;
@@ -168,7 +167,7 @@ static void timer_tick(int signal_nr)
 			tv.tv_sec --;
 		}
 
-#if 0
+#ifdef TIMER_DEBUG
 		/*  For debugging/testing:  */
 		{
 			double diff = tv.tv_usec * 0.000001 + tv.tv_sec
@@ -177,7 +176,10 @@ static void timer_tick(int signal_nr)
 		}
 #endif
 
-		timer_current_time = tv.tv_usec * 0.000001 + tv.tv_sec;
+		/*  Get exponentially closer to the real time, instead of
+		    just changing to it directly:  */
+		timer_current_time = ( (tv.tv_usec * 0.000001 + tv.tv_sec) +
+		    timer_current_time ) / 2;
 
 		timer_countdown_to_next_gettimeofday = timer_freq *
 		    SECONDS_BETWEEN_GETTIMEOFDAY_SYNCH;
@@ -285,7 +287,7 @@ void timer_init(void)
 	timer_is_running = 0;
 	timer_countdown_to_next_gettimeofday = 0;
 
-	timer_freq = 50.0;
+	timer_freq = TIMER_BASE_FREQUENCY;
 	timer_current_time_step = 1.0 / timer_freq;
 
 #ifdef TEST

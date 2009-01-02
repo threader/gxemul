@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_gt.c,v 1.44 2006/09/23 03:52:10 debug Exp $
+ *  $Id: dev_gt.c,v 1.53.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  Galileo Technology GT-64xxx PCI controller.
+ *  COMMENT: Galileo Technology GT-64xxx PCI controller
  *
  *	GT-64011	Used in Cobalt machines.
  *	GT-64120	Used in evbmips machines (Malta).
@@ -41,6 +41,7 @@
 #include "bus_pci.h"
 #include "cpu.h"
 #include "devices.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -59,11 +60,10 @@
 
 
 struct gt_data {
-	int		pci_irqbase;
 	int		type;
 
 	struct timer	*timer;
-	int		timer0_irqnr;
+	struct interrupt timer0_irq;
 	int		interrupt_hz;
 	int		pending_timer0_interrupts;
 
@@ -81,26 +81,25 @@ struct gt_data {
  */
 static void timer_tick(struct timer *timer, void *extra)
 {
-	struct gt_data *d = (struct gt_data *) extra;
+	struct gt_data *d = extra;
 	d->pending_timer0_interrupts ++;
 }
 
 
 DEVICE_TICK(gt)
 {
-	struct gt_data *d = (struct gt_data *) extra;
-
+	struct gt_data *d = extra;
 	if (d->pending_timer0_interrupts > 0)
-		cpu_interrupt(cpu, d->timer0_irqnr);
+		INTERRUPT_ASSERT(d->timer0_irq);
 }
 
 
 DEVICE_ACCESS(gt)
 {
+	struct gt_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int bus, dev, func, reg;
 	size_t i;
-	struct gt_data *d = extra;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -144,7 +143,7 @@ DEVICE_ACCESS(gt)
 			return 1;
 		} else {
 			odata = GTIC_T0EXP;
-			cpu_interrupt_ack(cpu, d->timer0_irqnr);
+			INTERRUPT_DEASSERT(d->timer0_irq);
 
 			if (d->pending_timer0_interrupts > 0)
 				d->pending_timer0_interrupts --;
@@ -156,7 +155,7 @@ DEVICE_ACCESS(gt)
 
 	case GT_PCI0_INTR_ACK:
 		odata = cpu->machine->isa_pic_data.last_int;
-		cpu_interrupt_ack(cpu, d->pci_irqbase + odata);
+		/*  TODO: Actually ack the interrupt?  */
 		break;
 
 	case GT_TIMER_CTRL:
@@ -218,22 +217,18 @@ DEVICE_ACCESS(gt)
  *  is added to the bus, then a pointer to the bus is returned.
  */
 struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int pciirq, int type)
+	uint64_t baseaddr, char *timer_irq_path, char *isa_irq_path, int type)
 {
 	struct gt_data *d;
 	uint64_t pci_portbase = 0, pci_membase = 0;
 	uint64_t isa_portbase = 0, isa_membase = 0;
-	int isa_irqbase = 0, pci_irqbase = 0;
 	uint64_t pci_io_offset = 0, pci_mem_offset = 0;
 	char *gt_name = "NO";
 
-	d = malloc(sizeof(struct gt_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct gt_data)));
 	memset(d, 0, sizeof(struct gt_data));
-	d->timer0_irqnr = irq_nr;
+
+	INTERRUPT_CONNECT(timer_irq_path, d->timer0_irq);
 
 	switch (type) {
 	case 11:
@@ -244,10 +239,8 @@ struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
 		pci_mem_offset = 0;
 		pci_portbase = 0x10000000ULL;
 		pci_membase = 0x10100000ULL;
-		pci_irqbase = 8;
 		isa_portbase = 0x10000000ULL;
 		isa_membase = 0x10100000ULL;
-		isa_irqbase = 8;
 		break;
 	case 120:
 		/*  EVBMIPS (Malta):  */
@@ -257,10 +250,8 @@ struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
 		pci_mem_offset = 0;
 		pci_portbase = 0x18000000ULL;
 		pci_membase = 0x10000000ULL;
-		pci_irqbase = 8;
 		isa_portbase = 0x18000000ULL;
 		isa_membase = 0x10000000ULL;
-		isa_irqbase = 8;
 		break;
 	case 260:
 		/*  MVMEPPC (mvme5500):  */
@@ -270,17 +261,13 @@ struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
 		pci_mem_offset = 0;
 		pci_portbase = 0x18000000ULL;
 		pci_membase = 0x10000000ULL;
-		pci_irqbase = 8;
 		isa_portbase = 0x18000000ULL;
 		isa_membase = 0x10000000ULL;
-		isa_irqbase = 8;
 		break;
 	default:fatal("dev_gt_init(): unimplemented GT type (%i).\n", type);
 		exit(1);
 	}
 
-
-	d->pci_irqbase = pci_irqbase;
 
 	/*
 	 *  TODO: FIX THESE! Hardcoded numbers = bad.
@@ -296,9 +283,9 @@ struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
 	d->decode[GT_PCI0M1REMAP_OFS / 8] = d->decode[GT_PCI0M1LD_OFS / 8];
 
 	d->pci_data = bus_pci_init(machine,
-	    pciirq, pci_io_offset, pci_mem_offset,
-	    pci_portbase, pci_membase, pci_irqbase,
-	    isa_portbase, isa_membase, isa_irqbase);
+	    "TODO_gt_irq", pci_io_offset, pci_mem_offset,
+	    pci_portbase, pci_membase, "TODO_pci_irqbase",
+	    isa_portbase, isa_membase, isa_irq_path);
 
 	/*
 	 *  According to NetBSD/cobalt:
@@ -309,7 +296,7 @@ struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
 
 	memory_device_register(mem, "gt", baseaddr, DEV_GT_LENGTH,
 	    dev_gt_access, d, DM_DEFAULT, NULL);
-	machine_add_tickfunction(machine, dev_gt_tick, d, TICK_SHIFT, 0.0);
+	machine_add_tickfunction(machine, dev_gt_tick, d, TICK_SHIFT);
 
 	return d->pci_data;
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dc7085.c,v 1.58 2006/09/06 04:55:35 debug Exp $
+ *  $Id: dev_dc7085.c,v 1.62.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  DC7085 serial controller, used in some DECstation models.
+ *  COMMENT: DC7085 serial controller, used in some DECstation models
  */
 
 #include <stdio.h>
@@ -63,7 +63,7 @@ struct dc_data {
 
 	int			tx_scanner;
 
-	int			irqnr;
+	struct interrupt	irq;
 	int			use_fb;
 
 	struct lk201_data	lk201;
@@ -131,7 +131,7 @@ DEVICE_TICK(dc7085)
 			if (d->regs.dc_tcr & (1 << d->tx_scanner)) {
 				d->regs.dc_csr |= CSR_TRDY;
 				if (d->regs.dc_csr & CSR_TIE)
-					cpu_interrupt(cpu, d->irqnr);
+					INTERRUPT_ASSERT(d->irq);
 
 				d->regs.dc_csr &= ~CSR_TX_LINE_NUM;
 				d->regs.dc_csr |= (d->tx_scanner << 8);
@@ -155,15 +155,15 @@ DEVICE_TICK(dc7085)
 		d->regs.dc_csr |= CSR_RDONE;
 
 	if ((d->regs.dc_csr & CSR_RDONE) && (d->regs.dc_csr & CSR_RIE))
-		cpu_interrupt(cpu, d->irqnr);
+		INTERRUPT_ASSERT(d->irq);
 }
 
 
 DEVICE_ACCESS(dc7085)
 {
+	struct dc_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	size_t i;
-	struct dc_data *d = extra;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -172,6 +172,7 @@ DEVICE_ACCESS(dc7085)
 	d->regs.dc_csr &= ~CSR_CLR;
 
 	switch (relative_addr) {
+
 	case 0x00:	/*  CSR:  Control and Status  */
 		if (writeflag == MEM_WRITE) {
 			debug("[ dc7085 write to CSR: 0x%04x ]\n", idata);
@@ -191,6 +192,7 @@ DEVICE_ACCESS(dc7085)
 			odata = d->regs.dc_csr;
 		}
 		break;
+
 	case 0x08:	/*  LPR:  */
 		if (writeflag == MEM_WRITE) {
 			debug("[ dc7085 write to LPR: 0x%04x ]\n", idata);
@@ -221,18 +223,19 @@ DEVICE_ACCESS(dc7085)
 			    (lineno << RBUF_LINE_NUM_SHIFT) | ch;
 
 			d->regs.dc_csr &= ~CSR_RDONE;
-			cpu_interrupt_ack(cpu, d->irqnr);
+			INTERRUPT_DEASSERT(d->irq);
 
 			d->just_transmitted_something = 4;
 		}
 		break;
+
 	case 0x10:	/*  TCR:  */
 		if (writeflag == MEM_WRITE) {
 			/*  fatal("[ dc7085 write to TCR: 0x%04x) ]\n",
 			    (int)idata);  */
 			d->regs.dc_tcr = idata;
 			d->regs.dc_csr &= ~CSR_TRDY;
-			cpu_interrupt_ack(cpu, d->irqnr);
+			INTERRUPT_DEASSERT(d->irq);
 			goto do_return;
 		} else {
 			/*  read:  */
@@ -241,6 +244,7 @@ DEVICE_ACCESS(dc7085)
 			odata = d->regs.dc_tcr;
 		}
 		break;
+
 	case 0x18:	/*  Modem status (R), transmit data (W)  */
 		if (writeflag == MEM_WRITE) {
 			int line_no = (d->regs.dc_csr >>
@@ -250,7 +254,7 @@ DEVICE_ACCESS(dc7085)
 			lk201_tx_data(&d->lk201, line_no, idata);
 
 			d->regs.dc_csr &= ~CSR_TRDY;
-			cpu_interrupt_ack(cpu, d->irqnr);
+			INTERRUPT_DEASSERT(d->irq);
 
 			d->just_transmitted_something = 4;
 		} else {
@@ -262,6 +266,7 @@ DEVICE_ACCESS(dc7085)
 			odata = d->regs.dc_msr_tdr;
 		}
 		break;
+
 	default:
 		if (writeflag==MEM_READ) {
 			debug("[ dc7085 read from 0x%08lx ]\n",
@@ -293,17 +298,14 @@ do_return:
  *  DECstation keyboard, instead of a plain serial console.
  */
 int dev_dc7085_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int use_fb)
+	uint64_t baseaddr, char *irq_path, int use_fb)
 {
 	struct dc_data *d;
 
-	d = malloc(sizeof(struct dc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dc_data)));
 	memset(d, 0, sizeof(struct dc_data));
-	d->irqnr  = irq_nr;
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
 	d->use_fb = use_fb;
 
 	d->regs.dc_csr = CSR_TRDY | CSR_MSE;
@@ -316,7 +318,7 @@ int dev_dc7085_init(struct machine *machine, struct memory *mem,
 	memory_device_register(mem, "dc7085", baseaddr, DEV_DC7085_LENGTH,
 	    dev_dc7085_access, d, DM_DEFAULT, NULL);
 	machine_add_tickfunction(machine, dev_dc7085_tick, d,
-	    DC_TICK_SHIFT, 0.0);
+	    DC_TICK_SHIFT);
 
 	return d->console_handle;
 }

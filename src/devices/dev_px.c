@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_px.c,v 1.34 2006/03/04 12:38:48 debug Exp $
+ *  $Id: dev_px.c,v 1.38.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  TURBOchannel Pixelstamp graphics device.
+ *  COMMENT: TURBOchannel Pixelstamp graphics card
  *
  *	PMAG-CA = PX
  *	PMAG-DA = PXG
@@ -98,16 +98,13 @@
 /* #define PX_DEBUG  */
 
 
-/*
- *  dev_px_tick():
- */
-void dev_px_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(px)
 {
 #if 0
 	struct px_data *d = extra;
 
 	if (d->intr & STIC_INT_P_EN)		/*  or _WE ?  */
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 #endif
 }
 
@@ -558,9 +555,6 @@ void dev_px_dma(struct cpu *cpu, uint32_t sys_addr, struct px_data *d)
 }
 
 
-/*
- *  dev_px_access():
- */
 DEVICE_ACCESS(px)
 {
 	uint64_t idata = 0, odata = 0;
@@ -635,6 +629,7 @@ DEVICE_ACCESS(px)
 	/*  TODO:  Most of these aren't implemented yet.  */
 
 	switch (relative_addr) {
+
 	case 0x180008:		/*  hsync  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from hsync: 0x%08llx ]\n",
@@ -644,6 +639,7 @@ DEVICE_ACCESS(px)
 			    (long long)idata);
 		}
 		break;
+
 	case 0x18000c:		/*  hsync2  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from hsync2: 0x%08llx ]\n",
@@ -653,6 +649,7 @@ DEVICE_ACCESS(px)
 			    (long long)idata);
 		}
 		break;
+
 	case 0x180010:		/*  hblank  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from hblank: 0x%08llx ]\n",
@@ -662,6 +659,7 @@ DEVICE_ACCESS(px)
 			    (long long)idata);
 		}
 		break;
+
 	case 0x180014:		/*  vsync  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from vsync: 0x%08llx ]\n",
@@ -671,6 +669,7 @@ DEVICE_ACCESS(px)
 			    (long long)idata);
 		}
 		break;
+
 	case 0x180018:		/*  vblank  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from vblank: 0x%08llx ]\n",
@@ -680,6 +679,7 @@ DEVICE_ACCESS(px)
 			    (long long)idata);
 		}
 		break;
+
 	case 0x180020:		/*  ipdvint  */
 		if (writeflag==MEM_READ) {
 			odata = d->intr;
@@ -701,6 +701,7 @@ odata = random();
 			    (long long)idata);
 		}
 		break;
+
 	case 0x180028:		/*  sticsr  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from sticsr: 0x%08llx ]\n",
@@ -710,6 +711,7 @@ odata = random();
 			    (long long)idata);
 		}
 		break;
+
 	case 0x180038:		/*  buscsr  */
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from buscsr: 0x%08llx ]\n",
@@ -719,6 +721,7 @@ odata = random();
 			    (long long)idata);
 		}
 		break;
+
 	case 0x18003c:		/*  modcl  */
 		if (writeflag==MEM_READ) {
 			odata = (d->type << 12) + (d->xconfig << 11) +
@@ -730,6 +733,7 @@ odata = random();
 			    (long long)idata);
 		}
 		break;
+
 	default:
 		if (writeflag==MEM_READ) {
 			debug("[ px: read from addr 0x%x: 0x%llx ]\n",
@@ -747,23 +751,17 @@ odata = random();
 }
 
 
-/*
- *  dev_px_init():
- */
 void dev_px_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int px_type, int irq_nr)
+	uint64_t baseaddr, int px_type, char *irq_path)
 {
 	struct px_data *d;
 
-	d = malloc(sizeof(struct px_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct px_data)));
 	memset(d, 0, sizeof(struct px_data));
 
 	d->type = px_type;
-	d->irq_nr = irq_nr;
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
 
 	d->xconfig = d->yconfig = 0;	/*  4x1  */
 
@@ -807,13 +805,13 @@ void dev_px_init(struct machine *machine, struct memory *mem,
 	switch (d->type) {
 	case DEV_PX_TYPE_PX:
 		dev_bt459_init(machine, mem, baseaddr + 0x200000, 0,
-		    d->vfb_data, 8, irq_nr, BT459_PX);
+		    d->vfb_data, 8, irq_path, BT459_PX);
 		break;
 	case DEV_PX_TYPE_PXG:
 	case DEV_PX_TYPE_PXGPLUS:
 	case DEV_PX_TYPE_PXGPLUSTURBO:
 		dev_bt459_init(machine, mem, baseaddr + 0x300000, 0,
-		    d->vfb_data, d->bitdepth, irq_nr, BT459_PX);
+		    d->vfb_data, d->bitdepth, irq_path, BT459_PX);
 		break;
 	default:
 		fatal("dev_px_init(): unimplemented px_type\n");
@@ -821,6 +819,6 @@ void dev_px_init(struct machine *machine, struct memory *mem,
 
 	memory_device_register(mem, "px", baseaddr, DEV_PX_LENGTH,
 	    dev_px_access, d, DM_DEFAULT, NULL);
-	machine_add_tickfunction(machine, dev_px_tick, d, 14, 0.0);
+	machine_add_tickfunction(machine, dev_px_tick, d, 14);
 }
 

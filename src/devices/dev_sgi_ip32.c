@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_ip32.c,v 1.46 2006/08/30 15:07:47 debug Exp $
+ *  $Id: dev_sgi_ip32.c,v 1.53.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  SGI IP32 devices.
+ *  COMMENT: SGI IP32 stuff (CRIME, MACE, MACEPCI, mec, ust, mte)
  *
  *	o)  CRIME
  *	o)  MACE
@@ -44,6 +44,7 @@
 #include "bus_pci.h"
 #include "console.h"
 #include "cpu.h"
+#include "device.h"
 #include "devices.h"
 #include "emul.h"
 #include "machine.h"
@@ -52,8 +53,8 @@
 #include "net.h"
 
 #include "crimereg.h"
-
 #include "if_mecreg.h"
+#include "sgi_macereg.h"
 
 
 #define	CRIME_TICKSHIFT			14
@@ -64,6 +65,57 @@ struct macepci_data {
 	struct pci_data *pci_data;
 	uint32_t	reg[DEV_MACEPCI_LENGTH / 4];
 };
+
+#define	DEV_CRIME_LENGTH		0x1000
+struct crime_data {
+	unsigned char		reg[DEV_CRIME_LENGTH];
+	struct interrupt	irq;
+	int			use_fb;
+};
+
+
+/*
+ *  crime_interrupt_assert():
+ *  crime_interrupt_deassert():
+ */
+void crime_interrupt_assert(struct interrupt *interrupt)
+{
+	struct crime_data *d = (struct crime_data *) interrupt->extra;
+	uint32_t line = interrupt->line, asserted;
+
+	d->reg[CRIME_INTSTAT + 4] |= ((line >> 24) & 255);
+	d->reg[CRIME_INTSTAT + 5] |= ((line >> 16) & 255);
+	d->reg[CRIME_INTSTAT + 6] |= ((line >> 8) & 255);
+	d->reg[CRIME_INTSTAT + 7] |= (line & 255);
+
+	asserted =
+	    (d->reg[CRIME_INTSTAT + 4] & d->reg[CRIME_INTMASK + 4]) |
+	    (d->reg[CRIME_INTSTAT + 5] & d->reg[CRIME_INTMASK + 5]) |
+	    (d->reg[CRIME_INTSTAT + 6] & d->reg[CRIME_INTMASK + 6]) |
+	    (d->reg[CRIME_INTSTAT + 7] & d->reg[CRIME_INTMASK + 7]);
+
+	if (asserted)
+		INTERRUPT_ASSERT(d->irq);
+}
+void crime_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct crime_data *d = (struct crime_data *) interrupt->extra;
+	uint32_t line = interrupt->line, asserted;
+
+	d->reg[CRIME_INTSTAT + 4] &= ~((line >> 24) & 255);
+	d->reg[CRIME_INTSTAT + 5] &= ~((line >> 16) & 255);
+	d->reg[CRIME_INTSTAT + 6] &= ~((line >> 8) & 255);
+	d->reg[CRIME_INTSTAT + 7] &= ~(line & 255);
+
+	asserted =
+	    (d->reg[CRIME_INTSTAT + 4] & d->reg[CRIME_INTMASK + 4]) |
+	    (d->reg[CRIME_INTSTAT + 5] & d->reg[CRIME_INTMASK + 5]) |
+	    (d->reg[CRIME_INTSTAT + 6] & d->reg[CRIME_INTMASK + 6]) |
+	    (d->reg[CRIME_INTSTAT + 7] & d->reg[CRIME_INTMASK + 7]);
+
+	if (!asserted)
+		INTERRUPT_DEASSERT(d->irq);
+}
 
 
 /*
@@ -79,7 +131,7 @@ struct macepci_data {
  *  A R10000 is detected as running at
  *  CRIME_SPEED_FACTOR * 66 MHz. (TODO: this is not correct anymore)
  */
-void dev_crime_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(crime)
 {
 	int j, carry, old, new, add_byte;
 	uint64_t what_to_add = (1<<CRIME_TICKSHIFT)
@@ -103,9 +155,6 @@ void dev_crime_tick(struct cpu *cpu, void *extra)
 }
 
 
-/*
- *  dev_crime_access():
- */
 DEVICE_ACCESS(crime)
 {
 	struct crime_data *d = extra;
@@ -151,22 +200,6 @@ DEVICE_ACCESS(crime)
 	else
 		memcpy(data, &d->reg[relative_addr], len);
 
-	if ((relative_addr >= 0x18 && relative_addr <= 0x1f) ||
-	    (relative_addr+len-1 >= 0x18 && relative_addr+len-1 <= 0x1f)) {
-		/*
-		 *  Force interrupt re-assertion:
-		 *
-		 *  NOTE: Ugly hack. Hopefully CRMERR is never used.
-		 */
-#if 0
-/*
-No. If this is enabled, the mec bugs out on either NetBSD or OpenBSD.
-TODO.
-*/
-		cpu_interrupt_ack(cpu, 8); /* CRM_INT_CRMERR); */
-#endif
-	}
-
 	switch (relative_addr) {
 	case CRIME_CONTROL:	/*  0x008  */
 		/*  TODO: 64-bit write to CRIME_CONTROL, but some things
@@ -195,15 +228,23 @@ TODO.
 				    "control 0x%016llx ]\n", (long long)idata);
 		}
 		break;
-#if 0
+
 	case CRIME_INTSTAT:	/*  0x010, Current interrupt status  */
-	case 0x14:
+	case CRIME_INTSTAT + 4:
 	case CRIME_INTMASK:	/*  0x018,  Current interrupt mask  */
-	case 0x1c:
+	case CRIME_INTMASK + 4:
+		if ((d->reg[CRIME_INTSTAT + 4] & d->reg[CRIME_INTMASK + 4]) |
+		    (d->reg[CRIME_INTSTAT + 5] & d->reg[CRIME_INTMASK + 5]) |
+		    (d->reg[CRIME_INTSTAT + 6] & d->reg[CRIME_INTMASK + 6]) |
+		    (d->reg[CRIME_INTSTAT + 7] & d->reg[CRIME_INTMASK + 7]) )
+			INTERRUPT_ASSERT(d->irq);
+		else
+			INTERRUPT_DEASSERT(d->irq);
+		break;
 	case 0x34:
 		/*  don't dump debug info for these  */
 		break;
-#endif
+
 	default:
 		if (writeflag==MEM_READ) {
 			debug("[ crime: read from 0x%x, len=%i:",
@@ -226,35 +267,103 @@ TODO.
 /*
  *  dev_crime_init():
  */
-struct crime_data *dev_crime_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int use_fb)
+void dev_crime_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path, int use_fb)
 {
 	struct crime_data *d;
+	char tmpstr[200];
+	int i;
 
-	d = malloc(sizeof(struct crime_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct crime_data)));
 	memset(d, 0, sizeof(struct crime_data));
-	d->irq_nr = irq_nr;
+
 	d->use_fb = use_fb;
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
+
+	/*  Register 32 crime interrupts (hexadecimal names):  */
+	for (i=0; i<32; i++) {
+		struct interrupt template;
+		char name[400];
+		snprintf(name, sizeof(name), "%s.crime.0x%x", irq_path, 1 << i);
+		memset(&template, 0, sizeof(template));
+                template.line = 1 << i;
+		template.name = name;
+		template.extra = d;
+		template.interrupt_assert = crime_interrupt_assert;
+		template.interrupt_deassert = crime_interrupt_deassert;
+		interrupt_handler_register(&template);
+        }
 
 	memory_device_register(mem, "crime", baseaddr, DEV_CRIME_LENGTH,
 	    dev_crime_access, d, DM_DEFAULT, NULL);
-	machine_add_tickfunction(machine, dev_crime_tick, d,
-	    CRIME_TICKSHIFT, 0.0);
 
-	return d;
+	snprintf(tmpstr, sizeof(tmpstr), "mace addr=0x1f310000 irq=%s.crime",
+	    irq_path);
+	device_add(machine, tmpstr);
+
+	machine_add_tickfunction(machine, dev_crime_tick, d,
+	    CRIME_TICKSHIFT);
 }
 
 
 /****************************************************************************/
 
 
+#define DEV_MACE_LENGTH		0x100
+struct mace_data {
+	unsigned char		reg[DEV_MACE_LENGTH];
+	struct interrupt	irq_periph;
+	struct interrupt	irq_misc;
+};
+
+
 /*
- *  dev_mace_access():
+ *  mace_interrupt_assert():
+ *  mace_interrupt_deassert():
  */
+void mace_interrupt_assert(struct interrupt *interrupt)
+{
+	struct mace_data *d = (struct mace_data *) interrupt->extra;
+	uint32_t line = 1 << interrupt->line;
+
+	d->reg[MACE_ISA_INT_STATUS + 4] |= ((line >> 24) & 255);
+	d->reg[MACE_ISA_INT_STATUS + 5] |= ((line >> 16) & 255);
+	d->reg[MACE_ISA_INT_STATUS + 6] |= ((line >> 8) & 255);
+	d->reg[MACE_ISA_INT_STATUS + 7] |= (line & 255);
+
+	/*  High bits = PERIPH  */
+	if ((d->reg[MACE_ISA_INT_STATUS+4] & d->reg[MACE_ISA_INT_MASK+4]) |
+	    (d->reg[MACE_ISA_INT_STATUS+5] & d->reg[MACE_ISA_INT_MASK+5]))
+		INTERRUPT_ASSERT(d->irq_periph);
+
+	/*  Low bits = MISC  */
+	if ((d->reg[MACE_ISA_INT_STATUS+6] & d->reg[MACE_ISA_INT_MASK+6]) |
+	    (d->reg[MACE_ISA_INT_STATUS+7] & d->reg[MACE_ISA_INT_MASK+7]))
+		INTERRUPT_ASSERT(d->irq_misc);
+}
+void mace_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct mace_data *d = (struct mace_data *) interrupt->extra;
+	uint32_t line = 1 << interrupt->line;
+
+	d->reg[MACE_ISA_INT_STATUS + 4] |= ((line >> 24) & 255);
+	d->reg[MACE_ISA_INT_STATUS + 5] |= ((line >> 16) & 255);
+	d->reg[MACE_ISA_INT_STATUS + 6] |= ((line >> 8) & 255);
+	d->reg[MACE_ISA_INT_STATUS + 7] |= (line & 255);
+
+	/*  High bits = PERIPH  */
+	if (!((d->reg[MACE_ISA_INT_STATUS+4] & d->reg[MACE_ISA_INT_MASK+4]) |
+	    (d->reg[MACE_ISA_INT_STATUS+5] & d->reg[MACE_ISA_INT_MASK+5])))
+		INTERRUPT_DEASSERT(d->irq_periph);
+
+	/*  Low bits = MISC  */
+	if (!((d->reg[MACE_ISA_INT_STATUS+6] & d->reg[MACE_ISA_INT_MASK+6]) |
+	    (d->reg[MACE_ISA_INT_STATUS+7] & d->reg[MACE_ISA_INT_MASK+7])))
+		INTERRUPT_DEASSERT(d->irq_misc);
+}
+
+
 DEVICE_ACCESS(mace)
 {
 	size_t i;
@@ -265,14 +374,10 @@ DEVICE_ACCESS(mace)
 	else
 		memcpy(data, &d->reg[relative_addr], len);
 
-	if ((relative_addr >= 0x18 && relative_addr <= 0x1f) ||
-	    (relative_addr+len-1 >= 0x18 && relative_addr+len-1 <= 0x1f))
-		cpu_interrupt_ack(cpu, 8); /* CRM_INT_CRMERR); */
-
 	switch (relative_addr) {
-#if 0
-	case 0x10:	/*  Current interrupt assertions  */
-	case 0x14:
+
+	case MACE_ISA_INT_STATUS:	/*  Current interrupt assertions  */
+	case MACE_ISA_INT_STATUS + 4:
 		/*  don't dump debug info for these  */
 		if (writeflag == MEM_WRITE) {
 			fatal("[ NOTE/TODO: WRITE to mace intr: "
@@ -282,11 +387,21 @@ DEVICE_ACCESS(mace)
 			fatal(" (len=%i) ]\n", len);
 		}
 		break;
-	case 0x18:	/*  Interrupt mask  */
-	case 0x1c:
-		/*  don't dump debug info for these  */
+	case MACE_ISA_INT_MASK:		/*  Current interrupt mask  */
+	case MACE_ISA_INT_MASK + 4:
+		if ((d->reg[MACE_ISA_INT_STATUS+4]&d->reg[MACE_ISA_INT_MASK+4])|
+		    (d->reg[MACE_ISA_INT_STATUS+5]&d->reg[MACE_ISA_INT_MASK+5]))
+			INTERRUPT_ASSERT(d->irq_periph);
+		else
+			INTERRUPT_DEASSERT(d->irq_periph);
+
+		if ((d->reg[MACE_ISA_INT_STATUS+6]&d->reg[MACE_ISA_INT_MASK+6])|
+		    (d->reg[MACE_ISA_INT_STATUS+7]&d->reg[MACE_ISA_INT_MASK+7]))
+			INTERRUPT_ASSERT(d->irq_misc);
+		else
+			INTERRUPT_DEASSERT(d->irq_misc);
 		break;
-#endif
+
 	default:
 		if (writeflag == MEM_READ) {
 			debug("[ mace: read from 0x%x:", (int)relative_addr);
@@ -305,38 +420,67 @@ DEVICE_ACCESS(mace)
 }
 
 
-/*
- *  dev_mace_init():
- */
-struct mace_data *dev_mace_init(struct memory *mem, uint64_t baseaddr,
-	int irqnr)
+DEVINIT(mace)
 {
 	struct mace_data *d;
+	char tmpstr[300];
+	int i;
 
-	d = malloc(sizeof(struct mace_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct mace_data)));
 	memset(d, 0, sizeof(struct mace_data));
-	d->irqnr = irqnr;
 
-	memory_device_register(mem, "mace", baseaddr, DEV_MACE_LENGTH,
-	    dev_mace_access, d, DM_DEFAULT, NULL);
+	snprintf(tmpstr, sizeof(tmpstr), "%s.0x%x",
+	    devinit->interrupt_path, MACE_PERIPH_SERIAL);
+	INTERRUPT_CONNECT(tmpstr, d->irq_periph);
 
-	return d;
+	snprintf(tmpstr, sizeof(tmpstr), "%s.0x%x",
+	    devinit->interrupt_path, MACE_PERIPH_SERIAL);
+	INTERRUPT_CONNECT(tmpstr, d->irq_misc);
+
+	/*
+	 *  For Mace interrupts MACE_PERIPH_SERIAL and MACE_PERIPH_MISC,
+	 *  register 32 mace interrupts each.
+	 */
+	/*  Register 32 crime interrupts (hexadecimal names):  */
+	for (i=0; i<32; i++) {
+		struct interrupt template;
+		char name[400];
+		snprintf(name, sizeof(name), "%s.0x%x.mace.%i",
+		    devinit->interrupt_path, MACE_PERIPH_SERIAL, i);
+		memset(&template, 0, sizeof(template));
+                template.line = i;
+		template.name = name;
+		template.extra = d;
+		template.interrupt_assert = mace_interrupt_assert;
+		template.interrupt_deassert = mace_interrupt_deassert;
+		interrupt_handler_register(&template);
+
+		snprintf(name, sizeof(name), "%s.0x%x.mace.%i",
+		    devinit->interrupt_path, MACE_PERIPH_MISC, i);
+		memset(&template, 0, sizeof(template));
+                template.line = i;
+		template.name = name;
+		template.extra = d;
+		template.interrupt_assert = mace_interrupt_assert;
+		template.interrupt_deassert = mace_interrupt_deassert;
+		interrupt_handler_register(&template);
+        }
+
+	memory_device_register(devinit->machine->memory, devinit->name,
+	    devinit->addr, DEV_MACE_LENGTH, dev_mace_access, d,
+	    DM_DEFAULT, NULL);
+
+	devinit->return_ptr = d;
+	return 1;
 }
 
 
 /****************************************************************************/
 
 
-/*
- *  dev_macepci_access():
- */
 DEVICE_ACCESS(macepci)
 {
-	struct macepci_data *d = (struct macepci_data *) extra;
+	struct macepci_data *d = extra;
 	uint64_t idata = 0, odata=0;
 	int regnr, res = 1, bus, dev, func, pcireg;
 
@@ -401,25 +545,25 @@ DEVICE_ACCESS(macepci)
  *  dev_macepci_init():
  */
 struct pci_data *dev_macepci_init(struct machine *machine,
-	struct memory *mem, uint64_t baseaddr, int pciirq)
+	struct memory *mem, uint64_t baseaddr, char *irq_path)
 {
-	struct macepci_data *d = malloc(sizeof(struct macepci_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct macepci_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct macepci_data)));
 	memset(d, 0, sizeof(struct macepci_data));
 
+	/*  TODO: PCI vs ISA interrupt?  */
+
 	d->pci_data = bus_pci_init(machine,
-	    pciirq,
+	    irq_path,
 	    0,
 	    0,
 	    0,
 	    0,
-	    0,
+	    "TODO: pci irq path",
 	    0x18000003,		/*  ISA portbase  */
 	    0,
-	    0);
+	    irq_path);
 
 	memory_device_register(mem, "macepci", baseaddr, DEV_MACEPCI_LENGTH,
 	    dev_macepci_access, (void *)d, DM_DEFAULT, NULL);
@@ -448,7 +592,7 @@ struct pci_data *dev_macepci_init(struct machine *machine,
 struct sgi_mec_data {
 	uint64_t	reg[DEV_SGI_MEC_LENGTH / sizeof(uint64_t)];
 
-	int		irq_nr;
+	struct interrupt irq;
 	unsigned char	macaddr[6];
 
 	unsigned char	cur_tx_packet[MAX_TX_PACKET_LEN];
@@ -747,12 +891,9 @@ advance_tx:
 }
 
 
-/*
- *  dev_sgi_mec_tick():
- */
-void dev_sgi_mec_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(sgi_mec)
 {
-	struct sgi_mec_data *d = (struct sgi_mec_data *) extra;
+	struct sgi_mec_data *d = extra;
 	int n = 0;
 
 	while (mec_try_tx(cpu, d))
@@ -768,18 +909,15 @@ void dev_sgi_mec_tick(struct cpu *cpu, void *extra)
 		    sizeof(uint64_t)] & MEC_INT_STATUS_MASK));
 		fflush(stdout);
 #endif
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 	} else
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 }
 
 
-/*
- *  dev_sgi_mec_access():
- */
 DEVICE_ACCESS(sgi_mec)
 {
-	struct sgi_mec_data *d = (struct sgi_mec_data *) extra;
+	struct sgi_mec_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int regnr;
 
@@ -937,27 +1075,20 @@ DEVICE_ACCESS(sgi_mec)
  *  dev_sgi_mec_init():
  */
 void dev_sgi_mec_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, unsigned char *macaddr)
+	uint64_t baseaddr, char *irq_path, unsigned char *macaddr)
 {
 	char *name2;
 	size_t nlen = 55;
-	struct sgi_mec_data *d = malloc(sizeof(struct sgi_mec_data));
+	struct sgi_mec_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sgi_mec_data)));
 	memset(d, 0, sizeof(struct sgi_mec_data));
-	d->irq_nr = irq_nr;
-	memcpy(d->macaddr, macaddr, 6);
 
+	INTERRUPT_CONNECT(irq_path, d->irq);
+	memcpy(d->macaddr, macaddr, 6);
 	mec_reset(d);
 
-	name2 = malloc(nlen);
-	if (name2 == NULL) {
-		fprintf(stderr, "out of memory in dev_sgi_mec_init()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name2 = malloc(nlen));
 	snprintf(name2, nlen, "mec [%02x:%02x:%02x:%02x:%02x:%02x]",
 	    d->macaddr[0], d->macaddr[1], d->macaddr[2],
 	    d->macaddr[3], d->macaddr[4], d->macaddr[5]);
@@ -967,7 +1098,7 @@ void dev_sgi_mec_init(struct machine *machine, struct memory *mem,
 	    DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(machine, dev_sgi_mec_tick, d,
-	    MEC_TICK_SHIFT, 0.0);
+	    MEC_TICK_SHIFT);
 
 	net_add_nic(machine->emul->net, d, macaddr);
 }
@@ -981,12 +1112,9 @@ struct sgi_ust_data {
 };
 
 
-/*
- *  dev_sgi_ust_access():
- */
 DEVICE_ACCESS(sgi_ust)
 {
-	struct sgi_ust_data *d = (struct sgi_ust_data *) extra;
+	struct sgi_ust_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int regnr;
 
@@ -1025,11 +1153,9 @@ DEVICE_ACCESS(sgi_ust)
  */
 void dev_sgi_ust_init(struct memory *mem, uint64_t baseaddr)
 {
-	struct sgi_ust_data *d = malloc(sizeof(struct sgi_ust_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct sgi_ust_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sgi_ust_data)));
 	memset(d, 0, sizeof(struct sgi_ust_data));
 
 	memory_device_register(mem, "sgi_ust", baseaddr,
@@ -1056,12 +1182,10 @@ struct sgi_mte_data {
 	uint32_t	reg[DEV_SGI_MTE_LENGTH / sizeof(uint32_t)];
 };
 
-/*
- *  dev_sgi_mte_access():
- */
+
 DEVICE_ACCESS(sgi_mte)
 {
-	struct sgi_mte_data *d = (struct sgi_mte_data *) extra;
+	struct sgi_mte_data *d = extra;
 	uint64_t first_addr, last_addr, zerobuflen, fill_addr, fill_len;
 	unsigned char zerobuf[ZERO_CHUNK_LEN];
 	uint64_t idata = 0, odata = 0;
@@ -1301,11 +1425,9 @@ DEVICE_ACCESS(sgi_mte)
  */
 void dev_sgi_mte_init(struct memory *mem, uint64_t baseaddr)
 {
-	struct sgi_mte_data *d = malloc(sizeof(struct sgi_mte_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct sgi_mte_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sgi_mte_data)));
 	memset(d, 0, sizeof(struct sgi_mte_data));
 
 	memory_device_register(mem, "sgi_mte", baseaddr, DEV_SGI_MTE_LENGTH,

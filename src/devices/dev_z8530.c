@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_z8530.c,v 1.9 2006/10/07 02:05:21 debug Exp $
+ *  $Id: dev_z8530.c,v 1.16.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  Zilog "zs" serial controller (Z8530).
+ *  COMMENT: Zilog Z8530 "zs" serial controller
  *
  *  Features:
  *	o)  Two channels, 0 = "channel B", 1 = "channel A".
@@ -46,6 +46,7 @@
 #include "console.h"
 #include "cpu.h"
 #include "device.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -61,8 +62,7 @@
 #define	DEV_Z8530_LENGTH	4
 
 struct z8530_data {
-	int		irq_nr;
-	int		dma_irq_nr;
+	struct interrupt irq;
 	int		irq_asserted;
 	int		addr_mult;
 
@@ -95,7 +95,7 @@ static void check_incoming(struct cpu *cpu, struct z8530_data *d)
 DEVICE_TICK(z8530)
 {
 	/*  Generate transmit and receive interrupts at regular intervals.  */
-	struct z8530_data *d = (struct z8530_data *) extra;
+	struct z8530_data *d = extra;
 	int asserted = 0;
 
 	if (d->rr[1][3] & ZSRR3_IP_B_TX && d->wr[0][1] & ZSWR1_TIE)
@@ -116,10 +116,10 @@ DEVICE_TICK(z8530)
 		asserted = 0;
 
 	if (asserted)
-		cpu_interrupt(cpu, d->irq_nr);
+		INTERRUPT_ASSERT(d->irq);
 
 	if (d->irq_asserted && !asserted)
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
 
 	d->irq_asserted = asserted;
 }
@@ -203,17 +203,15 @@ DEVICE_ACCESS(z8530)
 
 DEVINIT(z8530)
 {
-	struct z8530_data *d = malloc(sizeof(struct z8530_data));
+	struct z8530_data *d;
 	char tmp[100];
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct z8530_data)));
 	memset(d, 0, sizeof(struct z8530_data));
-	d->irq_nr     = devinit->irq_nr;
-	d->dma_irq_nr = devinit->dma_irq_nr;
+
 	d->addr_mult  = devinit->addr_mult;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	snprintf(tmp, sizeof(tmp), "%s [ch-b]", devinit->name);
 	d->console_handle[0] = console_start_slave(devinit->machine, tmp,
@@ -232,7 +230,7 @@ DEVINIT(z8530)
 	    NULL);
 
 	machine_add_tickfunction(devinit->machine, dev_z8530_tick, d,
-	    ZS_TICK_SHIFT, 0.0);
+	    ZS_TICK_SHIFT);
 
 	devinit->return_ptr = (void *)(size_t) d->console_handle[0];
 

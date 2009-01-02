@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec_ioasic.c,v 1.15 2006/01/01 13:17:16 debug Exp $
- *  
- *  DECstation "3MIN" and "3MAX" IOASIC device.
+ *  $Id: dev_dec_ioasic.c,v 1.18.2.1 2008/01/18 19:12:28 debug Exp $
+ *
+ *  COMMENT: IOASIC device used in the DECstation "3MIN" and "3MAX" machines
  *
  *  TODO:  Lots of stuff, such as DMA and all bits in the control registers.
  */
@@ -47,17 +47,14 @@
 #define IOASIC_DEBUG
 /* #define debug fatal */
 
-/*
- *  dev_dec_ioasic_access():
- */
+
 DEVICE_ACCESS(dec_ioasic)
 {
-	struct dec_ioasic_data *d = (struct dec_ioasic_data *) extra;
+	struct dec_ioasic_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	uint64_t curptr;
-	int dma_len, dma_res;
 	uint32_t csr;
-	int regnr;
+	int dma_len, dma_res, regnr;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -187,8 +184,10 @@ DEVICE_ACCESS(dec_ioasic)
 
 			/*  Make sure that the CPU interrupt is deasserted as
 			    well:  */
-			if (idata != 0)
-				cpu_interrupt_ack(cpu, 8 + idata);
+fatal("TODO: interrupt rewrite!\n");
+abort();
+//			if (idata != 0)
+//				cpu_interrupt_ack(cpu, 8 + idata);
 		}
 		break;
 
@@ -196,7 +195,9 @@ DEVICE_ACCESS(dec_ioasic)
 		if (writeflag == MEM_WRITE) {
 			d->reg[(IOASIC_IMSK - IOASIC_SLOT_1_START) / 0x10] =
 			    idata;
-			cpu_interrupt_ack(cpu, 8 + 0);
+fatal("TODO: interrupt rewrite!\n");
+abort();
+//			cpu_interrupt_ack(cpu, 8 + 0);
 		} else
 			odata = d->reg[(IOASIC_IMSK - IOASIC_SLOT_1_START) /
 			    0x10];
@@ -250,11 +251,9 @@ DEVICE_ACCESS(dec_ioasic)
 struct dec_ioasic_data *dev_dec_ioasic_init(struct cpu *cpu,
 	struct memory *mem, uint64_t baseaddr, int rackmount_flag)
 {
-	struct dec_ioasic_data *d = malloc(sizeof(struct dec_ioasic_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct dec_ioasic_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dec_ioasic_data)));
 	memset(d, 0, sizeof(struct dec_ioasic_data));
 
 	d->rackmount_flag = rackmount_flag;
@@ -262,6 +261,7 @@ struct dec_ioasic_data *dev_dec_ioasic_init(struct cpu *cpu,
 	memory_device_register(mem, "dec_ioasic", baseaddr,
 	    DEV_DEC_IOASIC_LENGTH, dev_dec_ioasic_access, (void *)d,
 	    DM_DEFAULT, NULL);
+
 	return d;
 }
 

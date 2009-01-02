@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dreamcast_asic.c,v 1.4 2006/10/28 01:37:54 debug Exp $
+ *  $Id: dev_dreamcast_asic.c,v 1.9.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  Dreamcast ASIC.
+ *  COMMENT: Dreamcast-specific ASIC
  *
  *  A simple device which forwards various Dreamcast device events as
  *  interrupts 13, 11, or 9, to the CPU.
@@ -40,7 +40,6 @@
 
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -62,12 +61,16 @@ struct dreamcast_asic_data {
 	int		asserted_13;
 	int		asserted_11;
 	int		asserted_9;
+
+	struct interrupt irq_13;
+	struct interrupt irq_11;
+	struct interrupt irq_9;
 };
 
 
 DEVICE_TICK(dreamcast_asic)
 {
-	struct dreamcast_asic_data *d = (struct dreamcast_asic_data *) extra;
+	struct dreamcast_asic_data *d = extra;
 	int i, old_asserted_13 = d->asserted_13, old_asserted_11 =
 	    d->asserted_11, old_asserted_9 = d->asserted_9;
 
@@ -86,28 +89,28 @@ DEVICE_TICK(dreamcast_asic)
 
 	if (d->asserted_13 != old_asserted_13) {
 		if (d->asserted_13)
-			cpu_interrupt(cpu, SH_INTEVT_IRL13);
+			INTERRUPT_ASSERT(d->irq_13);
 		else
-			cpu_interrupt_ack(cpu, SH_INTEVT_IRL13);
+			INTERRUPT_DEASSERT(d->irq_13);
 	}
 	if (d->asserted_11 != old_asserted_11) {
 		if (d->asserted_11)
-			cpu_interrupt(cpu, SH_INTEVT_IRL11);
+			INTERRUPT_ASSERT(d->irq_11);
 		else
-			cpu_interrupt_ack(cpu, SH_INTEVT_IRL11);
+			INTERRUPT_DEASSERT(d->irq_11);
 	}
 	if (d->asserted_9 != old_asserted_9) {
 		if (d->asserted_9)
-			cpu_interrupt(cpu, SH_INTEVT_IRL9);
+			INTERRUPT_ASSERT(d->irq_9);
 		else
-			cpu_interrupt_ack(cpu, SH_INTEVT_IRL9);
+			INTERRUPT_DEASSERT(d->irq_9);
 	}
 }
 
 
 DEVICE_ACCESS(dreamcast_asic)
 {
-	struct dreamcast_asic_data *d = (struct dreamcast_asic_data *) extra;
+	struct dreamcast_asic_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int r;
 
@@ -190,20 +193,29 @@ DEVICE_ACCESS(dreamcast_asic)
 
 DEVINIT(dreamcast_asic)
 {
+	char tmpstr[300];
 	struct machine *machine = devinit->machine;
-	struct dreamcast_asic_data *d =
-	    malloc(sizeof(struct dreamcast_asic_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct dreamcast_asic_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dreamcast_asic_data)));
 	memset(d, 0, sizeof(struct dreamcast_asic_data));
+
+	/*  Connect to SH4 interrupt levels 13, 11, and 9:  */
+	snprintf(tmpstr, sizeof(tmpstr), "%s.irq[0x%x]",
+	    devinit->interrupt_path, SH_INTEVT_IRL13);
+	INTERRUPT_CONNECT(tmpstr, d->irq_13);
+	snprintf(tmpstr, sizeof(tmpstr), "%s.irq[0x%x]",
+	    devinit->interrupt_path, SH_INTEVT_IRL11);
+	INTERRUPT_CONNECT(tmpstr, d->irq_11);
+	snprintf(tmpstr, sizeof(tmpstr), "%s.irq[0x%x]",
+	    devinit->interrupt_path, SH_INTEVT_IRL9);
+	INTERRUPT_CONNECT(tmpstr, d->irq_9);
 
 	memory_device_register(machine->memory, devinit->name, SYSASIC_BASE,
 	    SYSASIC_SIZE, dev_dreamcast_asic_access, d, DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(devinit->machine, dev_dreamcast_asic_tick, d,
-	    DREAMCAST_ASIC_TICK_SHIFT, 0.0);
+	    DREAMCAST_ASIC_TICK_SHIFT);
 
 	return 1;
 }

@@ -2,7 +2,7 @@
 #define	MACHINE_H
 
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,75 +28,75 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: machine.h,v 1.136 2006/10/25 09:24:06 debug Exp $
+ *  $Id: machine.h,v 1.182.2.1 2008/01/18 19:12:32 debug Exp $
  */
 
 #include <sys/types.h>
-#include <sys/time.h>
 
-#include "debugger_gdb.h"
 #include "symbol.h"
-
-#include "machine_arc.h"
-#include "machine_pmax.h"
-#include "machine_x86.h"
-
-
-#define	MAX_BREAKPOINTS		8
-#define	BREAKPOINT_FLAG_R	1
-
-#define	MAX_TICK_FUNCTIONS	16
-
-#define	MAX_STATISTICS_FIELDS	8
 
 struct cpu_family;
 struct diskimage;
 struct emul;
 struct fb_window;
+struct machine_arcbios;
+struct machine_pmax;
 struct memory;
 struct of_data;
 struct settings;
 
-/*  Ugly:  */
-struct kn230_csr;
-struct kn02_csr;
-struct dec_ioasic_data;
-struct ps2_data;
-struct footbridge_data;
-struct dec5800_data;
-struct au1x00_ic_data;
-struct malta_data;
-struct vr41xx_data;
-struct jazz_data;
-struct crime_data;
-struct mace_data;
-struct sgi_ip20_data;
-struct sgi_ip22_data;
-struct sgi_ip30_data;
 
+/*  TODO: This should probably go away...  */
 struct isa_pic_data {
 	struct pic8259_data	*pic1;
 	struct pic8259_data	*pic2;
 
 	int			*pending_timer_interrupts;
 	int			last_int;
+};
 
-	int			native_irq;
-	int			native_secondary_irq;
-	uint8_t			secondary_mask1;
+struct breakpoints {
+	int		n;
+
+	/*  Arrays, with one element for each entry:  */
+	char		**string;
+	uint64_t	*addr;
+};
+
+struct statistics {
+	char	*filename;
+	FILE	*file;
+	int	enabled;
+	char	*fields;		/*  "vpi" etc.  */
+};
+
+struct tick_functions {
+	int	n_entries;
+
+	/*  Arrays, with one element for each entry:  */
+	int	*ticks_till_next;
+	int	*ticks_reset_value;
+	void	(*(*f))(struct cpu *, void *);
+	void	**extra;
+};
+
+struct x11_md {
+	/*  X11/framebuffer stuff:  */
+	int	in_use;
+	int	scaledown;
+	int	scaleup;
+	int	n_display_names;
+	char	**display_names;
+	int	current_display_name_nr;	/*  updated by x11.c  */
+
+	int	n_fb_windows;
+	struct fb_window **fb_windows;
 };
 
 
-struct machine_bus {
-	struct machine_bus *next;
-
-	char		*name;
-
-	void		(*debug_dump)(void *);
-	void		*extra;
-};
-
-
+/*
+ *  The machine struct:
+ */
 struct machine {
 	/*  Pointer back to the emul struct we are in:  */
 	struct emul *emul;
@@ -107,18 +107,15 @@ struct machine {
 	/*  Name as choosen by the user:  */
 	char	*name;
 
+	/*  Full "path" to the machine, e.g. "machine[0]":  */
+	char	*path;
+
 	int	arch;			/*  ARCH_MIPS, ARCH_PPC, ..  */
 	int	machine_type;		/*  MACHINE_PMAX, ..  */
 	int	machine_subtype;	/*  MACHINE_DEC_3MAX_5000, ..  */
 
-	int	cycle_accurate;		/*  Set to non-zero for cycle
-					    accurate (slow) emulation.  */
-
 	/*  Name set by code in src/machines/machine_*.c:  */
 	char	*machine_name;
-
-	int	stable;			/*  startup warning for non-stable
-					    emulation modes.  */
 
 	/*  The serial number is mostly used when emulating multiple machines
 	    in a network. nr_of_nics is the current nr of network cards, which
@@ -129,28 +126,12 @@ struct machine {
 	/*  TODO: How about multiple cpu familys in one machine?  */
 	struct cpu_family *cpu_family;
 
-	/*
-	 *  The "mainbus":
-	 *
-	 *	o)  memory
-	 *	o)  devices
-	 *	o)  CPUs
-	 */
-
 	struct memory *memory;
 
 	int	main_console_handle;
 
-	/*  Hardware devices, run every x clock cycles.  */
-	int	n_tick_entries;
-	int	ticks_till_next[MAX_TICK_FUNCTIONS];
-	int	ticks_reset_value[MAX_TICK_FUNCTIONS];
-	void	(*tick_func[MAX_TICK_FUNCTIONS])(struct cpu *, void *);
-	void	*tick_extra[MAX_TICK_FUNCTIONS];
-	double	tick_hz[MAX_TICK_FUNCTIONS];
-
-	void	(*md_interrupt)(struct machine *m, struct cpu *cpu,
-		    int irq_nr, int assert);
+	/*  Tick functions (e.g. hardware devices):  */
+	struct tick_functions tick_functions;
 
 	char	*cpu_name;  /*  TODO: remove this, there could be several
 				cpus with different names in a machine  */
@@ -160,17 +141,6 @@ struct machine {
 	int	start_paused;
 	int	ncpus;
 	struct cpu **cpus;
-
-	/*  Registered busses:  */
-	struct machine_bus *first_bus;
-	int	n_busses;
-
-	/*  These are used by stuff in cpu.c, mostly:  */
-	int64_t ninstrs;
-	int64_t	ninstrs_show;
-	int64_t	ninstrs_flush;
-	int64_t	ninstrs_since_gettimeofday;
-	struct timeval starttime;
 
 	struct diskimage *first_diskimage;
 
@@ -188,28 +158,13 @@ struct machine {
 	char	*bootstr;
 	char	*bootarg;
 
-	struct debugger_gdb gdb;
-
 	/*  Breakpoints:  */
-	int	n_breakpoints;
-	char	*breakpoint_string[MAX_BREAKPOINTS];
-	uint64_t breakpoint_addr[MAX_BREAKPOINTS];
-	int	breakpoint_flags[MAX_BREAKPOINTS];
+	struct breakpoints breakpoints;
 
-	/*  Cache sizes: (1 << x) x=0 for default values  */
-	/*  TODO: these are _PER CPU_!  */
-	int	cache_picache;
-	int	cache_pdcache;
-	int	cache_secondary;
-	int	cache_picache_linesize;
-	int	cache_pdcache_linesize;
-	int	cache_secondary_linesize;
-
-	int	dbe_on_nonexistant_memaccess;
+	int	halt_on_nonexistant_memaccess;
 	int	instruction_trace;
 	int	show_nr_of_instructions;
 	int	show_trace_tree;
-	int	show_symbolic_register_names;
 	int	emulated_hz;
 	int	allow_instruction_combinations;
 	char	*userland_emul;		/*  NULL for no userland emulation  */
@@ -222,60 +177,21 @@ struct machine {
 	int	n_gfx_cards;
 
 	/*  Instruction statistics:  */
-	char	*statistics_filename;
-	FILE	*statistics_file;
-	int	statistics_enabled;
-	char	*statistics_fields;	/*  "vpi" etc.  */
+	struct statistics statistics;
+
+	/*  X11/framebuffer stuff (per machine):  */
+	struct x11_md x11_md;
 
 	/*  Machine-dependent: (PROM stuff, etc.)  */
 	union {
-		struct machine_arcbios	arc;
-		struct machine_pmax	pmax;
-		struct machine_pc	pc;
+		struct machine_arcbios	*arc;
+		struct machine_pmax	*pmax;
+		struct of_data		*of_data;
 	} md;
 
-	/*  OpenFirmware:  */
-	struct of_data *of_data;
-
 	/*  Bus-specific interrupt data:  */
+	/*  TODO: Remove!  */
 	struct isa_pic_data isa_pic_data;
-
-	/*  Machine-dependent interrupt specific structs:  */
-	union {
-		struct kn230_csr *kn230_csr;
-		struct kn02_csr *kn02_csr;
-		struct dec_ioasic_data *dec_ioasic_data;
-		struct ps2_data *ps2_data;
-		struct dec5800_data *dec5800_csr;
-		struct au1x00_ic_data *au1x00_ic_data;
-		struct vr41xx_data *vr41xx_data;       
-		struct jazz_data *jazz_data;
-		struct malta_data *malta_data;
-		struct sgi_ip20_data *sgi_ip20_data;
-		struct sgi_ip22_data *sgi_ip22_data;
-		struct sgi_ip30_data *sgi_ip30_data;
-		struct {
-			struct crime_data *crime_data;
-			struct mace_data *mace_data;
-		} ip32;
-		struct footbridge_data *footbridge_data;
-		struct bebox_data *bebox_data;
-		struct prep_data *prep_data;
-		struct cpc700_data *cpc700_data;
-		struct gc_data *gc_data;
-		struct v3_data *v3_data;
-	} md_int;
-
-	/*  X11/framebuffer stuff:  */
-	int	use_x11;
-	int	x11_scaledown;
-	int	x11_scaleup;
-	int	x11_n_display_names;
-	char	**x11_display_names;
-	int	x11_current_display_name_nr;	/*  updated by x11.c  */
-
-	int	n_fb_windows;
-	struct fb_window **fb_windows;
 };
 
 
@@ -292,17 +208,10 @@ struct machine {
 #define	ARCH_PPC		2
 #define	ARCH_SPARC		3
 #define	ARCH_ALPHA		4
-#define	ARCH_X86		5
-#define	ARCH_ARM		6
-#define	ARCH_IA64		7
-#define	ARCH_M68K		8
-#define	ARCH_SH			9
-#define	ARCH_HPPA		10
-#define	ARCH_I960		11
-#define	ARCH_AVR		12
-#define	ARCH_TRANSPUTER		13
-#define	ARCH_RCA180X		14
-#define	ARCH_AVR32		15
+#define	ARCH_ARM		5
+#define	ARCH_SH			6
+#define	ARCH_M88K		7
+#define	ARCH_M32R		8
 
 /*  MIPS:  */
 #define	MACHINE_BAREMIPS	1000
@@ -313,24 +222,18 @@ struct machine {
 #define	MACHINE_PS2		1005
 #define	MACHINE_SGI		1006
 #define	MACHINE_ARC		1007
-#define	MACHINE_NETGEAR		1008
-#define	MACHINE_SONYNEWS	1009
-#define	MACHINE_EVBMIPS		1010
-#define	MACHINE_PSP		1011
-#define	MACHINE_ALGOR		1012
-#define	MACHINE_QEMU_MIPS	1013
+#define	MACHINE_EVBMIPS		1008
+#define	MACHINE_ALGOR		1009
+#define	MACHINE_QEMU_MIPS	1010
 
 /*  PPC:  */
 #define	MACHINE_BAREPPC		2000
 #define	MACHINE_TESTPPC		2001
-#define	MACHINE_WALNUT		2002
-#define	MACHINE_PMPPC		2003
-#define	MACHINE_SANDPOINT	2004
-#define	MACHINE_BEBOX		2005
-#define	MACHINE_PREP		2006
-#define	MACHINE_MACPPC		2007
-#define	MACHINE_DB64360		2008
-#define	MACHINE_MVMEPPC		2009
+#define	MACHINE_PMPPC		2002
+#define	MACHINE_BEBOX		2003
+#define	MACHINE_PREP		2004
+#define	MACHINE_MACPPC		2005
+#define	MACHINE_MVMEPPC		2006
 
 /*  SPARC:  */
 #define	MACHINE_BARESPARC	3000
@@ -342,60 +245,30 @@ struct machine {
 #define	MACHINE_TESTALPHA	4001
 #define	MACHINE_ALPHA		4002
 
-/*  X86:  */
-#define	MACHINE_BAREX86		5000
-#define	MACHINE_X86		5001
-
 /*  ARM:  */
-#define	MACHINE_BAREARM		6000
-#define	MACHINE_TESTARM		6001
-#define	MACHINE_CATS		6002
-#define	MACHINE_HPCARM		6003
-#define	MACHINE_ZAURUS		6004
-#define	MACHINE_NETWINDER	6005
-#define	MACHINE_SHARK		6006
-#define	MACHINE_IQ80321		6007
-#define	MACHINE_IYONIX		6008
-#define	MACHINE_TS7200		6009
-#define	MACHINE_QEMU_ARM	6010
-
-/*  IA64:  */
-#define	MACHINE_BAREIA64	7000
-#define	MACHINE_TESTIA64	7001
-
-/*  M68K:  */
-#define	MACHINE_BAREM68K	8000
-#define	MACHINE_TESTM68K	8001
+#define	MACHINE_BAREARM		5000
+#define	MACHINE_TESTARM		5001
+#define	MACHINE_CATS		5002
+#define	MACHINE_HPCARM		5003
+#define	MACHINE_NETWINDER	5004
+#define	MACHINE_IQ80321		5005
+#define	MACHINE_QEMU_ARM	5006
 
 /*  SH:  */
-#define	MACHINE_BARESH		9000
-#define	MACHINE_TESTSH		9001
-#define	MACHINE_HPCSH		9002
-#define	MACHINE_DREAMCAST	9003
+#define	MACHINE_BARESH		6000
+#define	MACHINE_TESTSH		6001
+#define	MACHINE_HPCSH		6002
+#define	MACHINE_DREAMCAST	6003
+#define	MACHINE_LANDISK		6004
 
-/*  HPPA:  */
-#define	MACHINE_BAREHPPA	10000
-#define	MACHINE_TESTHPPA	10001
+/*  M88K:  */
+#define	MACHINE_BAREM88K	7000
+#define	MACHINE_TESTM88K	7001
+#define	MACHINE_MVME88K		7002
 
-/*  I960:  */
-#define	MACHINE_BAREI960	11000
-#define	MACHINE_TESTI960	11001
-
-/*  AVR:  */
-#define	MACHINE_BAREAVR		12000
-#define	MACHINE_AVR_PAL		12001
-#define	MACHINE_AVR_MAHPONG	12002
-
-/*  TRANSPUTER:  */
-#define	MACHINE_BARETRANSPUTER	13000
-
-/*  ARCH_RCA180X:  */
-#define	MACHINE_BARE180X	14000
-#define	MACHINE_CHIP8		14001
-
-/*  AVR32:  */
-#define	MACHINE_BAREAVR32	15000
-#define	MACHINE_TESTAVR32	15001
+/*  M32R:  */
+#define	MACHINE_BAREM32R	8000
+#define	MACHINE_TESTM32R	8001
 
 /*  Other "pseudo"-machines:  */
 #define	MACHINE_NONE		0
@@ -438,24 +311,16 @@ struct machine {
 #define	MACHINE_HPCSH_JORNADA690		2
 
 /*  SGI and ARC:  */
-#define	MACHINE_ARC_NEC_RD94		1
-#define	MACHINE_ARC_JAZZ_PICA		2
-#define	MACHINE_ARC_NEC_R94		3
-#define	MACHINE_ARC_DESKTECH_TYNE	4
-#define	MACHINE_ARC_JAZZ_MAGNUM		5
-#define	MACHINE_ARC_NEC_R98		6
-#define	MACHINE_ARC_JAZZ_M700		7
-#define	MACHINE_ARC_NEC_R96		8
+#define	MACHINE_ARC_JAZZ_PICA		1
+#define	MACHINE_ARC_JAZZ_MAGNUM		2
 
 /*  Algor:  */
-#define	MACHINE_ALGOR_P4032		4
-#define	MACHINE_ALGOR_P5064		5
+#define	MACHINE_ALGOR_P4032		1
+#define	MACHINE_ALGOR_P5064		2
 
 /*  EVBMIPS:  */
 #define	MACHINE_EVBMIPS_MALTA		1
 #define	MACHINE_EVBMIPS_MALTA_BE	2
-#define	MACHINE_EVBMIPS_MESHCUBE	3
-#define	MACHINE_EVBMIPS_PB1000		4
 
 /*  PReP:  */
 #define	MACHINE_PREP_IBM6050		1
@@ -466,6 +331,7 @@ struct machine {
 #define	MACHINE_SPARC_SS20		2
 #define	MACHINE_SPARC_ULTRA1		3
 #define	MACHINE_SPARC_ULTRA60		4
+#define	MACHINE_SPARC_SUN4V		5
 
 /*  MacPPC:  TODO: Real model names  */
 #define	MACHINE_MACPPC_G3		1
@@ -477,9 +343,10 @@ struct machine {
 #define	MACHINE_MVMEPPC_2100		2
 #define	MACHINE_MVMEPPC_5500		3
 
-/*  X86:  */
-#define	MACHINE_X86_GENERIC		1
-#define	MACHINE_X86_XT			2
+/*  MVME88K  */
+#define	MACHINE_MVME88K_187		1
+#define	MACHINE_MVME88K_188		2
+#define	MACHINE_MVME88K_197		3
 
 
 /*  For the automachine system:  */
@@ -524,42 +391,19 @@ void automachine_init(void);
 
 
 /*  machine.c:  */
-struct machine *machine_new(char *name, struct emul *emul);
+struct machine *machine_new(char *name, struct emul *emul, int id);
 void machine_destroy(struct machine *machine);
 int machine_name_to_type(char *stype, char *ssubtype,
 	int *type, int *subtype, int *arch);
+void machine_add_breakpoint_string(struct machine *machine, char *str);
 void machine_add_tickfunction(struct machine *machine,
-	void (*func)(struct cpu *, void *), void *extra,
-	int clockshift, double hz);
+	void (*func)(struct cpu *, void *), void *extra, int clockshift);
 void machine_statistics_init(struct machine *, char *fname);
 void machine_register(char *name, MACHINE_SETUP_TYPE(setup));
-void dump_mem_string(struct cpu *cpu, uint64_t addr);
-void store_string(struct cpu *cpu, uint64_t addr, char *s);
-int store_64bit_word(struct cpu *cpu, uint64_t addr, uint64_t data64);
-int store_32bit_word(struct cpu *cpu, uint64_t addr, uint64_t data32);
-int store_16bit_word(struct cpu *cpu, uint64_t addr, uint64_t data16);
-void store_byte(struct cpu *cpu, uint64_t addr, uint8_t data);
-void store_64bit_word_in_host(struct cpu *cpu, unsigned char *data,
-	uint64_t data32);
-void store_32bit_word_in_host(struct cpu *cpu, unsigned char *data,
-	uint64_t data32);
-void store_16bit_word_in_host(struct cpu *cpu, unsigned char *data,
-	uint16_t data16);
-uint64_t load_64bit_word(struct cpu *cpu, uint64_t addr);
-uint32_t load_32bit_word(struct cpu *cpu, uint64_t addr);
-uint16_t load_16bit_word(struct cpu *cpu, uint64_t addr);
-void store_buf(struct cpu *cpu, uint64_t addr, char *s, size_t len);
-void add_environment_string(struct cpu *cpu, char *s, uint64_t *addr);
-void add_environment_string_dual(struct cpu *cpu,
-	uint64_t *ptrp, uint64_t *addrp, char *s1, char *s2);
-void store_pointer_and_advance(struct cpu *cpu, uint64_t *addrp,
-	uint64_t data, int flag64);
 void machine_setup(struct machine *);
 void machine_memsize_fix(struct machine *);
 void machine_default_cputype(struct machine *);
 void machine_dumpinfo(struct machine *);
-void machine_bus_register(struct machine *, char *busname,
-	void (*debug_dump)(void *), void *extra);
 int machine_run(struct machine *machine);
 void machine_list_available_types_and_cpus(void);
 struct machine_entry *machine_entry_new(const char *name, 

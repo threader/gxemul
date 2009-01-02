@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_kn01.c,v 1.8 2006/01/01 13:17:16 debug Exp $
- *  
- *  KN01 stuff ("PMAX", DECstation type 1); CSR (System Control Register)
- *  and VDAC.
+ *  $Id: dev_kn01.c,v 1.11.2.1 2008/01/18 19:12:29 debug Exp $
+ *
+ *  COMMENT: DEC KN01 ("PMAX", DECstation type 1) control register and VDAC
  *
  *  TODO: The CSR isn't really complete.
  *
@@ -49,9 +48,9 @@
 #include "dec_kn01.h"
 
 
-struct kn01_csr_data {
-	int		color_fb;
-	int		csr;
+struct kn01_data {
+	int			color_fb;
+	uint32_t		csr;
 };
 
 
@@ -78,12 +77,9 @@ struct vdac_data {
 };
 
 
-/*
- *  dev_kn01_csr_access():
- */
-DEVICE_ACCESS(kn01_csr)
+DEVICE_ACCESS(kn01)
 {
-	struct kn01_csr_data *k = extra;
+	struct kn01_data *d = extra;
 	int csr;
 
 	if (writeflag == MEM_WRITE) {
@@ -93,11 +89,11 @@ DEVICE_ACCESS(kn01_csr)
 
 	/*  Read:  */
 	if (len != 2 || relative_addr != 0) {
-		fatal("[ kn01_csr: trying to read something which is not "
+		fatal("[ kn01: trying to read something which is not "
 		    "the first half-word of the csr ]");
 	}
 
-	csr = k->csr;
+	csr = d->csr;
 
 	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
 		data[0] = csr & 0xff;
@@ -239,12 +235,11 @@ DEVICE_ACCESS(vdac)
 void dev_vdac_init(struct memory *mem, uint64_t baseaddr,
 	unsigned char *rgb_palette, int color_fb_flag)
 {
-	struct vdac_data *d = malloc(sizeof(struct vdac_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct vdac_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct vdac_data)));
 	memset(d, 0, sizeof(struct vdac_data));
+
 	d->rgb_palette   = rgb_palette;
 	d->color_fb_flag = color_fb_flag;
 
@@ -254,23 +249,20 @@ void dev_vdac_init(struct memory *mem, uint64_t baseaddr,
 
 
 /*
- *  dev_kn01_csr_init():
+ *  dev_kn01_init():
  */
-void dev_kn01_csr_init(struct memory *mem, uint64_t baseaddr, int color_fb)
+void dev_kn01_init(struct memory *mem, uint64_t baseaddr, int color_fb)
 {
-	struct kn01_csr_data *k = malloc(sizeof(struct kn01_csr_data));
-	if (k == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct kn01_data *d;
 
-	memset(k, 0, sizeof(struct kn01_csr_data));
-	k->color_fb = color_fb;
+	CHECK_ALLOCATION(d = malloc(sizeof(struct kn01_data)));
+	memset(d, 0, sizeof(struct kn01_data));
 
-	k->csr = 0;
-	k->csr |= (color_fb? 0 : KN01_CSR_MONO);
+	d->color_fb = color_fb;
+	d->csr = 0;
+	d->csr |= (color_fb? 0 : KN01_CSR_MONO);
 
-	memory_device_register(mem, "kn01_csr", baseaddr,
-	    DEV_KN01_CSR_LENGTH, dev_kn01_csr_access, k, DM_DEFAULT, NULL);
+	memory_device_register(mem, "kn01", baseaddr,
+	    DEV_KN01_LENGTH, dev_kn01_access, d, DM_DEFAULT, NULL);
 }
 

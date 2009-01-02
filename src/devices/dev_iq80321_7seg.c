@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,11 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_iq80321_7seg.c,v 1.2 2006/02/09 20:02:59 debug Exp $
+ *  $Id: dev_iq80321_7seg.c,v 1.4.2.1 2008/01/18 19:12:29 debug Exp $
  *
- *  IQ80321 LED device. Should work with NetBSD's iq80321_7seg.c.
+ *  COMMENT: IQ80321 LED device
+ *
+ *  Should work with NetBSD's iq80321_7seg.c.
  *
  *  TODO: Graphical output of LED lines?
  */
@@ -48,9 +50,6 @@ struct iq80321_7seg_data {
 };
 
 
-/*
- *  dev_iq80321_7seg_access():
- */
 DEVICE_ACCESS(iq80321_7seg)
 {
 	struct iq80321_7seg_data *d = extra;
@@ -99,11 +98,9 @@ DEVICE_ACCESS(iq80321_7seg)
 
 DEVINIT(iq80321_7seg)
 {
-	struct iq80321_7seg_data *d = malloc(sizeof(struct iq80321_7seg_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct iq80321_7seg_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct iq80321_7seg_data)));
 	memset(d, 0, sizeof(struct iq80321_7seg_data));
 
 	/*  0xfe840000 and 0xfe850000  */

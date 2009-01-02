@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,13 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_pmppc.c,v 1.3 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_pmppc.c,v 1.12.2.1 2008/01/18 19:12:33 debug Exp $
+ *
+ *  COMMENT: Artesyn's PM/PPC board
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "bus_pci.h"
@@ -36,7 +39,6 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -44,25 +46,32 @@
 
 MACHINE_SETUP(pmppc)
 {
+	struct pci_data *pci_data;
+	char tmpstr[300];
+
 	/*
-	 *  NetBSD/pmppc (http://www.netbsd.org/Ports/pmppc/)
+	 *  NetBSD/pmppc (http://www.netbsd.org/ports/pmppc/)
 	 */
 	machine->machine_name = "Artesyn's PM/PPC board";
+
+	/*  Bogus default speed = 33 MHz  */
 	if (machine->emulated_hz == 0)
-		machine->emulated_hz = 10000000;
+		machine->emulated_hz = 33000000;
 
-	dev_pmppc_init(machine->memory);
+	/*  PM/PPC specific motherboard registers:  */
+	device_add(machine, "pmppc");
 
-	machine->md_int.cpc700_data = dev_cpc700_init(machine, machine->memory);
-	machine->md_interrupt = cpc700_interrupt;
+	/*  PCI and Interrupt controller:  */
+	pci_data = device_add(machine, "cpc700");
 
 	/*  RTC at "ext int 5" = "int 25" in IBM jargon, int
 	    31-25 = 6 for the rest of us.  */
-	dev_mc146818_init(machine, machine->memory, 0x7ff00000, 31-25,
+	snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].cpc700.%i",
+	    machine->path, machine->bootstrap_cpu, 31-25);
+	dev_mc146818_init(machine, machine->memory, 0x7ff00000, tmpstr,
 	    MC146818_PMPPC, 1);
 
-	bus_pci_add(machine, machine->md_int.cpc700_data->pci_data,
-	    machine->memory, 0, 8, 0, "dec21143");
+	bus_pci_add(machine, pci_data, machine->memory, 0, 8, 0, "dec21143");
 }
 
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,13 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_iq80321.c,v 1.19 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_iq80321.c,v 1.26.2.1 2008/01/18 19:12:33 debug Exp $
+ *
+ *  COMMENT: Intel IQ80321 (ARM)
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "bus_pci.h"
@@ -36,14 +39,13 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
 
 MACHINE_SETUP(iq80321)
 {
-	struct i80321_data *i80321_data;
+	char tmpstr[300];
 	struct pci_data *pci;
 
 	/*
@@ -53,16 +55,17 @@ MACHINE_SETUP(iq80321)
 	 */
 
 	machine->machine_name = "Intel IQ80321";
-	machine->stable = 1;
 
-	machine->md_interrupt = i80321_interrupt;
 	cpu->cd.arm.coproc[6] = arm_coproc_i80321_6;
 
-	i80321_data = device_add(machine, "i80321 addr=0xffffe000");
-	pci = i80321_data->pci_bus;
+	snprintf(tmpstr, sizeof(tmpstr), "i80321 irq=%s.cpu[%i].irq "
+	    "addr=0xffffe000", machine->path, machine->bootstrap_cpu);
+	pci = device_add(machine, tmpstr);
 
-	device_add(machine, "ns16550 irq=28 addr=0xfe800000 "
-	    "name2='serial console'");
+	snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%s.cpu[%i].irq."
+	    "i80321.%i addr=0xfe800000 name2='serial console'",
+	    machine->path, machine->bootstrap_cpu, 28);
+	device_add(machine, tmpstr);
 
 	/*  0xa0000000 = physical ram, 0xc0000000 = uncached  */
 	dev_ram_init(machine, 0xa0000000, 0x20000000, DEV_RAM_MIRROR, 0x0);

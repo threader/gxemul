@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ns16550.c,v 1.55 2006/10/27 13:12:21 debug Exp $
+ *  $Id: dev_ns16550.c,v 1.62.2.1 2008/01/18 19:12:29 debug Exp $
  *  
- *  NS16550 serial controller.
- *
+ *  COMMENT: NS16550 serial controller
  *
  *  TODO: Implement the FIFO.
  */
@@ -40,6 +39,7 @@
 #include "console.h"
 #include "cpu.h"
 #include "device.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -55,10 +55,11 @@
 struct ns_data {
 	int		addrmult;
 	int		in_use;
-	int		irqnr;
 	char		*name;
 	int		console_handle;
 	int		enable_fifo;
+
+	struct interrupt irq;
 
 	unsigned char	reg[DEV_NS16550_LENGTH];
 	unsigned char	fcr;		/*  FIFO control register  */
@@ -94,21 +95,18 @@ DEVICE_TICK(ns16550)
 	    ((d->reg[com_ier] & IER_ERXRDY) && (d->reg[com_iir] & IIR_RXRDY))) {
 		d->reg[com_iir] &= ~IIR_NOPEND;
 		if (d->reg[com_mcr] & MCR_IENABLE) {
-			cpu_interrupt(cpu, d->irqnr);
+			INTERRUPT_ASSERT(d->irq);
 			d->int_asserted = 1;
 		}
 	} else {
 		d->reg[com_iir] |= IIR_NOPEND;
 		if (d->int_asserted)
-			cpu_interrupt_ack(cpu, d->irqnr);
+			INTERRUPT_DEASSERT(d->irq);
 		d->int_asserted = 0;
 	}
 }
 
 
-/*
- *  dev_ns16550_access():
- */
 DEVICE_ACCESS(ns16550)
 {
 	uint64_t idata = 0, odata=0;
@@ -323,16 +321,13 @@ DEVICE_ACCESS(ns16550)
 
 DEVINIT(ns16550)
 {
-	struct ns_data *d = malloc(sizeof(struct ns_data));
+	struct ns_data *d;
 	size_t nlen;
 	char *name;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct ns_data)));
 	memset(d, 0, sizeof(struct ns_data));
-	d->irqnr	= devinit->irq_nr;
+
 	d->addrmult	= devinit->addr_mult;
 	d->in_use	= devinit->in_use;
 	d->enable_fifo	= 1;
@@ -346,14 +341,12 @@ DEVINIT(ns16550)
 	    console_start_slave(devinit->machine, devinit->name2 != NULL?
 	    devinit->name2 : devinit->name, d->in_use);
 
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
+
 	nlen = strlen(devinit->name) + 10;
 	if (devinit->name2 != NULL)
 		nlen += strlen(devinit->name2);
-	name = malloc(nlen);
-	if (name == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name = malloc(nlen));
 	if (devinit->name2 != NULL && devinit->name2[0])
 		snprintf(name, nlen, "%s [%s]", devinit->name, devinit->name2);
 	else
@@ -363,11 +356,11 @@ DEVINIT(ns16550)
 	    DEV_NS16550_LENGTH * d->addrmult, dev_ns16550_access, d,
 	    DM_DEFAULT, NULL);
 	machine_add_tickfunction(devinit->machine,
-	    dev_ns16550_tick, d, TICK_SHIFT, 0.0);
+	    dev_ns16550_tick, d, TICK_SHIFT);
 
 	/*
 	 *  NOTE:  Ugly cast into a pointer, because this is a convenient way
-	 *         to return the console handle to code in src/machine.c.
+	 *         to return the console handle to code in src/machines/.
 	 */
 	devinit->return_ptr = (void *)(size_t)d->console_handle;
 

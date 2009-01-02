@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_ps2_spd.c,v 1.14 2006/01/01 13:17:17 debug Exp $
+ *  $Id: dev_ps2_spd.c,v 1.17.2.1 2008/01/18 19:12:29 debug Exp $
  *  
- *  Playstation 2 "SPD" harddisk controller.
+ *  COMMENT: PlayStation 2 SPD harddisk controller
  *
  *  TODO
  */
@@ -38,9 +38,12 @@
 
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
+#include "machine.h"
 #include "memory.h"
 #include "misc.h"
+
+
+#define	DEV_PS2_SPD_LENGTH		0x800
 
 
 struct ps2_spd_data {
@@ -48,9 +51,6 @@ struct ps2_spd_data {
 };
 
 
-/*
- *  dev_ps2_spd_access():
- */
 DEVICE_ACCESS(ps2_spd)
 {
 	struct ps2_spd_data *d = extra;
@@ -94,30 +94,26 @@ DEVICE_ACCESS(ps2_spd)
 }
 
 
-/*
- *  dev_ps2_spd_init():
- */
-void dev_ps2_spd_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr)
+DEVINIT(ps2_spd)
 {
 	struct ps2_spd_data *d;
 	char tmpstr[200];
 
-	d = malloc(sizeof(struct ps2_spd_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct ps2_spd_data)));
 	memset(d, 0, sizeof(struct ps2_spd_data));
-	d->wdcaddr = baseaddr + DEV_PS2_SPD_LENGTH;
 
-	memory_device_register(mem, "ps2_spd", baseaddr, DEV_PS2_SPD_LENGTH,
+	d->wdcaddr = devinit->addr + DEV_PS2_SPD_LENGTH;
+
+	memory_device_register(devinit->machine->memory, "ps2_spd",
+	    devinit->addr, DEV_PS2_SPD_LENGTH,
 	    dev_ps2_spd_access, d, DM_DEFAULT, NULL);
 
 	/*  Register a generic wdc device at a bogus address:  */
-	/*  (irq 8 + 32 + 0 means SBUS/PCMCIA)  */
-	snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%i",
-	    (long long)d->wdcaddr, 8 + 32 + 0);
-	device_add(machine, tmpstr);
+	/*  IRQ = PS2 SBUS irq 0  */
+	snprintf(tmpstr, sizeof(tmpstr), "wdc addr=0x%llx irq=%s.ps2_sbus.0",
+	    (long long)d->wdcaddr, devinit->interrupt_path);
+	device_add(devinit->machine, tmpstr);
+
+	return 1;
 }
 

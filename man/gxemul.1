@@ -1,6 +1,6 @@
-.\" $Id: gxemul.1,v 1.76 2006/11/04 06:40:20 debug Exp $
+.\" $Id: gxemul.1,v 1.101.2.2 2008/01/18 19:12:23 debug Exp $
 .\"
-.\" Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+.\" Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions are met:
@@ -26,15 +26,16 @@
 .\" SUCH DAMAGE.
 .\" 
 .\" 
-.\" This is a minimal man page for GXemul. Process this file with
+.\" This is the man page for GXemul. Process this file with
+.\"
 .\"     groff -man -Tascii gxemul.1    or    nroff -man gxemul.1
 .\"
-.Dd NOVEMBER 2006
+.Dd JANUARY 2008
 .Dt GXEMUL 1
 .Os
 .Sh NAME
 .Nm gxemul
-.Nd an experimental machine emulator
+.Nd an experimental framework for full-system machine emulation
 .Sh SYNOPSIS
 .Nm
 .Op machine, other, and general options
@@ -42,66 +43,75 @@
 .Nm
 .Op general options
 .Ar @configfile
-.\" TODO: Reenable this once userland emulation works:
-.\" .Nm
-.\" .Op userland, other, and general options
-.\" .Ar file Op Ar args ...
+.Nm
+.Op userland, other, and general options
+.Ar file Op Ar args ...
 .Sh DESCRIPTION
 .Nm
-is an experimental instruction-level machine emulator. Several
-emulation modes are available. In some modes, processors and surrounding
-hardware components are emulated well enough to let unmodified operating
-systems (e.g. NetBSD) run inside the emulator as if they were running on a 
-real machine.
+is a framework for full-system computer architecture emulation.
+Several processor architectures and machine types have been implemented.
+It is working well enough to allow unmodified "guest" operating
+systems (e.g. NetBSD) to run inside the emulator, as if they were running 
+on real hardware.
 .Pp
-Processors (ARM, MIPS, PowerPC, SuperH) are emulated using dynamic translation.
-However, unlike some other dynamically translating emulators, GXemul does
-not currently generate native code, only a "runnable intermediate
-representation", and will thus run on any host architecture, without the
-need to implement per-architecture backends.
+The emulator emulates (networks of) real machines. The machines may
+consist of ARM, MIPS, PowerPC, and SuperH processors, and various
+surrounding hardware components such as framebuffers, busses, interrupt
+controllers, ethernet controllers, disk controllers, and serial port
+controllers.
 .Pp
 The emulator can be invoked in the following ways:
 .Pp
-1. When emulating a complete machine, configuration options can be entered
-directly on the command line.
+1. When emulating a complete machine, configuration options can be
+supplied directly on the command line.
 .Pp
 2. Options can be read from a configuration file.
-.\" .Pp
-.\" 3. When emulating a userland environment (syscall-only emulation, not
-.\" emulating complete machines), then the program name and its argument
-.\" should be given on the command line. (This mode doesn't really work yet,
-.\" and is disabled for stable release builds.)
+.Pp
+3. When emulating a userland environment (syscall-only emulation, not
+emulating complete machines), then the program name and its argument
+should be given on the command line. (This mode is not really usable yet.)
 .Pp
 The easiest way to use the emulator is to supply settings directly on the 
-command line. The most important thing you need to supply is the
+command line.
+.Pp
+The most important thing you need to supply is the
 file argument. This is the name of a binary file (an ELF, a.out, COFF/ECOFF,
 SREC, or a raw binary image) which you wish to run in the emulator. This file
 might be an operating system kernel, or perhaps a ROM image file.
-.Pp
 If more than one filename is supplied, all files are loaded into memory, 
 and the entry point (if available) is taken from the last file.
 .Pp
-Apart from the name of a binary file, it is also necessary to select
-which specific emulation mode to use. For example, a MIPS-based machine
-from DEC (a DECstation) is very different from a MIPS-based machine
-from SGI. Use
+Apart from the name of a binary file, you must also use the
+.Fl E
+and/or
+.Fl e
+options to select which emulation mode to use. This is necessary because
+the emulator cannot in general deduce this from the file being executed.
+For example, a MIPS-based machine from DEC (a DECstation) is very different
+from a MIPS-based machine from SGI. Use
 .Nm
 .Fl H
 to get a list of available emulation modes.
 .Pp
-There are two exceptions to the normal invocation usage mentioned above.
-The first is for DECstation emulation: if you have a bootable
-DECstation harddisk or CDROM image, then just supplying the diskimage via 
-the
+There are three exceptions to the normal invocation usage mentioned above.
+.Pp
+1. For DECstation emulation, if you have a bootable DECstation harddisk or
+CDROM image, then just supplying the diskimage via the
 .Fl d
-option is sufficient. (The filename of the kernel can then be 
+option is sufficient. The filename of the kernel can then be 
 skipped, as the emulator runs the bootblocks from the diskimage directly and 
-doesn't need the kernel as a separate file.)
-The second is if you supply an ISO9660 CDROM disk image. You may then use 
-the
+doesn't need the kernel as a separate file.
+.Pp
+2. If you supply an ISO9660 CDROM disk image, then using the
 .Fl j
-option to indicate which file on the CDROM filesystem that should be 
-loaded into emulated memory.
+option to indicate a file on the CDROM filesystem to load is sufficient;
+no additional kernel filename needs to be supplied on the command line.
+.Pp
+3. For Dreamcast emulation, when booting e.g. a NetBSD/dreamcast CDROM 
+image, it is enough to supply the disk image (with the correct ISO 
+partition start offset). Bootblocks will be read directly from the CDROM
+image, and there is no need to supply the name of an external kernel on 
+the command line.
 .Pp
 Gzipped kernels are automatically unzipped, by calling the external gunzip 
 program, both when specifying a gzipped file directly on the command line 
@@ -158,12 +168,20 @@ Override the default geometry; use H heads and S sectors-per-track.
 (The number of cylinders is calculated automatically.)
 .It i
 IDE. (This is the default for most machine types.)
+.It oOFS;
+Set the base offset for an ISO9660 filesystem on a disk image. The default 
+is 0. A suitable offset when booting from Dreamcast ISO9660 filesystem 
+images, which are offset by 11702 sectors, is 23965696.
 .It r
 Read-only (don't allow changes to be written to the file).
 .It s
 SCSI.
 .It t
 Tape.
+.It V
+Add an overlay filename to an already defined disk image.
+(A ID number must also be specified when this flag is used. See the 
+documentation for an example of how to use overlays.)
 .It 0-7
 Force a specific ID number.
 .El
@@ -192,13 +210,8 @@ For floppies, the gH;S; prefix is ignored. Instead, the number of
 heads and cylinders are assumed to be 2 and 80, respectively, and the 
 number of sectors per track is calculated automatically. (This works for 
 720KB, 1.2MB, 1.44MB, and 2.88MB floppies.)
-.It Fl G Ar port
-Pause at startup, and listen to TCP port
-.Ar port
-for incoming remote GDB connections. The emulator starts up in paused 
-mode, and it is up to the remote GDB instance to start the session.
 .It Fl I Ar hz
-Set the main CPUs frequency to
+Set the main CPU's frequency to
 .Ar hz
 Hz. This option does not work for all emulated machine modes. It affects 
 the way count/compare interrupts are faked to simulate emulated time = 
@@ -304,18 +317,17 @@ Disabled at startup.
 Overwrite the file, instead of appending to it.
 .El
 .Pp
-.\" Statistics gathering can be enabled/disabled at runtime by using the
-.\" "TODO" debugger command.
-.\" .Pp
+Statistics gathering can be enabled/disabled at runtime by using the
+"statistics_enabled = yes" and "statistics_enabled = no" debugger 
+commands.
+.Pp
 When gathering instruction statistics using the
 .Fl s
-option, instruction combinations are always disabled (i.e.
-an implicit
+option, instruction combinations are always disabled (i.e. an implicit
 .Fl J
-is added to the command line).
-.Pp
-If a value is missing (e.g. the end-of-page slot does not really have a 
-known physical address), it is written out as just a dash ("-").
+flag is added to the command line).
+.It Fl T
+Halt if the emulated program attempts to access non-existing memory.
 .It Fl t
 Show a trace tree of all function calls being made.
 .It Fl U
@@ -358,16 +370,18 @@ Add
 as an X11 display to use for framebuffers.
 .El
 .Pp
-.\" Userland options:
-.\" .Bl -tag -width Ds
-.\" .It Fl u Ar emul-mode
-.\" Userland-only (syscall) emulation. (Use
-.\" .Fl H
-.\" to get a list of available emulation modes.) Some (but not all) of the
-.\" options listed under Other options above can also be used with 
-.\" userland emulation.
-.\" .El
-.\" .Pp
+Userland options:
+.Bl -tag -width Ds
+.It Fl u Ar emul-mode
+Userland-only (syscall) emulation. (Use
+.Fl H
+to get a list of available emulation modes.) Some (but not all) of the
+options listed under Other options above can also be used with 
+userland emulation.
+.Pp
+Note: Userland (syscall) emulation does not really work yet.
+.El
+.Pp
 General options:
 .Bl -tag -width Ds
 .It Fl c Ar cmd
@@ -393,14 +407,14 @@ emulation is not included in stable release builds, since it doesn't work
 yet.)
 .It Fl h
 Display a list of all available command line options.
+.It Fl k Ar n
+Set the size of the dyntrans cache (per emulated CPU) to
+.Ar n
+MB. The default size is 48 MB.
 .It Fl K
 Force the single-step debugger to be entered at the end of a simulation.
 .It Fl q
 Quiet mode; this suppresses startup messages.
-.\".It Fl s
-.\"For MIPS emulation: Show opcode usage statistics after the simulation.
-.\"For non-MIPS emulation (i.e. using dyntrans): Save statistics to a file 
-.\"at regular intervals of which physical addresses that were executed.
 .It Fl V
 Start up in the single-step debugger, paused.
 .It Fl v
@@ -469,10 +483,6 @@ source distribution, some are marked as TODO in the source code itself.
 Userland (syscall-only) emulation, i.e. running a userland binary directly 
 without simulating an entire machine, doesn't really work yet.
 .Pp
-The documentation sometimes only reflects the way things worked with 
-the old MIPS emulation mode (prior to 0.4.0), and it is incorrect when
-applied to current releases.
-.Pp
 .Nm
 is in general not cycle-accurate; it does not simulate individual
 pipe-line stages or penalties caused by branch-prediction misses or
@@ -480,14 +490,12 @@ cache misses, so it cannot be used for accurate simulation of any actual
 real-world processor.
 .Pp
 .Nm
-is in general not timing-accurate. Some emulation modes
-(DECstation, CATS, NetWinder, MobilePro (hpcmips), Malta (evbmips),
-Cobalt, Algor, and Dreamcast) try to make the guest
-operating system's clock run at the same speed as the host clock.
+is in general not timing-accurate. Many emulation modes try to make the
+guest operating system's clock run at the same speed as the host clock.
 However, the number of instructions executed per clock tick can
 obviously vary, depending on the current CPU load on the host.
 .Sh AUTHOR
-GXemul is Copyright (C) 2003-2006 Anders Gavare <anders@gavare.se>
+GXemul is Copyright (C) 2003-2008 Anders Gavare <anders@gavare.se>
 .Pp
 See http://gavare.se/gxemul/ for more information. For other Copyright
 messages, see the corresponding parts of the source code and/or

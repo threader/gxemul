@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,13 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec21143.c,v 1.26 2006/08/21 14:44:22 debug Exp $
+ *  $Id: dev_dec21143.c,v 1.31.2.1 2008/01/18 19:12:28 debug Exp $
  *
- *  DEC 21143 ("Tulip") ethernet controller. Implemented from Intel document
- *  278074-001 ("21143 PC/CardBus 10/100Mb/s Ethernet LAN Controller") and by
- *  reverse-engineering OpenBSD and NetBSD sources.
+ *  COMMENT: DEC 21143 "Tulip" ethernet controller
+ *
+ *  Implemented from Intel document 278074-001 ("21143 PC/CardBus 10/100Mb/s
+ *  Ethernet LAN Controller") and by reverse-engineering OpenBSD and NetBSD
+ *  sources.
  *
  *  This device emulates several sub-components:
  *
@@ -58,6 +60,7 @@
 #include "device.h"
 #include "devices.h"
 #include "emul.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -75,8 +78,8 @@
 #define	ROM_WIDTH		6
 
 struct dec21143_data {
-	int		irq_nr;
-	int		irq_asserted;
+	struct interrupt irq;
+	int		irq_was_asserted;
 
 	/*  PCI:  */
 	int		pci_little_endian;
@@ -154,11 +157,9 @@ int dec21143_rx(struct cpu *cpu, struct dec21143_data *d)
 
 		/*  Append a 4 byte CRC:  */
 		d->cur_rx_buf_len += 4;
-		d->cur_rx_buf = realloc(d->cur_rx_buf, d->cur_rx_buf_len);
-		if (d->cur_rx_buf == NULL) {
-			fatal("dec21143_rx(): out of memory\n");
-			exit(1);
-		}
+		CHECK_ALLOCATION(d->cur_rx_buf = realloc(d->cur_rx_buf,
+		    d->cur_rx_buf_len));
+
 		/*  Well... the CRC is just zeros, for now.  */
 		memset(d->cur_rx_buf + d->cur_rx_buf_len - 4, 0, 4);
 
@@ -286,7 +287,7 @@ int dec21143_tx(struct cpu *cpu, struct dec21143_data *d)
 	uint64_t addr = d->cur_tx_addr, bufaddr;
 	unsigned char descr[16];
 	uint32_t tdes0, tdes1, tdes2, tdes3;
-	int bufsize, buf1_size, buf2_size, i, writeback_len = 4;
+	int bufsize, buf1_size, buf2_size, i;
 
 	addr &= 0x7fffffff;
 
@@ -340,7 +341,7 @@ int dec21143_tx(struct cpu *cpu, struct dec21143_data *d)
 
 	/*
 	fatal("{ TX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
-	    (long long)addr, tdes0, tdes1, tdes2, tdes3, bufsize, (int)bufaddr);
+	  (long long)addr, tdes0, tdes1, tdes2, tdes3, bufsize, (int)bufaddr);
 	*/
 	bufaddr &= 0x7fffffff;
 
@@ -371,19 +372,20 @@ int dec21143_tx(struct cpu *cpu, struct dec21143_data *d)
 		if (tdes1 & TDCTL_Tx_FS) {
 			/*  First segment. Let's allocate a new buffer:  */
 			/*  fatal("new frame }\n");  */
-			d->cur_tx_buf = malloc(bufsize);
+
+			CHECK_ALLOCATION(d->cur_tx_buf = malloc(bufsize));
 			d->cur_tx_buf_len = 0;
 		} else {
 			/*  Not first segment. Increase the length of
 			    the current buffer:  */
 			/*  fatal("continuing last frame }\n");  */
-			d->cur_tx_buf = realloc(d->cur_tx_buf,
-			    d->cur_tx_buf_len + bufsize);
-		}
 
-		if (d->cur_tx_buf == NULL) {
-			fatal("dec21143_tx(): out of memory\n");
-			exit(1);
+			if (d->cur_tx_buf == NULL)
+				fatal("[ dec21143: WARNING! tx: middle "
+				    "segment, but no first segment?! ]\n");
+
+			CHECK_ALLOCATION(d->cur_tx_buf = realloc(d->cur_tx_buf,
+			    d->cur_tx_buf_len + bufsize));
 		}
 
 		/*  "DMA" data from emulated physical memory into the buf:  */
@@ -415,17 +417,13 @@ int dec21143_tx(struct cpu *cpu, struct dec21143_data *d)
 			d->cur_tx_buf = NULL;
 			d->cur_tx_buf_len = 0;
 
-			/*  TODO: Shouldn't the OWN bit be cleared on all
-			    kinds of segments, not just the Last?  */
-
-			/*  We are done.  */
-			tdes0 &= ~TDSTAT_OWN;
-			writeback_len = 1;
-
 			/*  Interrupt, if Tx_IC is set:  */
 			if (tdes1 & TDCTL_Tx_IC)
 				d->reg[CSR_STATUS/8] |= STATUS_TI;
 		}
+
+		/*  We are done with this segment.  */
+		tdes0 &= ~TDSTAT_OWN;
 	}
 
 	/*  Error summary:  */
@@ -436,17 +434,15 @@ int dec21143_tx(struct cpu *cpu, struct dec21143_data *d)
 	/*  Descriptor writeback:  */
 	descr[ 0] = tdes0;       descr[ 1] = tdes0 >> 8;
 	descr[ 2] = tdes0 >> 16; descr[ 3] = tdes0 >> 24;
-	if (writeback_len > 1) {
-		descr[ 4] = tdes1;       descr[ 5] = tdes1 >> 8;
-		descr[ 6] = tdes1 >> 16; descr[ 7] = tdes1 >> 24;
-		descr[ 8] = tdes2;       descr[ 9] = tdes2 >> 8;
-		descr[10] = tdes2 >> 16; descr[11] = tdes2 >> 24;
-		descr[12] = tdes3;       descr[13] = tdes3 >> 8;
-		descr[14] = tdes3 >> 16; descr[15] = tdes3 >> 24;
-	}
+	descr[ 4] = tdes1;       descr[ 5] = tdes1 >> 8;
+	descr[ 6] = tdes1 >> 16; descr[ 7] = tdes1 >> 24;
+	descr[ 8] = tdes2;       descr[ 9] = tdes2 >> 8;
+	descr[10] = tdes2 >> 16; descr[11] = tdes2 >> 24;
+	descr[12] = tdes3;       descr[13] = tdes3 >> 8;
+	descr[14] = tdes3 >> 16; descr[15] = tdes3 >> 24;
 
 	if (!cpu->memory_rw(cpu, cpu->mem, addr, descr, sizeof(uint32_t)
-	    * writeback_len, MEM_WRITE, PHYSICAL | NO_EXCEPTIONS)) {
+	    * 4, MEM_WRITE, PHYSICAL | NO_EXCEPTIONS)) {
 		fatal("[ dec21143_tx: memory_rw failed! ]\n");
 		return 0;
 	}
@@ -455,10 +451,7 @@ int dec21143_tx(struct cpu *cpu, struct dec21143_data *d)
 }
 
 
-/*
- *  dev_dec21143_tick():
- */
-void dev_dec21143_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(dec21143)
 {
 	struct dec21143_data *d = extra;
 	int asserted;
@@ -479,15 +472,14 @@ void dev_dec21143_tick(struct cpu *cpu, void *extra)
 		d->reg[CSR_STATUS / 8] |= STATUS_AIS;
 
 	asserted = d->reg[CSR_STATUS / 8] & d->reg[CSR_INTEN / 8] & 0x0c01ffff;
-	if (asserted) {
-		cpu_interrupt(cpu, d->irq_nr);
-	} else {
-		if (d->irq_asserted)
-			cpu_interrupt_ack(cpu, d->irq_nr);
-	}
+
+	if (asserted)
+		INTERRUPT_ASSERT(d->irq);
+	if (!asserted && d->irq_was_asserted)
+		INTERRUPT_DEASSERT(d->irq);
 
 	/*  Remember assertion flag:  */
-	d->irq_asserted = asserted;
+	d->irq_was_asserted = asserted;
 }
 
 
@@ -821,9 +813,6 @@ static void dec21143_reset(struct cpu *cpu, struct dec21143_data *d)
 }
 
 
-/*
- *  dev_dec21143_access():
- */
 DEVICE_ACCESS(dec21143)
 {
 	struct dec21143_data *d = extra;
@@ -990,14 +979,10 @@ DEVINIT(dec21143)
 	struct dec21143_data *d;
 	char name2[100];
 
-	d = malloc(sizeof(struct dec21143_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dec21143_data)));
 	memset(d, 0, sizeof(struct dec21143_data));
 
-	d->irq_nr = devinit->irq_nr;
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 	d->pci_little_endian = devinit->pci_little_endian;
 
 	net_generate_unique_mac(devinit->machine, d->mac);
@@ -1014,7 +999,7 @@ DEVINIT(dec21143)
 	    devinit->addr, 0x100, dev_dec21143_access, d, DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(devinit->machine,
-	    dev_dec21143_tick, d, DEC21143_TICK_SHIFT, 0.0);
+	    dev_dec21143_tick, d, DEC21143_TICK_SHIFT);
 
 	/*
 	 *  NetBSD/cats uses memory accesses, OpenBSD/cats uses I/O registers.

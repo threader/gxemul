@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_fb.c,v 1.127 2006/10/22 04:20:53 debug Exp $
+ *  $Id: dev_fb.c,v 1.132.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  Generic framebuffer device.
+ *  COMMENT: Generic framebuffer device
  *
  *	DECstation VFB01 monochrome framebuffer, 1024x864
  *	DECstation VFB02 8-bit color framebuffer, 1024x864
@@ -141,11 +141,7 @@ void dev_fb_resize(struct vfb_data *d, int new_xsize, int new_ysize)
 	new_bytes_per_line = new_xsize * d->bit_depth / 8;
 	size = new_ysize * new_bytes_per_line;
 
-	new_framebuffer = malloc(size);
-	if (new_framebuffer == NULL) {
-		fprintf(stderr, "dev_fb_resize(): out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(new_framebuffer = malloc(size));
 
 	/*  Copy the old framebuffer to the new:  */
 	if (d->framebuffer != NULL) {
@@ -268,8 +264,8 @@ void framebuffer_blockcopyfill(struct vfb_data *d, int fillflag, int fill_r,
 				    d->framebuffer + dest_ofs;
 
 				if (d->bit_depth == 24) {
-					for (x=0; x<linelen && x<sizeof(buf);
-					    x += 3) {
+					for (x=0; x<linelen && x <
+					    (int) sizeof(buf); x += 3) {
 						buf[x] = fill_r;
 						buf[x+1] = fill_g;
 						buf[x+2] = fill_b;
@@ -416,7 +412,7 @@ DEVICE_TICK(fb)
 	int need_to_redraw_cursor = 0;
 #endif
 
-	if (!cpu->machine->use_x11)
+	if (!cpu->machine->x11_md.in_use)
 		return;
 
 	do {
@@ -650,7 +646,7 @@ DEVICE_ACCESS(fb)
 	 *  of which area(s) we modify, so that the display isn't updated
 	 *  unnecessarily.
 	 */
-	if (writeflag == MEM_WRITE && cpu->machine->use_x11) {
+	if (writeflag == MEM_WRITE && cpu->machine->x11_md.in_use) {
 		int x, y, x2,y2;
 
 		x = (relative_addr % d->bytes_per_line) * 8 / d->bit_depth;
@@ -748,11 +744,7 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	int reverse_start = 0;
 	char *name2;
 
-	d = malloc(sizeof(struct vfb_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct vfb_data)));
 	memset(d, 0, sizeof(struct vfb_data));
 
 	if (vfb_type & VFB_REVERSE_START) {
@@ -810,16 +802,12 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	else if (d->bit_depth == 8 || d->bit_depth == 1)
 		set_blackwhite_palette(d, 1 << d->bit_depth);
 
-	d->vfb_scaledown = machine->x11_scaledown;
+	d->vfb_scaledown = machine->x11_md.scaledown;
 
 	d->bytes_per_line = d->xsize * d->bit_depth / 8;
 	size = d->ysize * d->bytes_per_line;
 
-	d->framebuffer = malloc(size);
-	if (d->framebuffer == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d->framebuffer = malloc(size));
 
 	/*  Clear the framebuffer (all black pixels):  */
 	d->framebuffer_size = size;
@@ -839,14 +827,14 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 		d->update_x2 = d->update_y2 = -1;
 	}
 
-	d->name = strdup(name);
+	CHECK_ALLOCATION(d->name = strdup(name));
 	set_title(d);
 
 #ifdef WITH_X11
-	if (machine->use_x11) {
+	if (machine->x11_md.in_use) {
 		int i = 0;
 		d->fb_window = x11_fb_init(d->x11_xsize, d->x11_ysize,
-		    d->title, machine->x11_scaledown, machine);
+		    d->title, machine->x11_md.scaledown, machine);
 		switch (d->fb_window->x11_screen_depth) {
 		case 15: i = 2; break;
 		case 16: i = 4; break;
@@ -862,11 +850,8 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 		d->fb_window = NULL;
 
 	nlen = strlen(name) + 10;
-	name2 = malloc(nlen);
-	if (name2 == NULL) {
-		fprintf(stderr, "out of memory in dev_fb_init()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name2 = malloc(nlen));
+
 	snprintf(name2, nlen, "fb [%s]", name);
 
 	flags = DM_DEFAULT;
@@ -878,7 +863,8 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	memory_device_register(mem, name2, baseaddr, size, dev_fb_access,
 	    d, flags, d->framebuffer);
 
-	machine_add_tickfunction(machine, dev_fb_tick, d, FB_TICK_SHIFT, 0.0);
+	machine_add_tickfunction(machine, dev_fb_tick, d, FB_TICK_SHIFT);
+
 	return d;
 }
 

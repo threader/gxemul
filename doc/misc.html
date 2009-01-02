@@ -4,15 +4,15 @@
 <table border=0 width=100% bgcolor="#d0d0d0"><tr>
 <td width=100% align=center valign=center><table border=0 width=100%><tr>
 <td align="left" valign=center bgcolor="#d0efff"><font color="#6060e0" size="6">
-<b>Gavare's eXperimental Emulator:</b></font><br>
+<b>GXemul:</b></font>&nbsp;&nbsp;
 <font color="#000000" size="6"><b>Miscellaneous</b>
 </font></td></tr></table></td></tr></table><p>
 
 <!--
 
-$Id: misc.html,v 1.65 2006/10/19 10:15:23 debug Exp $
+$Id: misc.html,v 1.74.2.1 2008/01/18 19:12:23 debug Exp $
 
-Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -51,6 +51,8 @@ SUCH DAMAGE.
 	developing firmware, using GXemul</a>
   <li><a href="#compilercontruct">Using GXemul in compiler contruction courses</a>
   <li><a href="#disk">How to start the emulator with a disk image</a>
+  <li><a href="#tape_images">How to start the emulator with tape images</a>
+  <li><a href="#disk_overlays">How to use disk image overlays</a>
   <li><a href="#filexfer">Transfering files to/from the guest OS</a>
   <li><a href="#largeimages">How to extract large gzipped disk images</a>
   <li><a href="#userland">Running userland binaries</a>
@@ -111,8 +113,8 @@ complement to testing on real hardware.
 	<p>
 	<li>Caches. There is no cache emulation in GXemul right now. Caches
 	for R2000/R3000 are faked well enough to run NetBSD, Ultrix, etc
-	in the DECstation emulation mode, but other than that, cache
-	operations are treated as nops.
+	in the <a href="http://en.wikipedia.org/wiki/DECstation">DECstation</a>
+	emulation mode, but other than that, cache operations are treated as nops.
 </ul>
 
 <p>The bottom line is that GXemul can be useful as yet another way to test 
@@ -137,13 +139,13 @@ might be suitable choices.
 	then compile into object format, and then you need to link this
 	into an executable image. This is much closer to how things work
 	in real life than running assembly language listings in a simulator
-	(e.g. SPIM).
+	(e.g. <a href="http://pages.cs.wisc.edu/~larus/spim.html">SPIM</a>).
   <p>
-  <li><b>(-)</b>&nbsp;&nbsp;GXemul does not simulate out-of-order
-	execution, penalties related to instruction scheduling, or
+  <li><b>(-)</b>&nbsp;&nbsp;GXemul does not simulate <a href="http://en.wikipedia.org/wiki/Out-of-order_execution">out-of-order
+	execution</a>, penalties related to instruction scheduling, or
 	load-delays, so it cannot be used to create optimizing compilers
 	that take advantage of such processor features. GXemul keeps
-	track of the number of instructions executed, but that's it.
+	track of the number of instructions executed, and that's it.
 </ul>
 
 
@@ -160,8 +162,9 @@ are one or more single-character options. Run <b>gxemul -h</b>
 to get a list of possible options.
 
 <p>
-Here are some examples. If you want to run a NetBSD/pmax kernel on an
-emulated DECstation machine, you would use a command line such as this:
+Here are some examples. If you want to run a <a href="http://www.netbsd.org/ports/pmax/">NetBSD/pmax</a>
+kernel on an emulated <a href="http://en.wikipedia.org/wiki/DECstation">DECstation</a>
+machine, you would use a command line such as this:
 <pre>
 	$ <b>gxemul -e 3max -d pmax_diskimage.fs netbsd-pmax-INSTALL</b>
 </pre>
@@ -197,7 +200,16 @@ use it as a CD-ROM directly accessible from within the emulator:
 </pre>
 It is probably possible to use harddisks as well this way, but I would not
 recommend it.
-<p>
+
+
+
+
+
+
+<p><br>
+<a name="tape_images"></a>
+<h3>How to start the emulator with tape images:</h3>
+
 Using emulated tape drives is a bit more complicated than disks, because a
 tape can be made up of several "files" with space in between. The solution
 I have choosen is to have one file in the host's file system space for each
@@ -247,6 +259,71 @@ every time a tape is rewound, it is reopened using the filename given
 on the command line. By changing what the symbolic name points to,
 you can "switch tapes" without quiting and restarting the emulator.
 
+<p>
+<font color="#ff0000">Note: Tape support is most likely very buggy, 
+because it has not been tested much, and has probably also suffered 
+from bit-rot by now.</font>
+
+
+
+
+
+
+<p><br>
+<a name="disk_overlays"></a>
+<h3>How to use disk image overlays:</h3>
+
+This is most likely best understood by an example:
+
+<p><ul>
+  <li>Install e.g. <a href="guestoses.html#netbsdcatsinstall">NetBSD/cats</a>.
+	You will end up with a disk image called
+	<tt>nbsd_cats.img</tt>.
+  <p>
+  <li>Running the following command will boot straight from the disk
+	image, with no overlay images:<pre>
+	<b>gxemul -XEcats -d nbsd_cats.img netbsd.aout-GENERIC.gz</b>
+
+</pre>
+  <li>You may now create an overlay file, a corresponding map file,
+	and start the emulator with the overlay image connected to
+	the same (explicit) ID as the base disk image:<pre>
+	<b>touch overlay.img overlay.img.map
+	gxemul -XEcats -d 0:nbsd_cats.img -d V0:overlay.img netbsd.aout-GENERIC.gz</b>
+
+</pre>
+  <li>Any changes to the filesystem you perform when using the overlay
+	will only be written to that overlay. For example, to perform
+	a "roll back", you can do the following:<pre>
+	<b>rm -f overlay.img overlay.img.map
+	touch overlay.img overlay.img.map</b>
+
+</pre>
+	and then simply start the emulator again, with the newly created
+	overlay image.
+</ul>
+
+<p>It is also possible to add multiple overlays. In that case, writes 
+always go the the <i>last</i> added overlay.
+
+<p>GXemul uses Unix' way of supporting files with "holes",
+so even if <tt>ls -l overlay.img</tt> says that the overlay is several 
+gigabytes large, <tt>du overlay.img</tt> should reveal that only the
+blocks that have actually been written to have been stored in the
+overlay, e.g.:<pre>
+	<b>$ ls -l
+	..
+	-rw-r--r--  1 debug  wheel  3072319488 Mar 24 11:59 nbsd_cats.img
+	-rw-r--r--  1 debug  wheel     2465354 Mar 24 11:44 netbsd.aout-GENERIC.gz
+	-rw-r--r--  1 debug  wheel  2930841600 Mar 24 14:02 overlay.img
+	-rw-r--r--  1 debug  wheel      715538 Mar 24 14:02 overlay.img.map
+	$ du overlay.img
+	864     overlay.img
+</b>
+</pre>
+
+<p>The .map file is simply a raw bitmap telling which blocks of the 
+overlay file that are in use.
 
 
 
@@ -257,8 +334,8 @@ you can "switch tapes" without quiting and restarting the emulator.
 <h3>Transfering files to/from the guest OS:</h3>
 
 If the emulated machine supports networking (see <a 
-href="networking.html#intro">this section</a> for more info), then 
-transfering files via FTP is probably easiest.
+href="networking.html#intro">this section</a> for more info), then the easiest
+way to transfer files is probably to use FTP or similar methods.
 
 <p>There is another way of transfering files which works for any kind of 
 emulated machine which supports disks (either SCSI or IDE). Any file can 
@@ -340,8 +417,9 @@ count.)
 <a name="userland"></a>
 <h3>Running userland binaries:</h3>
 
-<font color="#ff0000">Note: This feature does not really work yet.
-It is currently disabled in stable release builds of the emulator.</font>
+<font color="#ff0000"><b>NOTE 2007-06-15:</b> I just removed most of the
+userland (syscall) emulation support, and started a rewrite from scratch.
+The rest of this section in the documentation is not currently valid.</font>
 
 <p>There is some skeleton code for running userland programs as well. This
 will not emulate any particular machine, but instead try to translate
@@ -422,8 +500,10 @@ are, so don't expect any PROM image to just magically work.
 
 <p>
 <h4>Dumping the PROM on a DECstation 5000/125:</h4>
+
 The image first needs to be extracted from the machine. There are
 several ways to do this.
+
 <ul>
   <li>Use hardware to read the PROM chip(s) directly. Not easy if you
 	don't have such a hardware reader.
@@ -434,11 +514,11 @@ several ways to do this.
   <li>Hook up a serial console and dump using the PROM's own dump
 	command.
 </ul>
-<p>
-The easiest way is to hook up a serial console. The terminal must be
+
+<p>The easiest way is to hook up a serial console. The terminal must be
 able to capture output to a file.
-<p>
-These are approximately the commands that I used:
+
+<p>These are approximately the commands that I used:
 <pre>
         >><b>cnfg</b>                             <i>Show machine configuration</i>
 
@@ -448,26 +528,27 @@ These are approximately the commands that I used:
 
         >><b>e -x 0xbfc00000:0xbfffffff</b>       <i>Dump the PROM data</i>
 </pre>
-<p>
-Remember that DECstations are little endian, so if the dump data
+
+<p>Remember that DECstations are little endian, so if the dump data
 looks like this:
 <pre>
         bfc00000:  0x0bf0007e
 </pre>
 then the bytes in memory are actually 0x7e, 0x00, 0xf0, and 0x0b.
-<p>
-At 9600 bps, about 10KB can be dumped per minute, so it takes a while.
+
+<p>At 9600 bps, about 10KB can be dumped per minute, so it takes a while.
 Once enough of the PROM has been dumped, you can press CTRL-C to break out.
 Then, restore the more environment variable:
 <pre>
         >><b>setenv more 24</b>
 </pre>
-<p>
-Now, convert the data you just saved (little-endian words -> bytes),
+
+<p>Now, convert the data you just saved (little-endian words -> bytes),
 and store in a file. Let's call this file DECstation5000_125_promdump.bin.
 <pre>
         $ <b>decprom_dump_txt_to_bin DECstation5000_125_promdump.txt DECstation5000_125_promdump.bin</b>
 </pre>
+
 This binary image can now be used in the emulator:
 <pre>
 	$ <b>gxemul -e 3min -Q -M128 -q 0xbfc00000:DECstation5000_125_promdump.bin</b>
@@ -529,7 +610,7 @@ binary file which should be loaded at a specific virtual address.
 
 
 <p><br>
-<h4>Dumping the PROM on a SGI O2:</h4>
+<a name="promdump_o2"><h4>Dumping the PROM on a SGI O2:</h4></a>
 
 The general ideas in this section applies to using ROM images from other
 machines as well. I have also tried this on an SGI IP32 ("O2"), in addition
@@ -553,6 +634,10 @@ and then run <tt>experiments/sgiprom_to_bin</tt> on the captured file.
 <p>The photo on the left is from the real machine. The other two are
 screenshots of the PROM running experimentally in GXemul, using <tt>-Y2</tt>
 framebuffer scaledown.
+
+<p><font color="#ff0000">
+Note 2007-10-18: Running the O2 PROM image broke somewhere between release
+0.3.8 and 0.4.0. (Running with graphics broke between 0.3.7 and 0.3.8.)</font>
 
 <p>Normally during bootup, the IP32 PROM does a Power-On test which makes
 sure that the caches and other things are working properly. GXemul doesn't

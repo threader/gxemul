@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,25 +25,12 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: debugger.c,v 1.20 2006/10/29 05:17:21 debug Exp $
+ *  $Id: debugger.c,v 1.27.2.1 2008/01/18 19:12:27 debug Exp $
  *
  *  Single-step debugger.
  *
  *
- *  TODO:
- *
- *	This entire module is very much non-reentrant. :-/
- *
- *	Add more functionality that already exists elsewhere in the emulator.
- *
- *	Call stack display (back-trace)?
- *
- *	Nicer looking output of register dumps, floating point registers,
- *	etc. Warn about weird/invalid register contents.
- *
- *	Ctrl-C doesn't enter the debugger on some OSes (HP-UX?)...
- *
- *	Many other TODOs.
+ *  This entire module is very much non-reentrant. :-/  TODO: Fix.
  */
 
 #include <ctype.h>
@@ -57,7 +44,6 @@
 #include "cpu.h"
 #include "device.h"
 #include "debugger.h"
-#include "debugger_gdb.h"
 #include "diskimage.h"
 #include "emul.h"
 #include "machine.h"
@@ -99,13 +85,11 @@ int old_show_trace_tree = 0;
 
 static volatile int ctrl_c;
 
-static int debugger_n_emuls;
-static struct emul **debugger_emuls;
+static struct emul *debugger_emul;
 
 /*  Currently focused CPU, machine, and emulation:  */
 int debugger_cur_cpu;
 int debugger_cur_machine;
-int debugger_cur_emul;
 static struct machine *debugger_machine;
 static struct emul *debugger_emul;
 
@@ -127,27 +111,11 @@ static uint64_t last_unasm_addr = MAGIC_UNTOUCHED;
  */
 char debugger_readchar(void)
 {
-	int ch, i, j;
+	int ch;
 
 	while ((ch = console_readchar(MAIN_CONSOLE)) < 0 && !exit_debugger) {
 		/*  Check for X11 events:  */
-		x11_check_event(debugger_emuls, debugger_n_emuls);
-
-		/*  Check for incoming GDB packets:  */
-		for (i=0; i<debugger_n_emuls; i++) {
-			struct emul *e = debugger_emuls[i];
-			if (e == NULL)
-				continue;
-
-			for (j=0; j<e->n_machines; j++) {
-				if (e->machines[j]->gdb.port > 0)
-					debugger_gdb_check_incoming(
-					    e->machines[j]);
-			}
-		}
-
-		/*  TODO: The X11 and GDB checks above should probably
-			be factored out...  */
+		x11_check_event(debugger_emul);
 
 		/*  Give up some CPU time:  */
 		usleep(10000);
@@ -200,13 +168,11 @@ static void show_breakpoint(struct machine *m, int i)
 {
 	printf("%3i: 0x", i);
 	if (m->cpus[0]->is_32bit)
-		printf("%08"PRIx32, (uint32_t) m->breakpoint_addr[i]);
+		printf("%08"PRIx32, (uint32_t) m->breakpoints.addr[i]);
 	else
-		printf("%016"PRIx64, (uint64_t) m->breakpoint_addr[i]);
-	if (m->breakpoint_string[i] != NULL)
-		printf(" (%s)", m->breakpoint_string[i]);
-	if (m->breakpoint_flags[i])
-		printf(": flags=0x%x", m->breakpoint_flags[i]);
+		printf("%016"PRIx64, (uint64_t) m->breakpoints.addr[i]);
+	if (m->breakpoints.string[i] != NULL)
+		printf(" (%s)", m->breakpoints.string[i]);
 	printf("\n");
 }
 
@@ -232,11 +198,7 @@ void debugger_assignment(struct machine *m, char *cmd)
 	uint64_t tmp;
 	uint64_t old_pc = m->cpus[0]->pc;	/*  TODO: multiple cpus?  */
 
-	left  = malloc(MAX_CMD_BUFLEN);
-	if (left == NULL) {
-		fprintf(stderr, "out of memory in debugger_assignment()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(left = malloc(MAX_CMD_BUFLEN));
 	strlcpy(left, cmd, MAX_CMD_BUFLEN);
 	right = strchr(left, '=');
 	if (right == NULL) {
@@ -673,26 +635,6 @@ void debugger(void)
 			    debugger_machine->cpus[i], 0, INVALIDATE_ALL);
 		}
 
-	/*
-	 *  Ugly GDB hack: After single stepping, we need to send back
-	 *  status to GDB:
-	 */
-	if (exit_debugger == -1) {
-		int i, j;
-		for (i=0; i<debugger_n_emuls; i++) {
-			struct emul *e = debugger_emuls[i];
-			if (e == NULL)
-				continue;
-
-			for (j=0; j<e->n_machines; j++) {
-				if (e->machines[j]->gdb.port > 0)
-					debugger_gdb_after_singlestep(
-					    e->machines[j]);
-			}
-		}
-	}
-
-
 	/*  Stop timers while interacting with the user:  */
 	timer_stop();
 
@@ -701,10 +643,6 @@ void debugger(void)
 	while (!exit_debugger) {
 		/*  Read a line from the terminal:  */
 		cmd = debugger_readline();
-
-		/*  Special hack for the "step" _GDB_ command:  */
-		if (exit_debugger == -1)
-			return;
 
 		cmd_len = strlen(cmd);
 
@@ -741,8 +679,10 @@ void debugger(void)
 
 	/*  ... and reset starttime, so that nr of instructions per second
 	    can be calculated correctly:  */
-	gettimeofday(&debugger_machine->starttime, NULL);
-	debugger_machine->ninstrs_since_gettimeofday = 0;
+	for (i=0; i<debugger_machine->ncpus; i++) {
+		gettimeofday(&debugger_machine->cpus[i]->starttime, NULL);
+		debugger_machine->cpus[i]->ninstrs_since_gettimeofday = 0;
+	}
 
 	single_step = NOT_SINGLE_STEPPING;
 	debugger_machine->instruction_trace = old_instruction_trace;
@@ -770,41 +710,25 @@ void debugger_reset(void)
  *
  *  Must be called before any other debugger function is used.
  */
-void debugger_init(struct emul **emuls, int n_emuls)
+void debugger_init(struct emul *emul)
 {
-	int i, j;
+	int i;
 
-	debugger_n_emuls = n_emuls;
-	debugger_emuls = emuls;
+	debugger_emul = emul;
 
-	if (n_emuls < 1) {
-		fprintf(stderr, "\nERROR: No emuls (?)\n");
-		exit(1);
-	}
-
-	debugger_emul = emuls[0];
-	if (emuls[0]->n_machines < 1) {
-		fprintf(stderr, "\nERROR: No machines in emuls[0], "
+	if (emul->n_machines < 1) {
+		fprintf(stderr, "\nERROR: No machines, "
 		    "cannot handle this situation yet.\n\n");
 		exit(1);
 	}
 
-	for (i=0; i<n_emuls; i++)
-		for (j=0; j<emuls[i]->n_machines; j++)
-			debugger_gdb_init(emuls[i]->machines[j]);
-
-	debugger_machine = emuls[0]->machines[0];
+	debugger_machine = emul->machines[0];
 
 	debugger_cur_cpu = 0;
 	debugger_cur_machine = 0;
-	debugger_cur_emul = 0;
 
 	for (i=0; i<N_PREVIOUS_CMDS; i++) {
-		last_cmd[i] = malloc(MAX_CMD_BUFLEN);
-		if (last_cmd[i] == NULL) {
-			fprintf(stderr, "debugger_init(): out of memory\n");
-			exit(1);
-		}
+		CHECK_ALLOCATION(last_cmd[i] = malloc(MAX_CMD_BUFLEN));
 		last_cmd[i][0] = '\0';
 	}
 

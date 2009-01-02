@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_lca.c,v 1.4 2006/08/29 15:55:10 debug Exp $
+ *  $Id: dev_lca.c,v 1.10.2.1 2008/01/18 19:12:29 debug Exp $
  *
- *  LCA PCI bus (for Alpha machines).
+ *  COMMENT: LCA PCI bus, for Alpha machines
  */
 
 #include <stdio.h>
@@ -39,6 +39,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "emul.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -62,6 +63,30 @@ struct lca_data {
 	uint64_t		window_mask_1;
 	uint64_t		window_t_base_1;
 };
+
+
+/*
+ *  lca_interrupt_assert():
+ *
+ *  Line 0 = ISA interrupt.
+ */
+void lca_interrupt_assert(struct interrupt *interrupt)
+{
+	fatal("lca_interrupt_assert: TODO\n");
+	exit(1);
+}
+
+
+/*
+ *  lca_interrupt_deassert():
+ *
+ *  Line 0 = ISA interrupt.
+ */
+void lca_interrupt_deassert(struct interrupt *interrupt)
+{
+	fatal("lca_interrupt_deassert: TODO\n");
+	exit(1);
+}
 
 
 DEVICE_ACCESS(lca_pci_conf)
@@ -129,7 +154,7 @@ DEVICE_ACCESS(lca_pci_conf)
 
 DEVICE_ACCESS(lca_isa)
 {
-	int ofs, i;
+	unsigned int ofs, i;
 	uint8_t byte;
 
 	relative_addr >>= 5;
@@ -302,25 +327,25 @@ DEVICE_ACCESS(lca_ioc)
 
 DEVINIT(lca)
 {
-	struct lca_data *d = malloc(sizeof(struct lca_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	char *interrupt_path;
+	struct interrupt interrupt_template;
+	struct lca_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct lca_data)));
 	memset(d, 0, sizeof(struct lca_data));
 
 	/*  Register a PCI bus:  */
 	d->pci_data = bus_pci_init(
 	    devinit->machine,
-	    0			/*  pciirq: TODO  */,
+	    "TODO: irq"		/*  pciirq: TODO  */,
 	    LCA_PCI_SIO,	/*  pci device io offset  */
 	    0x00000000,		/*  pci device mem offset: TODO  */
 	    0x00000000,		/*  PCI portbase: TODO  */
 	    0x00000000,		/*  PCI membase: TODO  */
-	    0x00000000,		/*  PCI irqbase: TODO  */
+	    "TODO: pci irq base",	/*  PCI irqbase: TODO  */
 	    LCA_ISA_BASE,	/*  ISA portbase  */
 	    LCA_ISA_MEMBASE,	/*  ISA membase  */
-	    8);                 /*  ISA irqbase: TODO  */
+	    "TODO: irqbase isa");                /*  ISA irqbase: TODO  */
 
 	/*  Add the "sio0" controller (as seen by NetBSD):  */
 	bus_pci_add(devinit->machine, d->pci_data, devinit->machine->memory,
@@ -338,9 +363,21 @@ DEVINIT(lca)
 	    LCA_IOC_BASE, 0x20000000, dev_lca_ioc_access, (void *)d,
 	    DM_DEFAULT, NULL);
 
-	/*  TODO: IRQs etc.  */
-	bus_isa_init(devinit->machine, BUS_ISA_IDE0 | BUS_ISA_IDE1,
-	    LCA_ISA_BASE, LCA_ISA_MEMBASE, 32, 48);
+	CHECK_ALLOCATION(interrupt_path =
+	    malloc(strlen(devinit->machine->path) + 10));
+	snprintf(interrupt_path, strlen(devinit->machine->path) + 10,
+	    "%s.lca", devinit->machine->path);
+
+	memset(&interrupt_template, 0, sizeof(interrupt_template));
+	interrupt_template.line = 0;
+	interrupt_template.name = interrupt_path;
+	interrupt_template.extra = d;
+	interrupt_template.interrupt_assert = lca_interrupt_assert;
+	interrupt_template.interrupt_deassert = lca_interrupt_deassert;
+	interrupt_handler_register(&interrupt_template);
+
+	bus_isa_init(devinit->machine, interrupt_path,
+	    BUS_ISA_IDE0 | BUS_ISA_IDE1, LCA_ISA_BASE, LCA_ISA_MEMBASE);
 
 	return 1;
 }

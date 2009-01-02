@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,9 +24,9 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *   
- *  $Id: dev_gc.c,v 1.8 2006/02/27 05:32:26 debug Exp $
+ *  $Id: dev_gc.c,v 1.14.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  Grand Central Interrupt controller (used by MacPPC).
+ *  COMMENT: Grand Central Interrupt controller (used by MacPPC)
  */
 
 #include <stdio.h>
@@ -35,10 +35,51 @@
 
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
+
+
+#define	DEV_GC_LENGTH		0x100
+
+struct gc_data {
+	struct interrupt cpu_irq;
+
+	uint32_t	status_hi;
+	uint32_t	status_lo;
+	uint32_t	enable_hi;
+	uint32_t	enable_lo;
+};
+
+
+void gc_hi_interrupt_assert(struct interrupt *interrupt)
+{
+	struct gc_data *d = interrupt->extra;
+	d->status_hi |= interrupt->line;
+	if (d->status_lo & d->enable_lo || d->status_hi & d->enable_hi)
+		INTERRUPT_ASSERT(d->cpu_irq);
+}
+void gc_hi_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct gc_data *d = interrupt->extra;
+	d->status_hi &= ~interrupt->line;
+	if (!(d->status_lo & d->enable_lo || d->status_hi & d->enable_hi))
+		INTERRUPT_DEASSERT(d->cpu_irq);
+}
+void gc_lo_interrupt_assert(struct interrupt *interrupt)
+{
+	struct gc_data *d = interrupt->extra;
+	d->status_lo |= interrupt->line;
+	if (d->status_lo & d->enable_lo || d->status_hi & d->enable_hi)
+		INTERRUPT_ASSERT(d->cpu_irq);
+}
+void gc_lo_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct gc_data *d = interrupt->extra;
+	d->status_lo &= ~interrupt->line;
+	if (!(d->status_lo & d->enable_lo || d->status_hi & d->enable_hi))
+		INTERRUPT_DEASSERT(d->cpu_irq);
+}
 
 
 DEVICE_ACCESS(gc)
@@ -71,19 +112,35 @@ DEVICE_ACCESS(gc)
 		if (writeflag == MEM_READ)
 			odata = d->enable_hi;
 		else {
-			uint32_t old_enable_hi = d->enable_hi;
+			int old_assert = (d->status_lo & d->enable_lo
+			    || d->status_hi & d->enable_hi);
+			int new_assert;
 			d->enable_hi = idata;
-			if (d->enable_hi != old_enable_hi)
-				cpu_interrupt(cpu, d->reassert_irq);
+
+			new_assert = (d->status_lo & d->enable_lo ||
+			    d->status_hi & d->enable_hi);
+
+			if (old_assert && !new_assert)
+				INTERRUPT_DEASSERT(d->cpu_irq);
+			else if (!old_assert && new_assert)
+				INTERRUPT_ASSERT(d->cpu_irq);
 		}
 		break;
 
 	case 0x18:
 		if (writeflag == MEM_WRITE) {
-			uint32_t old_status_hi = d->status_hi;
+			int old_assert = (d->status_lo & d->enable_lo
+			    || d->status_hi & d->enable_hi);
+			int new_assert;
 			d->status_hi &= ~idata;
-			if (d->status_hi != old_status_hi)
-				cpu_interrupt(cpu, d->reassert_irq);
+
+			new_assert = (d->status_lo & d->enable_lo ||
+			    d->status_hi & d->enable_hi);
+
+			if (old_assert && !new_assert)
+				INTERRUPT_DEASSERT(d->cpu_irq);
+			else if (!old_assert && new_assert)
+				INTERRUPT_ASSERT(d->cpu_irq);
 		}
 		break;
 
@@ -96,24 +153,41 @@ DEVICE_ACCESS(gc)
 		if (writeflag == MEM_READ)
 			odata = d->enable_lo;
 		else {
-			uint32_t old_enable_lo = d->enable_lo;
+			int old_assert = (d->status_lo & d->enable_lo
+			    || d->status_hi & d->enable_hi);
+			int new_assert;
 			d->enable_lo = idata;
-			if (d->enable_lo != old_enable_lo)
-				cpu_interrupt(cpu, d->reassert_irq);
+
+			new_assert = (d->status_lo & d->enable_lo ||
+			    d->status_hi & d->enable_hi);
+
+			if (old_assert && !new_assert)
+				INTERRUPT_DEASSERT(d->cpu_irq);
+			else if (!old_assert && new_assert)
+				INTERRUPT_ASSERT(d->cpu_irq);
 		}
 		break;
 
 	case 0x28:
 		if (writeflag == MEM_WRITE) {
-			uint32_t old_status_lo = d->status_lo;
+			int old_assert = (d->status_lo & d->enable_lo
+			    || d->status_hi & d->enable_hi);
+			int new_assert;
 			d->status_lo &= ~idata;
-			if (d->status_lo != old_status_lo)
-				cpu_interrupt(cpu, d->reassert_irq);
+
+			new_assert = (d->status_lo & d->enable_lo ||
+			    d->status_hi & d->enable_hi);
+
+			if (old_assert && !new_assert)
+				INTERRUPT_DEASSERT(d->cpu_irq);
+			else if (!old_assert && new_assert)
+				INTERRUPT_ASSERT(d->cpu_irq);
 		}
 		break;
 
+	case 0x1c:
 	case 0x2c:
-		/*  Avoir a debug message.  */
+		/*  Avoid a debug message.  */
 		break;
 
 	default:if (writeflag == MEM_WRITE) {
@@ -133,25 +207,47 @@ DEVICE_ACCESS(gc)
 }
 
 
-/*
- *  dev_gc_init():
- */
-struct gc_data *dev_gc_init(struct machine *machine, struct memory *mem,
-	uint64_t addr, int reassert_irq)
+DEVINIT(gc)
 {
 	struct gc_data *d;
+	int i;
 
-	d = malloc(sizeof(struct gc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct gc_data)));
 	memset(d, 0, sizeof(struct gc_data));
-	d->reassert_irq = reassert_irq;
 
-	memory_device_register(mem, "gc", addr, 0x100,
-	    dev_gc_access, d, DM_DEFAULT, NULL);
+	/*  Connect to the CPU interrupt pin:  */
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->cpu_irq);
 
-	return d;
+	/*
+	 *  Register the 64 Grand Central interrupts (32 lo, 32 hi):
+	 */
+	for (i=0; i<32; i++) {
+		struct interrupt template;
+		char n[300];
+		snprintf(n, sizeof(n), "%s.gc.lo.%i",
+		    devinit->interrupt_path, i);
+		memset(&template, 0, sizeof(template));
+		template.line = 1 << i;
+		template.name = n;
+		template.extra = d;
+		template.interrupt_assert = gc_lo_interrupt_assert;
+		template.interrupt_deassert = gc_lo_interrupt_deassert;
+		interrupt_handler_register(&template);
+
+		snprintf(n, sizeof(n), "%s.gc.hi.%i",
+		    devinit->interrupt_path, i);
+		memset(&template, 0, sizeof(template));
+		template.line = 1 << i;
+		template.name = n;
+		template.extra = d;
+		template.interrupt_assert = gc_hi_interrupt_assert;
+		template.interrupt_deassert = gc_hi_interrupt_deassert;
+		interrupt_handler_register(&template);
+	}
+
+	memory_device_register(devinit->machine->memory, "gc",
+	    devinit->addr, DEV_GC_LENGTH, dev_gc_access, d, DM_DEFAULT, NULL);
+
+	return 1;
 }
 

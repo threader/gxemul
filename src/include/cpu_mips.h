@@ -2,7 +2,7 @@
 #define	CPU_MIPS_H
 
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,9 +28,10 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips.h,v 1.50 2006/10/14 23:47:37 debug Exp $
+ *  $Id: cpu_mips.h,v 1.61.2.1 2008/01/18 19:12:31 debug Exp $
  */
 
+#include "interrupt.h"
 #include "misc.h"
 
 struct cpu_family;
@@ -181,16 +182,8 @@ struct r3000_cache_line {
 #define	R3000_TAG_VALID		1
 #define	R3000_TAG_DIRTY		2
 
-struct r4000_cache_line {
-	char		dummy;
-};
 
-
-#ifdef ONEKPAGE
-#define	MIPS_IC_ENTRIES_SHIFT		8
-#else
 #define	MIPS_IC_ENTRIES_SHIFT		10
-#endif
 
 #define	MIPS_N_IC_ARGS			3
 #define	MIPS_INSTR_ALIGNMENT_SHIFT	2
@@ -204,6 +197,7 @@ struct r4000_cache_line {
 #define	MIPS_L3N		18
 
 #define	MIPS_MAX_VPH_TLB_ENTRIES	192
+
 DYNTRANS_MISC_DECLARATIONS(mips,MIPS,uint64_t)
 DYNTRANS_MISC64_DECLARATIONS(mips,MIPS,uint8_t)
 
@@ -230,10 +224,11 @@ struct mips_cpu {
 	/*  Count/compare timer:  */
 	int		compare_register_set;
 	int		compare_interrupts_pending;
+	struct interrupt irq_compare;
 	struct timer	*timer;
 
 	int		rmw;		/*  Read-Modify-Write  */
-	int		rmw_len;	/*  Length of rmw modification  */
+	uint64_t	rmw_len;	/*  Length of rmw modification  */
 	uint64_t	rmw_addr;	/*  Address of rmw modification  */
 
 	/*
@@ -253,14 +248,26 @@ struct mips_cpu {
 	uint64_t	lo1;
 	uint32_t	r5900_sa;
 
-	/*  Data and Instruction caches:  */
+
+	/*
+	 *  Data and Instruction caches:
+	 */
+
+	/*  Cache sizes: (1 << x) x=0 for default values  */
+	/*  This is legacy stuff. TODO: Clean up!  */
+	int		cache_picache;
+	int		cache_pdcache;
+	int		cache_secondary;
+	int		cache_picache_linesize;
+	int		cache_pdcache_linesize;
+	int		cache_secondary_linesize;
+
 	unsigned char	*cache[2];
 	void		*cache_tags[2];
 	uint64_t	cache_last_paddr[2];
 	int		cache_size[2];
 	int		cache_linesize[2];
 	int		cache_mask[2];
-	int		cache_miss_penalty[2];
 
 
 	/*
@@ -269,12 +276,14 @@ struct mips_cpu {
 	 */
 	DYNTRANS_ITC(mips)
 	VPH_TLBS(mips,MIPS)
-	VPH32(mips,MIPS,uint64_t,uint8_t)
-	VPH64(mips,MIPS,uint8_t)
+	VPH32(mips,MIPS)
+	VPH64(mips,MIPS)
 };
 
 
 /*  cpu_mips.c:  */
+void mips_cpu_interrupt_assert(struct interrupt *interrupt);
+void mips_cpu_interrupt_deassert(struct interrupt *interrupt);
 int mips_cpu_instruction_has_delayslot(struct cpu *cpu, unsigned char *ib);
 void mips_cpu_tlbdump(struct machine *m, int x, int rawflag);
 void mips_cpu_register_match(struct machine *m, char *name, 
@@ -282,8 +291,6 @@ void mips_cpu_register_match(struct machine *m, char *name,
 void mips_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs);
 int mips_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
         int running, uint64_t addr);
-int mips_cpu_interrupt(struct cpu *cpu, uint64_t irq_nr);
-int mips_cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr);
 void mips_cpu_exception(struct cpu *cpu, int exccode, int tlb, uint64_t vaddr,
         /*  uint64_t pagemask,  */  int coproc_nr, uint64_t vaddr_vpn2,
         int vaddr_asid, int x_64);

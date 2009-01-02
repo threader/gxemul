@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dec21030.c,v 1.5 2006/02/09 20:02:59 debug Exp $
+ *  $Id: dev_dec21030.c,v 1.7.2.1 2008/01/18 19:12:28 debug Exp $
  *
- *  DEC 21030 "tga" graphics.
+ *  COMMENT: DEC 21030 "TGA" graphics card
  *
  *  Resolutions that seem to be possible:  640x480, 1024x768, 1280x1024.
  *  8 bits, perhaps others? (24 bit?)
@@ -86,9 +86,6 @@ struct dec21030_data {
 };
 
 
-/*
- *  dev_dec21030_access():
- */
 DEVICE_ACCESS(dec21030)
 {
 	struct dec21030_data *d = extra;
@@ -237,11 +234,7 @@ DEVINIT(dec21030)
 {
 	struct dec21030_data *d;
 
-	d = malloc(sizeof(struct dec21030_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dec21030_data)));
 	memset(d, 0, sizeof(struct dec21030_data));
 
 	memory_device_register(devinit->machine->memory, devinit->name,

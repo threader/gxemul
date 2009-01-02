@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,12 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_asc.c,v 1.81 2006/07/21 16:55:41 debug Exp $
+ *  $Id: dev_asc.c,v 1.86.2.1 2008/01/18 19:12:28 debug Exp $
  *
- *  'asc' SCSI controller for some DECstation/DECsystem models and PICA-61.
+ *  COMMENT: NCR53C9X "ASC" SCSI controller
+ *
+ *  This is the SCSI controller used in some DECstation/DECsystem models and
+ *  the PICA-61 machine.
  *
  *  Supposed to support SCSI-1 and SCSI-2. I've not yet found any docs
  *  on NCR53C9X, so I'll try to implement this device from LSI53CF92A docs
@@ -101,8 +104,8 @@ struct asc_data {
 	int		mode;
 
 	void		*turbochannel;
-	int		irq_nr;
-	int		irq_caused_last_time;
+	struct interrupt irq;
+	int		irq_asserted;
 
 	/*  Current state and transfer:  */
 	int		cur_state;
@@ -155,9 +158,12 @@ static int dev_asc_select(struct cpu *cpu, struct asc_data *d, int from_id,
 DEVICE_TICK(asc)
 {
 	struct asc_data *d = extra;
+	int new_assert = d->reg_ro[NCR_STAT] & NCRSTAT_INT;
 
-	if (d->reg_ro[NCR_STAT] & NCRSTAT_INT)
-		cpu_interrupt(cpu, d->irq_nr);
+	if (new_assert && !d->irq_asserted)
+		INTERRUPT_ASSERT(d->irq);
+
+	d->irq_asserted = new_assert;
 }
 
 
@@ -369,12 +375,8 @@ if (d->dma_controller != NULL)
 					    (int)len, (int)len2);  */
 
 					d->xferp->data_in_len -= len2;
-					n = malloc(d->xferp->data_in_len);
-					if (n == NULL) {
-						fprintf(stderr, "out of memory"
-						    " in dev_asc\n");
-						exit(1);
-					}
+					CHECK_ALLOCATION(n =
+					    malloc(d->xferp->data_in_len));
 					memcpy(n, d->xferp->data_in + len2,
 					    d->xferp->data_in_len);
 					free(d->xferp->data_in);
@@ -504,13 +506,9 @@ fatal("TODO.......asdgasin\n");
 			}
 
 			newlen = oldlen + d->n_bytes_in_fifo;
-			d->xferp->msg_out = realloc(d->xferp->msg_out, newlen);
+			CHECK_ALLOCATION(d->xferp->msg_out =
+			    realloc(d->xferp->msg_out, newlen));
 			d->xferp->msg_out_len = newlen;
-			if (d->xferp->msg_out == NULL) {
-				fprintf(stderr, "out of memory realloc'ing "
-				    "msg_out\n");
-				exit(1);
-			}
 
 			i = oldlen;
 			while (d->fifo_in != d->fifo_out) {
@@ -1196,7 +1194,8 @@ break;
 			d->reg_ro[NCR_STAT] = PHASE_COMMAND;
 		}
 
-		cpu_interrupt_ack(cpu, d->irq_nr);
+		INTERRUPT_DEASSERT(d->irq);
+		d->irq_asserted = 0;
 	}
 
 	if (regnr == NCR_CFG1) {
@@ -1226,33 +1225,27 @@ break;
  *  Register an 'asc' device.
  */
 void dev_asc_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, void *turbochannel,
-	int mode,
+	uint64_t baseaddr, char *irq_path, void *turbochannel, int mode,
 	size_t (*dma_controller)(void *dma_controller_data,
 		unsigned char *data, size_t len, int writeflag),
 	void *dma_controller_data)
 {
 	struct asc_data *d;
 
-	d = malloc(sizeof(struct asc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct asc_data)));
 	memset(d, 0, sizeof(struct asc_data));
-	d->irq_nr       = irq_nr;
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
 	d->turbochannel = turbochannel;
 	d->mode         = mode;
 
 	d->reg_ro[NCR_CFG3] = NCRF9XCFG3_CDB;
 
-	d->dma_address_reg_memory = malloc(machine->arch_pagesize);
-	d->dma = malloc(ASC_DMA_SIZE);
-	if (d->dma == NULL || d->dma_address_reg_memory == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d->dma_address_reg_memory =
+	    malloc(machine->arch_pagesize));
 	memset(d->dma_address_reg_memory, 0, machine->arch_pagesize);
+
+	CHECK_ALLOCATION(d->dma = malloc(ASC_DMA_SIZE));
 	memset(d->dma, 0, ASC_DMA_SIZE);
 
 	d->dma_controller      = dma_controller;
@@ -1272,6 +1265,6 @@ void dev_asc_init(struct machine *machine, struct memory *mem,
 		    DM_DYNTRANS_OK | DM_DYNTRANS_WRITE_OK, d->dma);
 	}
 
-	machine_add_tickfunction(machine, dev_asc_tick, d, ASC_TICK_SHIFT, 0.0);
+	machine_add_tickfunction(machine, dev_asc_tick, d, ASC_TICK_SHIFT);
 }
 

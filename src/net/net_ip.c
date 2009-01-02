@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: net_ip.c,v 1.4 2006/09/05 06:13:28 debug Exp $
+ *  $Id: net_ip.c,v 1.6.2.1 2008/01/18 19:12:33 debug Exp $
  *
  *  Internet Protocol related networking stuff.
  */
@@ -1375,15 +1375,9 @@ void net_tcp_rx_avail(struct net *net, void *extra)
 			continue;
 		}
 
-		if (net->tcp_connections[con_id].incoming_buf == NULL) {
-			net->tcp_connections[con_id].incoming_buf =
-			    malloc(TCP_INCOMING_BUF_LEN);
-			if (net->tcp_connections[con_id].incoming_buf == NULL) {
-				printf("out of memory allocating "
-				    "incoming_buf for con_id %i\n", con_id);
-				exit(1);
-			}
-		}
+		if (net->tcp_connections[con_id].incoming_buf == NULL)
+			CHECK_ALLOCATION(net->tcp_connections[con_id].
+			    incoming_buf = malloc(TCP_INCOMING_BUF_LEN));
 
 		if (net->tcp_connections[con_id].state >=
 		    TCP_OUTSIDE_DISCONNECTED)

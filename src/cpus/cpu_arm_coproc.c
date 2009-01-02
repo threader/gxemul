@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_arm_coproc.c,v 1.24 2006/06/24 21:47:23 debug Exp $
+ *  $Id: cpu_arm_coproc.c,v 1.28.2.1 2008/01/18 19:12:24 debug Exp $
  *
  *  ARM coprocessor emulation.
  */
@@ -374,10 +374,13 @@ void arm_coproc_i80321_6(struct cpu *cpu, int opcode1, int opcode2, int l_bit,
 			else {
 				/*  Writing clears interrupts:  */
 				cpu->cd.arm.tisr &= ~cpu->cd.arm.r[rd];
+
 				if (!(cpu->cd.arm.tisr & TISR_TMR0))
-					cpu_interrupt_ack(cpu, 9);  /* TMR0 */
+					INTERRUPT_DEASSERT(
+					    cpu->cd.arm.tmr0_irq);
 				if (!(cpu->cd.arm.tisr & TISR_TMR1))
-					cpu_interrupt_ack(cpu, 10); /* TMR1 */
+					INTERRUPT_DEASSERT(
+					    cpu->cd.arm.tmr1_irq);
 			}
 			break;
 		case 7:	/*  wdtcr:  */

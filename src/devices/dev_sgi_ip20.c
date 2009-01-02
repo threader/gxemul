@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,11 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_ip20.c,v 1.13 2006/01/01 13:17:17 debug Exp $
+ *  $Id: dev_sgi_ip20.c,v 1.15.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  SGI IP20 stuff.
+ *  COMMENT: SGI IP20 stuff
+ *
+ *  TODO.
  */
 
 #include <stdio.h>
@@ -42,18 +44,16 @@
 extern int quiet_mode;
 
 
-/*
- *  dev_sgi_ip20_access():
- */
 DEVICE_ACCESS(sgi_ip20)
 {
-	/*  struct sgi_ip20_data *d = (struct sgi_ip20_data *) extra;  */
+	/*  struct sgi_ip20_data *d = extra;  */
 	uint64_t idata = 0, odata = 0;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
 
 	switch (relative_addr) {
+
 	case 0x38:
 		if (writeflag == MEM_WRITE) {
 			debug("[ sgi_ip20: write to address 0x%x, "
@@ -75,6 +75,7 @@ DEVICE_ACCESS(sgi_ip20)
 			    (int)relative_addr, (int)odata);
 		}
 		break;
+
 	default:
 		if (writeflag == MEM_WRITE) {
 			debug("[ sgi_ip20: unimplemented write to address "
@@ -93,17 +94,12 @@ DEVICE_ACCESS(sgi_ip20)
 }
 
 
-/*
- *  dev_sgi_ip20_init():
- */
 struct sgi_ip20_data *dev_sgi_ip20_init(struct cpu *cpu, struct memory *mem,
 	uint64_t baseaddr)
 {
-	struct sgi_ip20_data *d = malloc(sizeof(struct sgi_ip20_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct sgi_ip20_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sgi_ip20_data)));
 	memset(d, 0, sizeof(struct sgi_ip20_data));
 
 	/*

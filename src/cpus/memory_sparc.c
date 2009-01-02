@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory_sparc.c,v 1.1 2006/09/04 15:35:55 debug Exp $
+ *  $Id: memory_sparc.c,v 1.3.2.1 2008/01/18 19:12:27 debug Exp $
  */
 
 #include <stdio.h>
@@ -51,6 +51,10 @@ int sparc_translate_v2p(struct cpu *cpu, uint64_t vaddr,
 	/*  Kernel direct-mapped space for SPARC prior to v9:  */
 	if ((vaddr & 0xf0000000) == 0xf0000000)
 		*return_paddr = vaddr & 0x07ffffff;
+
+/*  FreeBSD/sun4v test hack:  */
+if ((vaddr & 0xf0000000) == 0xc0000000)
+	*return_paddr = vaddr & 0x0fffffff;
 
 	return 2;
 }

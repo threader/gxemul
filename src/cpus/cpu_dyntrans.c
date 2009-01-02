@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,14 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_dyntrans.c,v 1.132 2006/10/27 13:12:20 debug Exp $
+ *  $Id: cpu_dyntrans.c,v 1.187.2.1 2008/01/18 19:12:25 debug Exp $
  *
  *  Common dyntrans routines. Included from cpu_*.c.
+ *
+ *  Note: This might be a bit hard to follow, if you are reading this source
+ *  code for the first time. It is basically a hack to implement "templates"
+ *  with normal C code, by using suitable defines/macros, and then including
+ *  this file.
  */
 
 
@@ -45,15 +50,19 @@ static void gather_statistics(struct cpu *cpu)
 	int low_pc = ((size_t)cpu->cd.DYNTRANS_ARCH.next_ic - (size_t)
 	    cpu->cd.DYNTRANS_ARCH.cur_ic_page) / sizeof(struct DYNTRANS_IC);
 
-	if (cpu->machine->statistics_file == NULL) {
+	if (cpu->machine->statistics.file == NULL) {
 		fatal("statistics gathering with no filename set is"
 		    " meaningless\n");
 		return;
 	}
 
+	/*  low_pc must be within the page!  */
+	if (low_pc < 0 || low_pc > DYNTRANS_IC_ENTRIES_PER_PAGE)
+		return;
+
 	buf[0] = '\0';
 
-	while ((ch = cpu->machine->statistics_fields[i]) != '\0') {
+	while ((ch = cpu->machine->statistics.fields[i]) != '\0') {
 		if (i != 0)
 			strlcat(buf, " ", sizeof(buf));
 
@@ -64,10 +73,6 @@ static void gather_statistics(struct cpu *cpu)
 			break;
 		case 'p':
 			/*  Physical program counter address:  */
-			/*  (low_pc must be within the page!)  */
-			if (low_pc < 0 ||
-			    low_pc >= DYNTRANS_IC_ENTRIES_PER_PAGE)
-				strlcat(buf, "-", sizeof(buf));
 			cpu->cd.DYNTRANS_ARCH.cur_physpage = (void *)
 			    cpu->cd.DYNTRANS_ARCH.cur_ic_page;
 			a = cpu->cd.DYNTRANS_ARCH.cur_physpage->physaddr;
@@ -76,24 +81,20 @@ static void gather_statistics(struct cpu *cpu)
 			a += low_pc << DYNTRANS_INSTR_ALIGNMENT_SHIFT;
 			if (cpu->is_32bit)
 				snprintf(buf + strlen(buf), sizeof(buf),
-				    "0x%016"PRIx32, (uint32_t)a);
+				    "0x%08"PRIx32, (uint32_t)a);
 			else
 				snprintf(buf + strlen(buf), sizeof(buf),
 				    "0x%016"PRIx64, (uint64_t)a);
 			break;
 		case 'v':
 			/*  Virtual program counter address:  */
-			/*  (low_pc inside the page, or in a delay slot)  */
-			if (low_pc < 0 ||
-			    low_pc >= DYNTRANS_IC_ENTRIES_PER_PAGE + 2)
-				strlcat(buf, "-", sizeof(buf));
 			a = cpu->pc;
 			a &= ~((DYNTRANS_IC_ENTRIES_PER_PAGE-1) <<
 			    DYNTRANS_INSTR_ALIGNMENT_SHIFT);
 			a += low_pc << DYNTRANS_INSTR_ALIGNMENT_SHIFT;
 			if (cpu->is_32bit)
 				snprintf(buf + strlen(buf), sizeof(buf),
-				    "0x%016"PRIx32, (uint32_t)a);
+				    "0x%08"PRIx32, (uint32_t)a);
 			else
 				snprintf(buf + strlen(buf), sizeof(buf),
 				    "0x%016"PRIx64, (uint64_t)a);
@@ -102,24 +103,22 @@ static void gather_statistics(struct cpu *cpu)
 		i++;
 	}
 
-	fprintf(cpu->machine->statistics_file, "%s\n", buf);
+	fprintf(cpu->machine->statistics.file, "%s\n", buf);
 }
 
 
 #define S		gather_statistics(cpu)
 
 
-#ifdef DYNTRANS_VARIABLE_INSTRUCTION_LENGTH
-#define I		ic = cpu->cd.DYNTRANS_ARCH.next_ic;		\
-			cpu->cd.DYNTRANS_ARCH.next_ic += ic->arg[0];	\
-			ic->f(cpu, ic);
-#else
+#if 1
 
 /*  The normal instruction execution core:  */
 #define I	ic = cpu->cd.DYNTRANS_ARCH.next_ic ++; ic->f(cpu, ic);
 
+#else
+
 /*  For heavy debugging:  */
-/*  #define I	ic = cpu->cd.DYNTRANS_ARCH.next_ic ++;	\
+#define I	ic = cpu->cd.DYNTRANS_ARCH.next_ic ++;	\
 		{	\
 			int low_pc = ((size_t)cpu->cd.DYNTRANS_ARCH.next_ic - \
 			    (size_t)cpu->cd.DYNTRANS_ARCH.cur_ic_page) / \
@@ -128,7 +127,9 @@ static void gather_statistics(struct cpu *cpu)
 			    cpu->cd.DYNTRANS_ARCH.cur_ic_page,		\
 			    ic, low_pc << DYNTRANS_INSTR_ALIGNMENT_SHIFT); \
 		} \
-		ic->f(cpu, ic);  */
+		ic->f(cpu, ic);
+
+#endif
 
 /*  static long long nr_of_I_calls = 0;  */
 
@@ -161,12 +162,11 @@ static void gather_statistics(struct cpu *cpu)
 	}						\
 	ic = cpu->cd.DYNTRANS_ARCH.next_ic ++; ic->f(cpu, ic); }
 */
-#endif
 #endif	/*  STATIC STUFF  */
 
 
 
-#ifdef	DYNTRANS_RUN_INSTR
+#ifdef	DYNTRANS_RUN_INSTR_DEF
 /*
  *  XXX_run_instr():
  *
@@ -176,7 +176,7 @@ static void gather_statistics(struct cpu *cpu)
  *  Return value is the number of instructions executed during this call,
  *  0 if no instructions were executed.
  */
-int DYNTRANS_RUN_INSTR(struct cpu *cpu)
+int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 {
 	MODE_uint_t cached_pc;
 	int low_pc, n_instrs;
@@ -203,6 +203,11 @@ int DYNTRANS_RUN_INSTR(struct cpu *cpu)
 #ifdef DYNTRANS_ARM
 	if (cpu->cd.arm.irq_asserted && !(cpu->cd.arm.cpsr & ARM_FLAG_I))
 		arm_exception(cpu, ARM_EXCEPTION_IRQ);
+#endif
+#ifdef DYNTRANS_M88K
+	if (cpu->cd.m88k.irq_asserted &&
+	    !(cpu->cd.m88k.cr[M88K_CR_PSR] & M88K_PSR_IND))
+		m88k_exception(cpu, M88K_EXCEPTION_INTERRUPT, 0);
 #endif
 #ifdef DYNTRANS_MIPS
 	{
@@ -265,10 +270,6 @@ int DYNTRANS_RUN_INSTR(struct cpu *cpu)
 			    any instruction for any ISA:  */
 			unsigned char instr[1 <<
 			    DYNTRANS_INSTR_ALIGNMENT_SHIFT];
-#ifdef DYNTRANS_X86
-			cpu->cd.x86.cursegment = X86_S_CS;
-			cpu->cd.x86.seg_override = 0;
-#endif
 			if (!cpu->memory_rw(cpu, cpu->mem, cached_pc, &instr[0],
 			    sizeof(instr), MEM_READ, CACHE_INSTRUCTION)) {
 				fatal("XXX_run_instr(): could not read "
@@ -303,35 +304,14 @@ int DYNTRANS_RUN_INSTR(struct cpu *cpu)
 			}
 		}
 
-		if (cpu->machine->statistics_enabled)
+		if (cpu->machine->statistics.enabled)
 			S;
 
 		/*  Execute just one instruction:  */
 		I;
 
 		n_instrs = 1;
-	} else if (cpu->machine->cycle_accurate) {
-		/*  Executing multiple instructions, and call devices'
-		    tick functions:  */
-		n_instrs = 0;
-		for (;;) {
-			struct DYNTRANS_IC *ic;
-/*  TODO: continue here  */
-int64_t cycles = cpu->cd.avr.extra_cycles;
-			I;
-			n_instrs += 1;
-cycles = cpu->cd.avr.extra_cycles - cycles + 1;
-/*  The instruction took 'cycles' cycles.  */
-/* printf("A\n"); */
-while (cycles-- > 0)
-	cpu->machine->tick_func[1](cpu, cpu->machine->tick_extra[1]);
-/* printf("B\n"); */
-
-			if (n_instrs + cpu->n_translated_instrs >=
-			    N_SAFE_DYNTRANS_LIMIT)
-				break;
-		}
-	} else if (cpu->machine->statistics_enabled) {
+	} else if (cpu->machine->statistics.enabled) {
 		/*  Gather statistics while executing multiple instructions:  */
 		n_instrs = 0;
 		for (;;) {
@@ -349,8 +329,13 @@ while (cycles-- > 0)
 				break;
 		}
 	} else {
-		/*  Execute multiple instructions:  */
-		int n = 0;
+		/*
+		 *  Execute multiple instructions:
+		 *
+		 *  (This is the core dyntrans loop.)
+		 */
+		n_instrs = 0;
+
 		for (;;) {
 			struct DYNTRANS_IC *ic;
 
@@ -362,13 +347,18 @@ while (cycles-- > 0)
 
 			I; I; I; I; I;   I; I; I; I; I;
 
-			n += 60;
+			I; I; I; I; I;   I; I; I; I; I;
+			I; I; I; I; I;   I; I; I; I; I;
+			I; I; I; I; I;   I; I; I; I; I;
+			I; I; I; I; I;   I; I; I; I; I;
+			I; I; I; I; I;   I; I; I; I; I;
 
-			if (n + cpu->n_translated_instrs >=
-			    N_SAFE_DYNTRANS_LIMIT)
+			I; I; I; I; I;   I; I; I; I; I;
+
+			cpu->n_translated_instrs += 120;
+			if (cpu->n_translated_instrs >= N_SAFE_DYNTRANS_LIMIT)
 				break;
 		}
-		n_instrs = n;
 	}
 
 	n_instrs += cpu->n_translated_instrs;
@@ -411,12 +401,14 @@ while (cycles-- > 0)
 /*  Not yet.  TODO  */
 			if (cpu->machine->emulated_hz > 0) {
 				if (cpu->cd.mips.compare_interrupts_pending > 0)
-					cpu_interrupt(cpu, 7);
+					INTERRUPT_ASSERT(
+					    cpu->cd.mips.irq_compare);
 			} else
 #endif
 			{
 				if (diff1 > 0 && diff2 <= 0)
-					cpu_interrupt(cpu, 7);
+					INTERRUPT_ASSERT(
+					    cpu->cd.mips.irq_compare);
 			}
 		}
 	}
@@ -436,6 +428,8 @@ while (cycles-- > 0)
 	}
 #endif
 
+	cpu->ninstrs += n_instrs;
+
 	/*  Return the nr of instructions executed:  */
 	return n_instrs;
 }
@@ -443,7 +437,7 @@ while (cycles-- > 0)
 
 
 
-#ifdef DYNTRANS_FUNCTION_TRACE
+#ifdef DYNTRANS_FUNCTION_TRACE_DEF
 /*
  *  XXX_cpu_functioncall_trace():
  *
@@ -451,8 +445,9 @@ while (cycles-- > 0)
  *  like    <f()>  or  <0x1234()>   on a function call. It is up to this
  *  function to print the arguments passed.
  */
-void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
+void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, uint64_t f, int n_args)
 {
+	int show_symbolic_function_name = 1;
         char strbuf[50];
 	char *symbol;
 	uint64_t ot;
@@ -460,8 +455,8 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 #if defined(DYNTRANS_ALPHA) || defined(DYNTRANS_SPARC)
 	    6
 #else
-#ifdef DYNTRANS_SH
-	    8	/*  Both for 32-bit and 64-bit SuperH  */
+#if defined(DYNTRANS_SH) || defined(DYNTRANS_M88K)
+	    8	/*  Both for 32-bit and 64-bit SuperH, and M88K  */
 #else
 	    4	/*  Default value for most archs  */
 #endif
@@ -472,6 +467,12 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 		print_dots = 0;
 		n_args_to_print = n_args;
 	}
+
+#ifdef DYNTRANS_M88K
+	/*  Special hack for M88K userspace:  */
+	if (!(cpu->cd.m88k.cr[M88K_CR_PSR] & M88K_PSR_MODE))
+		show_symbolic_function_name = 0;
+#endif
 
 	/*
 	 *  TODO: The type of each argument should be taken from the symbol
@@ -485,12 +486,7 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 	 *  than were passed in register.
 	 */
 	for (x=0; x<n_args_to_print; x++) {
-		int64_t d;
-#if defined(DYNTRANS_X86) || defined(DYNTRANS_TRANSPUTER)
-		d = 0;		/*  TODO  */
-#else
-		/*  Args in registers:  */
-		d = cpu->cd.DYNTRANS_ARCH.
+		int64_t d = cpu->cd.DYNTRANS_ARCH.
 #ifdef DYNTRANS_ALPHA
 		    r[ALPHA_A0
 #endif
@@ -502,29 +498,17 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 			they go downwards, ie. 22,23 and so on  */
 		    r[24
 #endif
-#ifdef DYNTRANS_AVR32
-		    r[0		/*  TODO  */
-#endif
-#ifdef DYNTRANS_HPPA
-		    r[0		/*  TODO  */
-#endif
-#ifdef DYNTRANS_I960
-		    r[0		/*  TODO  */
-#endif
-#ifdef DYNTRANS_IA64
-		    r[0		/*  TODO  */
-#endif
-#ifdef DYNTRANS_M68K
-		    d[0		/*  TODO  */
-#endif
 #ifdef DYNTRANS_MIPS
 		    gpr[MIPS_GPR_A0
 #endif
+#ifdef DYNTRANS_M32R
+		    r[0		/*  r0..r3?  */
+#endif
+#ifdef DYNTRANS_M88K
+		    r[2		/*  r2..r9  */
+#endif
 #ifdef DYNTRANS_PPC
 		    gpr[3
-#endif
-#ifdef DYNTRANS_RCA180X
-		    r[0		/*  TODO  */
 #endif
 #ifdef DYNTRANS_SH
 		    r[4		/*  NetBSD seems to use 4? But 2 seems
@@ -534,7 +518,7 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 		    r[8		/*  o0..o5  */
 #endif
 		    + x];
-#endif
+
 		symbol = get_symbol_name(&cpu->machine->symbol_context, d, &ot);
 
 		if (d > -256 && d < 256)
@@ -542,7 +526,8 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 		else if (memory_points_to_string(cpu, cpu->mem, d, 1))
 			fatal("\"%s\"", memory_conv_to_string(cpu,
 			    cpu->mem, d, strbuf, sizeof(strbuf)));
-		else if (symbol != NULL && ot == 0)
+		else if (symbol != NULL && ot == 0 &&
+		    show_symbolic_function_name)
 			fatal("&%s", symbol);
 		else {
 			if (cpu->is_32bit)
@@ -558,18 +543,18 @@ void DYNTRANS_FUNCTION_TRACE(struct cpu *cpu, uint64_t f, int n_args)
 	if (print_dots)
 		fatal(",..");
 }
-#endif
+#endif	/*  DYNTRANS_FUNCTION_TRACE_DEF  */
 
 
 
-#ifdef DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE
+#ifdef DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE_DEF
 /*
  *  XXX_tc_allocate_default_page():
  *
  *  Create a default page (with just pointers to instr(to_be_translated)
  *  at cpu->translation_cache_cur_ofs.
  */
-static void DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE(struct cpu *cpu,
+static void DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE_DEF(struct cpu *cpu,
 	uint64_t physaddr)
 { 
 	struct DYNTRANS_TC_PHYSPAGE *ppp;
@@ -586,10 +571,10 @@ static void DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE(struct cpu *cpu,
 	cpu->translation_cache_cur_ofs += sizeof(struct DYNTRANS_TC_PHYSPAGE);
 
 	cpu->translation_cache_cur_ofs --;
-	cpu->translation_cache_cur_ofs |= 127;
+	cpu->translation_cache_cur_ofs |= 63;
 	cpu->translation_cache_cur_ofs ++;
 }
-#endif	/*  DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE  */
+#endif	/*  DYNTRANS_TC_ALLOCATE_DEFAULT_PAGE_DEF  */
 
 
 
@@ -685,9 +670,10 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 			}
 #else
 			x1 = (cached_pc >> (64-DYNTRANS_L1N)) & mask1;
-			x2 = (cached_pc >> (64-DYNTRANS_L1N-DYNTRANS_L2N)) & mask2;
-			x3 = (cached_pc >> (64-DYNTRANS_L1N-DYNTRANS_L2N-DYNTRANS_L3N))
-			    & mask3;
+			x2 = (cached_pc >> (64-DYNTRANS_L1N-DYNTRANS_L2N))
+			    & mask2;
+			x3 = (cached_pc >> (64-DYNTRANS_L1N-DYNTRANS_L2N
+			    - DYNTRANS_L3N)) & mask3;
 			l2 = cpu->cd.DYNTRANS_ARCH.l1_64[x1];
 			l3 = l2->l3[x2];
 			if (l3->host_load[x3] != NULL) {
@@ -731,7 +717,7 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 		}
 	}
 
-	if (cpu->translation_cache_cur_ofs >= DYNTRANS_CACHE_SIZE) {
+	if (cpu->translation_cache_cur_ofs >= dyntrans_cache_size) {
 #ifdef UNSTABLE_DEVEL
 		fatal("[ dyntrans: resetting the translation cache ]\n");
 #endif
@@ -758,13 +744,21 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 		physpage_ofs = ppp->next_ofs;
 	}
 
-	/*  If the offset is 0 (or ppp is NULL), then we need to create a
-	    new "default" empty translation page.  */
+	/*
+	 *  If the offset is 0, then no translation exists yet for this
+	 *  physical address. Let's create a new page, and add it first in
+	 *  the chain.
+	 */
+	if (physpage_ofs == 0) {
+		uint32_t previous_first_page_in_chain;
 
-	if (ppp == NULL) {
 		/*  fatal("CREATING page %lli (physaddr 0x%"PRIx64"), table "
 		    "index %i\n", (long long)pagenr, (uint64_t)physaddr,
 		    (int)table_index);  */
+
+		previous_first_page_in_chain = *physpage_entryp;
+
+		/*  Insert the new page first in the chain:  */
 		*physpage_entryp = physpage_ofs =
 		    cpu->translation_cache_cur_ofs;
 
@@ -773,7 +767,12 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 
 		ppp = (struct DYNTRANS_TC_PHYSPAGE *)(cpu->translation_cache
 		    + physpage_ofs);
+
+		/*  Point to the other pages in the same chain:  */
+		ppp->next_ofs = previous_first_page_in_chain;
 	}
+
+	/*  Here, ppp points to a valid physical page struct.  */
 
 #ifdef MODE32
 	if (cpu->cd.DYNTRANS_ARCH.host_load[index] != NULL)
@@ -788,7 +787,7 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 	 *  as non-writable. If there are already translations, then it
 	 *  should already have been marked as non-writable.
 	 */
-	if (ppp->translations == 0) {
+	if (ppp->translations_bitmap == 0) {
 		cpu->invalidate_translation_caches(cpu, physaddr,
 		    JUST_MARK_AS_NON_WRITABLE | INVALIDATE_PADDR);
 	}
@@ -878,6 +877,13 @@ static void instr32(to_be_translated)(struct cpu *, struct DYNTRANS_IC *);
 static void instr32(end_of_page)(struct cpu *,struct DYNTRANS_IC *);
 #endif
 
+#ifdef DYNTRANS_DUALMODE_32
+#define TO_BE_TRANSLATED    ( cpu->is_32bit? instr32(to_be_translated) : \
+			      instr(to_be_translated) )
+#else
+#define TO_BE_TRANSLATED    ( instr(to_be_translated) )
+#endif
+
 #ifdef DYNTRANS_DELAYSLOT
 static void instr(end_of_page2)(struct cpu *,struct DYNTRANS_IC *);
 #ifdef DYNTRANS_DUALMODE_32
@@ -899,28 +905,17 @@ void DYNTRANS_INIT_TABLES(struct cpu *cpu)
 	int x1, x2;
 #endif
 	int i;
-	struct DYNTRANS_TC_PHYSPAGE *ppp = malloc(sizeof(
-	    struct DYNTRANS_TC_PHYSPAGE));
+	struct DYNTRANS_TC_PHYSPAGE *ppp;
 
-	if (ppp == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(ppp = malloc(sizeof(struct DYNTRANS_TC_PHYSPAGE)));
 
 	ppp->next_ofs = 0;
-	ppp->translations = 0;
+	ppp->translations_bitmap = 0;
+	ppp->translation_ranges_ofs = 0;
 	/*  ppp->physaddr is filled in by the page allocator  */
 
-	for (i=0; i<DYNTRANS_IC_ENTRIES_PER_PAGE; i++) {
-		ppp->ics[i].f =
-#ifdef DYNTRANS_DUALMODE_32
-		    cpu->is_32bit? instr32(to_be_translated) :
-#endif
-		    instr(to_be_translated);
-#ifdef DYNTRANS_VARIABLE_INSTRUCTION_LENGTH
-		ppp->ics[i].arg[0] = 0;
-#endif
-	}
+	for (i=0; i<DYNTRANS_IC_ENTRIES_PER_PAGE; i++)
+		ppp->ics[i].f = TO_BE_TRANSLATED;
 
 	/*  End-of-page:  */
 	ppp->ics[DYNTRANS_IC_ENTRIES_PER_PAGE + 0].f =
@@ -928,10 +923,6 @@ void DYNTRANS_INIT_TABLES(struct cpu *cpu)
 	    cpu->is_32bit? instr32(end_of_page) :
 #endif
 	    instr(end_of_page);
-
-#ifdef DYNTRANS_VARIABLE_INSTRUCTION_LENGTH
-	ppp->ics[DYNTRANS_IC_ENTRIES_PER_PAGE + 0].arg[0] = 0;
-#endif
 
 	/*  End-of-page-2, for delay-slot architectures:  */
 #ifdef DYNTRANS_DELAYSLOT
@@ -1254,6 +1245,12 @@ void DYNTRANS_INVALIDATE_TC_CODE(struct cpu *cpu, uint64_t addr, int flags)
 		physpage_entryp = &(((uint32_t *)cpu->
 		    translation_cache)[table_index]);
 		physpage_ofs = *physpage_entryp;
+
+		/*  Return immediately if there is no code translation
+		    for this page.  */
+		if (physpage_ofs == 0)
+			return;
+
 		prev_ppp = ppp = NULL;
 
 		/*  Traverse the physical page chain:  */
@@ -1271,8 +1268,10 @@ void DYNTRANS_INVALIDATE_TC_CODE(struct cpu *cpu, uint64_t addr, int flags)
 			physpage_ofs = ppp->next_ofs;
 		}
 
+		/*  If there is no translation, there is no need to go
+		    on and try to remove it from the vph_tlb_entry array:  */
 		if (physpage_ofs == 0)
-			ppp = NULL;
+			return;
 
 #if 0
 		/*
@@ -1296,9 +1295,9 @@ void DYNTRANS_INVALIDATE_TC_CODE(struct cpu *cpu, uint64_t addr, int flags)
 		 *  it might be faster since we don't risk wasting cache
 		 *  memory as quickly (which would force unnecessary Restarts).
 		 */
-		if (ppp != NULL && ppp->translations != 0) {
-			uint32_t x = ppp->translations;	/*  TODO:
-				urk Should be same type as ppp->translations */
+		if (ppp != NULL && ppp->translations_bitmap != 0) {
+			uint32_t x = ppp->translations_bitmap;	/*  TODO:
+				urk Should be same type as the bitmap */
 			int i, j, n, m;
 			n = 8 * sizeof(x);
 			m = DYNTRANS_IC_ENTRIES_PER_PAGE / n;
@@ -1307,17 +1306,23 @@ void DYNTRANS_INVALIDATE_TC_CODE(struct cpu *cpu, uint64_t addr, int flags)
 				if (x & 1) {
 					for (j=0; j<m; j++)
 						ppp->ics[i*m + j].f =
-#ifdef DYNTRANS_DUALMODE_32
-						    cpu->is_32bit?
-						    instr32(to_be_translated) :
-#endif
-						    instr(to_be_translated);
+						    TO_BE_TRANSLATED;
 				}
 
 				x >>= 1;
 			}
 
-			ppp->translations = 0;
+			ppp->translations_bitmap = 0;
+
+			/*  Clear the list of translatable ranges:  */
+			if (ppp->translation_ranges_ofs != 0) {
+				struct physpage_ranges *physpage_ranges =
+				    (struct physpage_ranges *)
+				    (cpu->translation_cache +
+				    ppp->translation_ranges_ofs);
+				physpage_ranges->next_ofs = 0;
+				physpage_ranges->n_entries_used = 0;
+			}
 		}
 #endif
 	}
@@ -1376,7 +1381,14 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 #ifdef MODE32
 	uint32_t index;
 	vaddr_page &= 0xffffffffULL;
-	paddr_page &= 0xffffffffULL;
+
+	if (paddr_page > 0xffffffffULL) {
+		fatal("update_translation_table(): v=0x%016"PRIx64", h=%p w=%i"
+		    " p=0x%016"PRIx64"\n", vaddr_page, host_page, writeflag,
+		    paddr_page);
+		exit(1);
+	}
+
 	/*  fatal("update_translation_table(): v=0x%x, h=%p w=%i"
 	    " p=0x%x\n", (int)vaddr_page, host_page, writeflag,
 	    (int)paddr_page);  */
@@ -1400,6 +1412,12 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 		writeflag &= ~MEMORY_USER_ACCESS;
 		useraccess = 1;
 	}
+
+#ifdef DYNTRANS_M88K
+	/*  TODO  */
+	if (useraccess)
+		return;
+#endif
 
 	/*  Scan the current TLB entries:  */
 
@@ -1474,8 +1492,9 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 				cpu->cd.DYNTRANS_ARCH.next_free_l2 = l2->next;
 			} else {
 				int i;
-				l2 = cpu->cd.DYNTRANS_ARCH.l1_64[x1] =
-				    malloc(sizeof(struct DYNTRANS_L2_64_TABLE));
+				CHECK_ALLOCATION(l2 =
+				    cpu->cd.DYNTRANS_ARCH.l1_64[x1] = malloc(
+				    sizeof(struct DYNTRANS_L2_64_TABLE)));
 				l2->refcount = 0;
 				for (i=0; i<(1 << DYNTRANS_L2N); i++)
 					l2->l3[i] = cpu->cd.DYNTRANS_ARCH.
@@ -1590,7 +1609,6 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 				l3->host_store[x3] = NULL;
 		} else {
 			/*  Change the entire physical/host mapping:  */
-printf("HOST LOAD 2 set to %p\n", host_page);
 			l3->host_load[x3] = host_page;
 			l3->host_store[x3] = writeflag? host_page : NULL;
 			l3->phys_addr[x3] = paddr_page;
@@ -1635,21 +1653,27 @@ cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid);
 	/*
 	 *  Check for breakpoints.
 	 */
-	if (!single_step_breakpoint) {
+	if (!single_step_breakpoint && !cpu->translation_readahead) {
 		MODE_uint_t curpc = cpu->pc;
 		int i;
-		for (i=0; i<cpu->machine->n_breakpoints; i++)
+		for (i=0; i<cpu->machine->breakpoints.n; i++)
 			if (curpc == (MODE_uint_t)
-			    cpu->machine->breakpoint_addr[i]) {
+			    cpu->machine->breakpoints.addr[i]) {
 				if (!cpu->machine->instruction_trace) {
 					int old_quiet_mode = quiet_mode;
 					quiet_mode = 0;
 					DISASSEMBLE(cpu, ib, 1, 0);
 					quiet_mode = old_quiet_mode;
 				}
+#ifdef MODE32
+				fatal("BREAKPOINT: pc = 0x%"PRIx32"\n(The "
+				    "instruction has not yet executed.)\n",
+				    (uint32_t)cpu->pc);
+#else
 				fatal("BREAKPOINT: pc = 0x%"PRIx64"\n(The "
 				    "instruction has not yet executed.)\n",
 				    (uint64_t)cpu->pc);
+#endif
 #ifdef DYNTRANS_DELAYSLOT
 				if (cpu->delay_slot != NOT_DELAYED)
 					fatal("ERROR! Breakpoint in a delay"
@@ -1679,18 +1703,21 @@ cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid);
 	{
 		int x = addr & (DYNTRANS_PAGESIZE - 1);
 		int addr_per_translation_range = DYNTRANS_PAGESIZE / (8 *
-		    sizeof(cpu->cd.DYNTRANS_ARCH.cur_physpage->translations));
+		    sizeof(cpu->cd.DYNTRANS_ARCH.cur_physpage->
+		    translations_bitmap));
 		x /= addr_per_translation_range;
 
-		cpu->cd.DYNTRANS_ARCH.cur_physpage->translations |= (1 << x);
+		cpu->cd.DYNTRANS_ARCH.cur_physpage->
+		    translations_bitmap |= (1 << x);
 	}
+
 
 	/*
 	 *  Now it is time to check for combinations of instructions that can
 	 *  be converted into a single function call.
 	 *
 	 *  Note: Single-stepping or instruction tracing doesn't work with
-	 *  instruction combination. For architectures with delay slots,
+	 *  instruction combinations. For architectures with delay slots,
 	 *  we also ignore combinations if the delay slot is across a page
 	 *  boundary.
 	 */
@@ -1707,11 +1734,7 @@ cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid);
 	cpu->cd.DYNTRANS_ARCH.combination_check = NULL;
 
 	/*  An additional check, to catch some bugs:  */
-	if (ic->f == (
-#ifdef DYNTRANS_DUALMODE_32
-	    cpu->is_32bit? instr32(to_be_translated) :
-#endif
-	    instr(to_be_translated))) {
+	if (ic->f == TO_BE_TRANSLATED) {
 		fatal("INTERNAL ERROR: ic->f not set!\n");
 		goto bad;
 	}
@@ -1720,44 +1743,72 @@ cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid);
 		goto bad;
 	}
 
-	/*  ... and finally execute the translated instruction:  */
+
+	/*
+	 *  ... and finally execute the translated instruction:
+	 */
+
+	/*  (Except when doing read-ahead!)  */
+	if (cpu->translation_readahead)
+		return;
+
+	/*
+	 *  Special case when single-stepping: Execute the translated
+	 *  instruction, but then replace it with a "to be translated"
+	 *  directly afterwards.
+	 */
 	if ((single_step_breakpoint && cpu->delay_slot == NOT_DELAYED)
 #ifdef DYNTRANS_DELAYSLOT
 	    || in_crosspage_delayslot
 #endif
 	    ) {
-		/*
-		 *  Special case when single-stepping: Execute the translated
-		 *  instruction, but then replace it with a "to be translated"
-		 *  directly afterwards.
-		 */
 		single_step_breakpoint = 0;
-#ifdef DYNTRANS_VARIABLE_INSTRUCTION_LENGTH
-		cpu->cd.DYNTRANS_ARCH.next_ic = ic + ic->arg[0];
-#endif
 		ic->f(cpu, ic);
-		ic->f =
-#ifdef DYNTRANS_DUALMODE_32
-		    cpu->is_32bit? instr32(to_be_translated) :
-#endif
-		    instr(to_be_translated);
-#ifdef DYNTRANS_VARIABLE_INSTRUCTION_LENGTH
-		ic->arg[0] = 0;
-#endif
-	} else {
-#ifdef DYNTRANS_VARIABLE_INSTRUCTION_LENGTH
-		cpu->cd.DYNTRANS_ARCH.next_ic = ic + ic->arg[0];
-
-		/*  Additional check, for variable length ISAs:  */
-		if (ic->arg[0] == 0) {
-			fatal("INTERNAL ERROR: instr len = 0!\n");
-			goto bad;
-		}
-#endif
-
-		/*  Finally finally :-), execute the instruction:  */
-		ic->f(cpu, ic);
+		ic->f = TO_BE_TRANSLATED;
+		return;
 	}
+
+	/*  Translation read-ahead:  */
+	if (!single_step && !cpu->machine->instruction_trace) {
+		uint64_t baseaddr = cpu->pc;
+		uint64_t pagenr = DYNTRANS_ADDR_TO_PAGENR(baseaddr);
+		int i = 1;
+
+		cpu->translation_readahead = MAX_DYNTRANS_READAHEAD;
+
+		while (DYNTRANS_ADDR_TO_PAGENR(baseaddr +
+		    (i << DYNTRANS_INSTR_ALIGNMENT_SHIFT)) == pagenr &&
+		    cpu->translation_readahead > 0) {
+			void (*old_f)(struct cpu *,
+			    struct DYNTRANS_IC *) = ic[i].f;
+
+			/*  Already translated? Then abort:  */
+			if (old_f != TO_BE_TRANSLATED)
+				break;
+
+			/*  Translate the instruction:  */
+			ic[i].f(cpu, ic+i);
+
+			/*  Translation failed? Then abort.  */
+			if (ic[i].f == old_f)
+				break;
+
+			cpu->translation_readahead --;
+			++i;
+		}
+
+		cpu->translation_readahead = 0;
+	}
+
+
+	/*
+	 *  Finally finally :-), execute the instruction.
+	 *
+	 *  Note: The instruction might have changed during read-ahead, if
+	 *  instruction combinations are used.
+	 */
+
+	ic->f(cpu, ic);
 
 	return;
 
@@ -1766,16 +1817,21 @@ bad:	/*
 	 *  Nothing was translated. (Unimplemented or illegal instruction.)
 	 */
 
+	/*  Clear the translation, in case it was "half-way" done:  */
+	ic->f = TO_BE_TRANSLATED;
+
+	if (cpu->translation_readahead)
+		return;
+
 	quiet_mode = 0;
 	fatal("to_be_translated(): TODO: unimplemented instruction");
 
-	if (cpu->machine->instruction_trace)
-#ifdef MODE32
-		fatal(" at 0x%"PRIx32"\n", (uint32_t)cpu->pc);
-#else
-		fatal(" at 0x%"PRIx64"\n", (uint64_t)cpu->pc);
-#endif
-	else {
+	if (cpu->machine->instruction_trace) {
+		if (cpu->is_32bit)
+			fatal(" at 0x%"PRIx32"\n", (uint32_t)cpu->pc);
+		else
+			fatal(" at 0x%"PRIx64"\n", (uint64_t)cpu->pc);
+	} else {
 		fatal(":\n");
 		DISASSEMBLE(cpu, ib, 1, 0);
 	}
@@ -1789,6 +1845,13 @@ stop_running_translated:
 
 	ic = cpu->cd.DYNTRANS_ARCH.next_ic = &nothing_call;
 	cpu->cd.DYNTRANS_ARCH.next_ic ++;
+
+#ifdef DYNTRANS_DELAYSLOT
+	/*  Special hack: If the bad instruction was in a delay slot,
+	    make sure that execution does not continue anyway:  */
+	if (cpu->delay_slot)
+		cpu->delay_slot |= EXCEPTION_IN_DELAY_SLOT;
+#endif
 
 	/*  Execute the "nothing" instruction:  */
 	ic->f(cpu, ic);

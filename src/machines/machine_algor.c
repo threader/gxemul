@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_algor.c,v 1.11 2006/09/26 08:49:18 debug Exp $
+ *  $Id: machine_algor.c,v 1.20.2.1 2008/01/18 19:12:32 debug Exp $
+ *
+ *  COMMENT: Algorithmic P4032 and P5064 evaluation boards
  */
 
 #include <stdio.h>
@@ -38,13 +40,15 @@
 #include "device.h"
 #include "devices.h"
 #include "machine.h"
-#include "machine_interrupts.h"
 #include "memory.h"
 #include "misc.h"
 
 
 MACHINE_SETUP(algor)
 {
+	struct pci_data *pci_bus;
+	char tmpstr[300];
+
 	machine->emulated_hz = 166560000;
 
 	switch (machine->machine_subtype) {
@@ -67,18 +71,17 @@ MACHINE_SETUP(algor)
 	 *  2 = ISA
 	 */
 
-	machine->md_int.v3_data = dev_v3_init(machine, machine->memory);
-	machine->md_interrupt = isa8_interrupt;
-	machine->isa_pic_data.native_irq = 2;		/*  Primary: ISA  */
-	machine->isa_pic_data.secondary_mask1 = 0x18;
-	machine->isa_pic_data.native_secondary_irq = 4;	/*  Secondary: Local  */
+	pci_bus = device_add(machine, "v3");
 
 	device_add(machine, "algor addr=0x1ff00000");
 
-	bus_isa_init(machine, BUS_ISA_FDC, 0x1d000000, 0x10000000, 8, 24);
+	snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].v3",
+	    machine->path, machine->bootstrap_cpu);
+	bus_isa_init(machine, tmpstr, BUS_ISA_EXTERNAL_PIC | BUS_ISA_FDC,
+	    0x1d000000, 0x10000000);
 
-	bus_pci_add(machine, machine->md_int.v3_data->pci_data,
-	    machine->memory, 0, 0, 0, "dec21143");
+	/*  bus_pci_add(machine, pci_bus, machine->memory, 0, 0, 0,
+	    "dec21143");  */
 
 	if (!machine->prom_emulation)
 		return;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips_instr_loadstore.c,v 1.12 2006/07/26 23:21:48 debug Exp $
+ *  $Id: cpu_mips_instr_loadstore.c,v 1.14.2.1 2008/01/18 19:12:26 debug Exp $
  *
  *  MIPS load/store instructions; the following args are used:
  *  
@@ -59,14 +59,25 @@ void LS_GENERIC_N(struct cpu *cpu, struct mips_instr_call *ic)
 #ifndef LS_1
 	/*  Check alignment:  */
 	if (addr & (LS_SIZE - 1)) {
-		fatal("TODO: mips dyntrans alignment exception, size = %i,"
-		    " addr = %016"PRIx64", pc = %016"PRIx64"\n", LS_SIZE,
+#if 1
+		/*  Cause an address alignment exception:  */
+		mips_cpu_exception(cpu,
+#ifdef LS_LOAD
+		    EXCEPTION_ADEL,
+#else
+		    EXCEPTION_ADES,
+#endif
+		    0, addr, 0, 0, 0, 0);
+#else
+		fatal("{ mips dyntrans alignment exception, size = %i,"
+		    " addr = %016"PRIx64", pc = %016"PRIx64" }\n", LS_SIZE,
 		    (uint64_t) addr, cpu->pc);
 
 		/*  TODO: Generalize this into a abort_call, or similar:  */
 		cpu->running = 0;
 		debugger_n_steps_left_before_interaction = 0;
 		cpu->cd.mips.next_ic = &nothing_call;
+#endif
 		return;
 	}
 #endif

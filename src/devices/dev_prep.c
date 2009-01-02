@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,26 +25,28 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_prep.c,v 1.4 2006/02/09 20:02:59 debug Exp $
+ *  $Id: dev_prep.c,v 1.11.2.1 2008/01/18 19:12:29 debug Exp $
  *
- *  PReP interrupt controller.
+ *  COMMENT: PReP machine mainbus (ISA bus + interrupt controller)
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "bus_isa.h"
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
 
 
-/*
- *  dev_prep_access():
- */
+struct prep_data {
+	uint32_t		int_status;
+};
+
+
 DEVICE_ACCESS(prep)
 {
 	/*  struct prep_data *d = extra;  */
@@ -70,17 +72,15 @@ DEVINIT(prep)
 {
 	struct prep_data *d;
 
-	d = malloc(sizeof(struct prep_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct prep_data)));
 	memset(d, 0, sizeof(struct prep_data));
 
 	memory_device_register(devinit->machine->memory, devinit->name,
 	    0xbffff000, 0x1000, dev_prep_access, d, DM_DEFAULT, NULL);
 
-	devinit->return_ptr = d;
+	/*  This works for at least the IBM 6050:  */
+	bus_isa_init(devinit->machine, devinit->interrupt_path,
+	    BUS_ISA_IDE0 | BUS_ISA_IDE1, 0x80000000, 0xc0000000);
 
 	return 1;
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,16 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_mp.c,v 1.37 2006/07/01 21:15:46 debug Exp $
+ *  $Id: dev_mp.c,v 1.42.2.1 2008/01/18 19:12:29 debug Exp $
+ *
+ *  COMMENT: Generic Multi-processor controller for the test machines
  *
  *  This is a fake multiprocessor (MP) device. It can be useful for
  *  theoretical experiments, but probably bares no resemblance to any
  *  multiprocessor controller used in any real machine.
+ *
+ *  NOTE: The devinit irq string should be the part _after_ "cpu[%i].".
+ *        For MIPS, it will be MIPS_IPI_INT.
  */
 
 #include <stdio.h>
@@ -37,9 +42,9 @@
 #include <string.h>
 
 #include "cpu.h"
-#include "cpu_mips.h"
 #include "device.h"
 #include "machine.h"
+#include "interrupt.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -55,15 +60,15 @@ struct mp_data {
 	/*  Each CPU has an array of pending ipis.  */
 	int		*n_pending_ipis;
 	int		**ipi;
+
+	/*  Connections to all CPUs' IPI pins:  */
+	struct interrupt *ipi_irq;
 };
 
 
 extern int single_step;
 
 
-/*
- *  dev_mp_access():
- */
 DEVICE_ACCESS(mp)
 {
 	struct mp_data *d = extra;
@@ -189,16 +194,14 @@ DEVICE_ACCESS(mp)
 				send_it = 1;
 			if (send_it) {
 				d->n_pending_ipis[i] ++;
-				d->ipi[i] = realloc(d->ipi[i],
-				    d->n_pending_ipis[i] * sizeof(int));
-				if (d->ipi[i] == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(1);
-				}
+				CHECK_ALLOCATION(d->ipi[i] = realloc(d->ipi[i],
+				    d->n_pending_ipis[i] * sizeof(int)));
+
 				/*  Add the IPI last in the array:  */
 				d->ipi[i][d->n_pending_ipis[i] - 1] =
 				    idata >> 16;
-				cpu_interrupt(d->cpus[i], MIPS_IPI_INT);
+
+				INTERRUPT_ASSERT(d->ipi_irq[i]);
 			}
 		}
 		break;
@@ -222,22 +225,20 @@ DEVICE_ACCESS(mp)
 				    &d->ipi[cpu->cpu_id][1],
 				    d->n_pending_ipis[cpu->cpu_id]);
 		}
+
 		/*  Deassert the interrupt, if there are no pending IPIs:  */
 		if (d->n_pending_ipis[cpu->cpu_id] == 0)
-			cpu_interrupt_ack(d->cpus[cpu->cpu_id], MIPS_IPI_INT);
+			INTERRUPT_DEASSERT(d->ipi_irq[cpu->cpu_id]);
 		break;
 
 	case DEV_MP_NCYCLES:
 		/*
 		 *  Return _approximately_ the number of cycles executed
-		 *  in this machine.
-		 *
-		 *  Note: At the moment, this is actually the number of
-		 *  instructions executed on CPU 0.
+		 *  on this CPU.
 		 *
 		 *  (This value is not updated for each instruction.)
 		 */
-		odata = cpu->machine->ninstrs;
+		odata = cpu->ninstrs;
 		break;
 
 	default:
@@ -255,26 +256,31 @@ DEVICE_ACCESS(mp)
 DEVINIT(mp)
 {
 	struct mp_data *d;
-	int n;
+	int n, i;
 
-	d = malloc(sizeof(struct mp_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct mp_data)));
 	memset(d, 0, sizeof(struct mp_data));
+
 	d->cpus = devinit->machine->cpus;
 	d->startup_addr = INITIAL_PC;
 	d->stack_addr = INITIAL_STACK_POINTER;
 
 	n = devinit->machine->ncpus;
-	d->n_pending_ipis = malloc(n * sizeof(int));
-	d->ipi = malloc(n * sizeof(int *));
-	if (d->ipi == NULL || d->n_pending_ipis == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
+
+	/*  Connect to all CPUs' IPI pins:  */
+	CHECK_ALLOCATION(d->ipi_irq = malloc(n * sizeof(struct interrupt)));
+
+	for (i=0; i<n; i++) {
+		char tmpstr[200];
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%s",
+		    devinit->machine->path, i, devinit->interrupt_path);
+		INTERRUPT_CONNECT(tmpstr, d->ipi_irq[i]);
 	}
+
+	CHECK_ALLOCATION(d->n_pending_ipis = malloc(n * sizeof(int)));
 	memset(d->n_pending_ipis, 0, sizeof(int) * n);
+
+	CHECK_ALLOCATION(d->ipi = malloc(n * sizeof(int *)));
 	memset(d->ipi, 0, sizeof(int *) * n);
 
 	memory_device_register(devinit->machine->memory, devinit->name,

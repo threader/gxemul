@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips_instr.c,v 1.118 2006/10/29 05:10:27 debug Exp $
+ *  $Id: cpu_mips_instr.c,v 1.143.2.1 2008/01/18 19:12:25 debug Exp $
  *
  *  MIPS instructions.
  *
@@ -1149,6 +1149,28 @@ X(cache)
 
 
 /*
+ *  ins: Insert bitfield.
+ *
+ *  arg[0] = pointer to rt
+ *  arg[1] = pointer to rs
+ *  arg[2] = (msb << 5) + lsb
+ */
+X(ins)
+{
+	int msb = ic->arg[2] >> 5, pos = ic->arg[2] & 0x1f;
+	int size = msb + 1 - pos;
+	uint32_t rt = reg(ic->arg[0]);
+	uint32_t rs = reg(ic->arg[1]);
+	uint32_t mask = (-1) << pos;
+
+	mask <<= (32 - pos - size);
+	mask >>= (32 - pos - size);
+
+	reg(ic->arg[0]) = (int32_t) ((rt & ~mask) | ((rs << pos) & mask));
+}
+
+
+/*
  *  ext:  Extract bitfield.
  *
  *  arg[0] = pointer to rt
@@ -1157,8 +1179,28 @@ X(cache)
  */
 X(ext)
 {
-	fatal("ext: todo\n");
-	exit(1);
+	int msbd = ic->arg[2] >> 5, lsb = ic->arg[2] & 0x1f;
+	int size = msbd + 1;
+	uint32_t rs = reg(ic->arg[1]);
+	uint32_t x = (rs << (32-lsb-size)) >> (32-lsb-size);
+	reg(ic->arg[0]) = (int32_t) (x >> lsb);
+}
+
+
+/*
+ *  dext:  Extract bitfield (64-bit).
+ *
+ *  arg[0] = pointer to rt
+ *  arg[1] = pointer to rs
+ *  arg[2] = (msbd << 6) + lsb
+ */
+X(dext)
+{
+	int msbd = ic->arg[2] >> 6, lsb = ic->arg[2] & 0x3f;
+	int size = msbd + 1;
+	uint64_t rs = reg(ic->arg[1]);
+	uint64_t x = (rs << (uint64_t)(64-lsb-size)) >> (uint64_t)(64-lsb-size);
+	reg(ic->arg[0]) = x >> lsb;
 }
 
 
@@ -1534,6 +1576,16 @@ X(mul) { reg(ic->arg[2]) = (int32_t)
 	( (int32_t)reg(ic->arg[0]) * (int32_t)reg(ic->arg[1]) ); }
 X(movn) { if (reg(ic->arg[1])) reg(ic->arg[2]) = reg(ic->arg[0]); }
 X(movz) { if (!reg(ic->arg[1])) reg(ic->arg[2]) = reg(ic->arg[0]); }
+
+X(ror)
+{
+	uint32_t result = reg(ic->arg[0]);
+	int sa = ic->arg[1];
+
+	result = (result >> sa) | (result << (32-sa));
+
+	reg(ic->arg[2]) = (int32_t) result;
+}
 
 
 /*
@@ -2046,6 +2098,22 @@ X(tlbr)
 
 
 /*
+ *  ei_or_di:  MIPS32/64 rev 2, Enable or disable interrupts
+ *
+ *  arg[0] = ptr to rt
+ *  arg[1] = non-zero to enable interrupts
+ */
+X(ei_or_di)
+{
+	reg(ic->arg[0]) = cpu->cd.mips.coproc[0]->reg[COP0_STATUS];
+	if (ic->arg[1])
+		cpu->cd.mips.coproc[0]->reg[COP0_STATUS] |= STATUS_IE;
+	else
+		cpu->cd.mips.coproc[0]->reg[COP0_STATUS] &= ~STATUS_IE;
+}
+
+
+/*
  *  rfe: Return from exception handler (R2000/R3000)
  */
 X(rfe)
@@ -2153,10 +2221,12 @@ X(idle)
 
 	if (cpu->machine->ncpus == 1) {
 		static int x = 0;
-		if ((++x) == 600) {
-			usleep(10);
+
+		if ((++x) == 300) {
+			usleep(20);
 			x = 0;
 		}
+
 		cpu->n_translated_instrs += N_SAFE_DYNTRANS_LIMIT / 6;
 	}
 }
@@ -2308,7 +2378,7 @@ X(sc)
 
 	/*  If rmw is 0, then the store failed.  (This cache-line was written
 	    to by someone else.)  */
-	if (cpu->cd.mips.rmw == 0 || cpu->cd.mips.rmw_addr != addr
+	if (cpu->cd.mips.rmw == 0 || (MODE_int_t)cpu->cd.mips.rmw_addr != addr
 	    || cpu->cd.mips.rmw_len != sizeof(word)) {
 		reg(ic->arg[0]) = 0;
 		cpu->cd.mips.rmw = 0;
@@ -2368,7 +2438,7 @@ X(scd)
 
 	/*  If rmw is 0, then the store failed.  (This cache-line was written
 	    to by someone else.)  */
-	if (cpu->cd.mips.rmw == 0 || cpu->cd.mips.rmw_addr != addr
+	if (cpu->cd.mips.rmw == 0 || (MODE_int_t)cpu->cd.mips.rmw_addr != addr
 	    || cpu->cd.mips.rmw_len != sizeof(word)) {
 		reg(ic->arg[0]) = 0;
 		cpu->cd.mips.rmw = 0;
@@ -2586,512 +2656,8 @@ X(sw_loop)
 
 
 #ifdef MODE32
-/*
- *  multi_sw_2, _3, _4:
- *
- *	sw	r?,ofs(rX)		r?=arg[0], rX=arg[1], ofs=arg[2]
- */
-X(multi_sw_2_le)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_store[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    index0 != index1) {
-		/*  Normal safe sw:  */
-		mips32_loadstore[8 + 2 * 2](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-
-	r1 = reg(ic[0].arg[0]);
-	r2 = reg(ic[1].arg[0]);
-
-	r1 = LE32_TO_HOST(r1);
-	r2 = LE32_TO_HOST(r2);
-
-	page[addr0] = r1;
-	page[addr1] = r2;
-
-	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
-}
-X(multi_sw_2_be)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_store[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    index0 != index1) {
-		/*  Normal safe sw:  */
-		mips32_loadstore[16 + 8 + 2 * 2](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-
-	r1 = reg(ic[0].arg[0]);
-	r2 = reg(ic[1].arg[0]);
-
-	r1 = BE32_TO_HOST(r1);
-	r2 = BE32_TO_HOST(r2);
-
-	page[addr0] = r1;
-	page[addr1] = r2;
-
-	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
-}
-X(multi_sw_3_le)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_store[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || index0 != index1 || index0 != index2) {
-		/*  Normal safe sw:  */
-		mips32_loadstore[8 + 2 * 2](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-
-	/*  printf("addr0=%x 1=%x 2=%x\n",
-	    (int)addr0, (int)addr1, (int)addr2);  */
-
-	r1 = reg(ic[0].arg[0]);
-	r2 = reg(ic[1].arg[0]);
-	r3 = reg(ic[2].arg[0]);
-
-	r1 = LE32_TO_HOST(r1);
-	r2 = LE32_TO_HOST(r2);
-	r3 = LE32_TO_HOST(r3);
-
-	page[addr0] = r1;
-	page[addr1] = r2;
-	page[addr2] = r3;
-
-	cpu->n_translated_instrs += 2;
-	cpu->cd.mips.next_ic += 2;
-}
-X(multi_sw_3_be)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_store[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || index0 != index1 || index0 != index2) {
-		/*  Normal safe sw:  */
-		mips32_loadstore[16 + 8 + 2 * 2](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-
-	/*  printf("addr0=%x 1=%x 2=%x\n",
-	    (int)addr0, (int)addr1, (int)addr2);  */
-
-	r1 = reg(ic[0].arg[0]);
-	r2 = reg(ic[1].arg[0]);
-	r3 = reg(ic[2].arg[0]);
-
-	r1 = BE32_TO_HOST(r1);
-	r2 = BE32_TO_HOST(r2);
-	r3 = BE32_TO_HOST(r3);
-
-	page[addr0] = r1;
-	page[addr1] = r2;
-	page[addr2] = r3;
-
-	cpu->n_translated_instrs += 2;
-	cpu->cd.mips.next_ic += 2;
-}
-X(multi_sw_4_le)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3, r4;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	MODE_uint_t addr3 = rX + (int32_t)ic[3].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12, index3 = addr3 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_store[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || (addr3 & 3) != 0 || index0 != index1 ||
-	    index0 != index2 || index0 != index3) {
-		/*  Normal safe sw:  */
-		mips32_loadstore[8 + 2 * 2](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-	addr3 = (addr3 >> 2) & 0x3ff;
-
-	r1 = reg(ic[0].arg[0]);
-	r2 = reg(ic[1].arg[0]);
-	r3 = reg(ic[2].arg[0]);
-	r4 = reg(ic[3].arg[0]);
-
-	r1 = LE32_TO_HOST(r1);
-	r2 = LE32_TO_HOST(r2);
-	r3 = LE32_TO_HOST(r3);
-	r4 = LE32_TO_HOST(r4);
-
-	page[addr0] = r1;
-	page[addr1] = r2;
-	page[addr2] = r3;
-	page[addr3] = r4;
-
-	cpu->n_translated_instrs += 3;
-	cpu->cd.mips.next_ic += 3;
-}
-X(multi_sw_4_be)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3, r4;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	MODE_uint_t addr3 = rX + (int32_t)ic[3].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12, index3 = addr3 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_store[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || (addr3 & 3) != 0 || index0 != index1 ||
-	    index0 != index2 || index0 != index3) {
-		/*  Normal safe sw:  */
-		mips32_loadstore[16 + 8 + 2 * 2](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-	addr3 = (addr3 >> 2) & 0x3ff;
-
-	r1 = reg(ic[0].arg[0]);
-	r2 = reg(ic[1].arg[0]);
-	r3 = reg(ic[2].arg[0]);
-	r4 = reg(ic[3].arg[0]);
-
-	r1 = BE32_TO_HOST(r1);
-	r2 = BE32_TO_HOST(r2);
-	r3 = BE32_TO_HOST(r3);
-	r4 = BE32_TO_HOST(r4);
-
-	page[addr0] = r1;
-	page[addr1] = r2;
-	page[addr2] = r3;
-	page[addr3] = r4;
-
-	cpu->n_translated_instrs += 3;
-	cpu->cd.mips.next_ic += 3;
-}
-#endif
-
-
-#ifdef MODE32
-/*
- *  multi_lw_2, _3, _4:
- *
- *	lw	r?,ofs(rX)		r?=arg[0], rX=arg[1], ofs=arg[2]
- */
-X(multi_lw_2_le)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_load[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    index0 != index1) {
-		/*  Normal safe lw:  */
-		mips32_loadstore[2 * 2 + 1](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-
-	r1 = page[addr0];
-	r2 = page[addr1];
-
-	r1 = LE32_TO_HOST(r1);
-	r2 = LE32_TO_HOST(r2);
-
-	reg(ic[0].arg[0]) = r1;
-	reg(ic[1].arg[0]) = r2;
-
-	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
-}
-X(multi_lw_2_be)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_load[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    index0 != index1) {
-		/*  Normal safe lw:  */
-		mips32_loadstore[16 + 2 * 2 + 1](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-
-	r1 = page[addr0];
-	r2 = page[addr1];
-
-	r1 = BE32_TO_HOST(r1);
-	r2 = BE32_TO_HOST(r2);
-
-	reg(ic[0].arg[0]) = r1;
-	reg(ic[1].arg[0]) = r2;
-
-	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
-}
-X(multi_lw_3_le)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_load[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || index0 != index1 || index0 != index2) {
-		/*  Normal safe lw:  */
-		mips32_loadstore[2 * 2 + 1](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-
-	/*  printf("addr0=%x 1=%x 2=%x\n",
-	    (int)addr0, (int)addr1, (int)addr2);  */
-
-	r1 = page[addr0];
-	r2 = page[addr1];
-	r3 = page[addr2];
-
-	r1 = LE32_TO_HOST(r1);
-	r2 = LE32_TO_HOST(r2);
-	r3 = LE32_TO_HOST(r3);
-
-	reg(ic[0].arg[0]) = r1;
-	reg(ic[1].arg[0]) = r2;
-	reg(ic[2].arg[0]) = r3;
-
-	cpu->n_translated_instrs += 2;
-	cpu->cd.mips.next_ic += 2;
-}
-X(multi_lw_3_be)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_load[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || index0 != index1 || index0 != index2) {
-		/*  Normal safe lw:  */
-		mips32_loadstore[16 + 2 * 2 + 1](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-
-	/*  printf("addr0=%x 1=%x 2=%x\n",
-	    (int)addr0, (int)addr1, (int)addr2);  */
-
-	r1 = page[addr0];
-	r2 = page[addr1];
-	r3 = page[addr2];
-
-	r1 = BE32_TO_HOST(r1);
-	r2 = BE32_TO_HOST(r2);
-	r3 = BE32_TO_HOST(r3);
-
-	reg(ic[0].arg[0]) = r1;
-	reg(ic[1].arg[0]) = r2;
-	reg(ic[2].arg[0]) = r3;
-
-	cpu->n_translated_instrs += 2;
-	cpu->cd.mips.next_ic += 2;
-}
-X(multi_lw_4_le)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3, r4;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	MODE_uint_t addr3 = rX + (int32_t)ic[3].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12, index3 = addr3 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_load[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || (addr3 & 3) != 0 ||
-	    index0 != index1 || index0 != index2 || index0 != index3) {
-		/*  Normal safe lw:  */
-		mips32_loadstore[2 * 2 + 1](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-	addr3 = (addr3 >> 2) & 0x3ff;
-
-	r1 = page[addr0];
-	r2 = page[addr1];
-	r3 = page[addr2];
-	r4 = page[addr3];
-
-	r1 = LE32_TO_HOST(r1);
-	r2 = LE32_TO_HOST(r2);
-	r3 = LE32_TO_HOST(r3);
-	r4 = LE32_TO_HOST(r4);
-
-	reg(ic[0].arg[0]) = r1;
-	reg(ic[1].arg[0]) = r2;
-	reg(ic[2].arg[0]) = r3;
-	reg(ic[3].arg[0]) = r4;
-
-	cpu->n_translated_instrs += 3;
-	cpu->cd.mips.next_ic += 3;
-}
-X(multi_lw_4_be)
-{
-	uint32_t *page;
-	MODE_uint_t rX = reg(ic[0].arg[1]), r1, r2, r3, r4;
-	MODE_uint_t addr0 = rX + (int32_t)ic[0].arg[2];
-	MODE_uint_t addr1 = rX + (int32_t)ic[1].arg[2];
-	MODE_uint_t addr2 = rX + (int32_t)ic[2].arg[2];
-	MODE_uint_t addr3 = rX + (int32_t)ic[3].arg[2];
-	uint32_t index0 = addr0 >> 12, index1 = addr1 >> 12,
-	    index2 = addr2 >> 12, index3 = addr3 >> 12;
-
-	page = (uint32_t *) cpu->cd.mips.host_load[index0];
-
-	/*  Fallback:  */
-	if (cpu->delay_slot ||
-	    page == NULL || (addr0 & 3) != 0 || (addr1 & 3) != 0 ||
-	    (addr2 & 3) != 0 || (addr3 & 3) != 0 ||
-	    index0 != index1 || index0 != index2 || index0 != index3) {
-		/*  Normal safe lw:  */
-		mips32_loadstore[16 + 2 * 2 + 1](cpu, ic);
-		return;
-        }
-
-	addr0 = (addr0 >> 2) & 0x3ff;
-	addr1 = (addr1 >> 2) & 0x3ff;
-	addr2 = (addr2 >> 2) & 0x3ff;
-	addr3 = (addr3 >> 2) & 0x3ff;
-
-	r1 = page[addr0];
-	r2 = page[addr1];
-	r3 = page[addr2];
-	r4 = page[addr3];
-
-	r1 = BE32_TO_HOST(r1);
-	r2 = BE32_TO_HOST(r2);
-	r3 = BE32_TO_HOST(r3);
-	r4 = BE32_TO_HOST(r4);
-
-	reg(ic[0].arg[0]) = r1;
-	reg(ic[1].arg[0]) = r2;
-	reg(ic[2].arg[0]) = r3;
-	reg(ic[3].arg[0]) = r4;
-
-	cpu->n_translated_instrs += 3;
-	cpu->cd.mips.next_ic += 3;
-}
+/*  multi_{l,s}w_2, _3, etc.  */
+#include "tmp_mips_loadstore_multi.c"
 #endif
 
 
@@ -3110,7 +2676,7 @@ X(multi_addu_3)
 	reg(ic[1].arg[2]) = (int32_t)(reg(ic[1].arg[0]) + reg(ic[1].arg[1]));
 	reg(ic[2].arg[2]) = (int32_t)(reg(ic[2].arg[0]) + reg(ic[2].arg[1]));
 	cpu->n_translated_instrs += 2;
-	cpu->cd.mips.next_ic += 2;
+	cpu->cd.mips.next_ic = ic + 3;
 }
 
 
@@ -3142,7 +2708,7 @@ X(netbsd_r3k_picache_do_inv)
 	cpu->n_translated_instrs += (ry - rx + 4) / 4 * 3 + 4;
 
 	/*  Run the last mtc0 instruction:  */
-	cpu->cd.mips.next_ic = (struct mips_instr_call *) &ic[8];
+	cpu->cd.mips.next_ic = ic + 8;
 }
 
 
@@ -3260,9 +2826,9 @@ X(netbsd_strlen)
 
 	/*  Done with the loop? Or continue on the next rx page?  */
 	if (rv == 0)
-		cpu->cd.mips.next_ic = (struct mips_instr_call *) &ic[4];
+		cpu->cd.mips.next_ic = ic + 4;
 	else
-		cpu->cd.mips.next_ic = (struct mips_instr_call *) &ic[0];
+		cpu->cd.mips.next_ic = ic;
 }
 #endif
 
@@ -3289,7 +2855,7 @@ X(addiu_bne_samepage_addiu)
 	if (rs != rt)
 		cpu->cd.mips.next_ic = (struct mips_instr_call *) ic[1].arg[2];
 	else
-		cpu->cd.mips.next_ic += 2;
+		cpu->cd.mips.next_ic = ic + 3;
 }
 
 
@@ -3309,7 +2875,7 @@ X(xor_andi_sll)
 	reg(ic[2].arg[2]) = (int32_t)(reg(ic[2].arg[0])<<(int32_t)ic[2].arg[1]);
 
 	cpu->n_translated_instrs += 2;
-	cpu->cd.mips.next_ic += 2;
+	cpu->cd.mips.next_ic = ic + 3;
 }
 
 
@@ -3328,7 +2894,7 @@ X(andi_sll)
 	reg(ic[1].arg[2]) = (int32_t)(reg(ic[1].arg[0])<<(int32_t)ic[1].arg[1]);
 
 	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
+	cpu->cd.mips.next_ic = ic + 2;
 }
 
 
@@ -3347,7 +2913,7 @@ X(lui_ori)
 	reg(ic[1].arg[1]) = reg(ic[1].arg[0]) | (uint32_t)ic[1].arg[2];
 
 	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
+	cpu->cd.mips.next_ic = ic + 2;
 }
 
 
@@ -3367,7 +2933,7 @@ X(lui_addiu)
 	    ((int32_t)reg(ic[1].arg[0]) + (int32_t)ic[1].arg[2]);
 
 	cpu->n_translated_instrs ++;
-	cpu->cd.mips.next_ic ++;
+	cpu->cd.mips.next_ic = ic + 2;
 }
 
 
@@ -4003,24 +3569,44 @@ X(to_be_translated)
 			case SPECIAL_DSRA32:ic->f = instr(dsra); x64=1;
 					   sa += 32; break;
 			}
+
 			ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rt];
 			if (sa >= 0)
 				ic->arg[1] = sa;
 			else
 				ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rs];
 			ic->arg[2] = (size_t)&cpu->cd.mips.gpr[rd];
-			if (rd == MIPS_GPR_ZERO)
-				ic->f = instr(nop);
-			if (ic->f == instr(sll))
-				cpu->cd.mips.combination_check = COMBINE(sll);
-			if (ic->f == instr(nop))
-				cpu->cd.mips.combination_check = COMBINE(nop);
 
 			/*  Special checks for MIPS32/64 revision 2 opcodes,
 			    such as rotation instructions:  */
 			if (sa >= 0 && rs != 0x00) {
+				if (cpu->cd.mips.cpu_type.isa_level < 32 ||
+				    cpu->cd.mips.cpu_type.isa_revision < 2) {
+					static int warning_rotate = 0;
+					if (!warning_rotate &&
+					    !cpu->translation_readahead) {
+						fatal("[ WARNING! MIPS32/64 "
+						    "revision 2 rotate opcode"
+						    " used, but the %s process"
+						    "or does not implement "
+						    "such instructions. Only "
+						    "printing this "
+						    "warning once. ]\n",
+						    cpu->cd.mips.cpu_type.name);
+						warning_rotate = 1;
+					}
+					ic->f = instr(reserved);
+					break;
+				}
 				switch (rs) {
-				/*  TODO: [d]ror, etc.  */
+				case 0x01:
+					switch (s6) {
+					case SPECIAL_SRL:	/*  ror  */
+						ic->f = instr(ror);
+						break;
+					default:goto bad;
+					}
+					break;
 				default:goto bad;
 				}
 			}
@@ -4030,6 +3616,13 @@ X(to_be_translated)
 				default:goto bad;
 				}
 			}
+
+			if (rd == MIPS_GPR_ZERO)
+				ic->f = instr(nop);
+			if (ic->f == instr(sll))
+				cpu->cd.mips.combination_check = COMBINE(sll);
+			if (ic->f == instr(nop))
+				cpu->cd.mips.combination_check = COMBINE(nop);
 			break;
 
 		case SPECIAL_ADD:
@@ -4102,9 +3695,11 @@ X(to_be_translated)
 			case SPECIAL_MOVN:  ic->f = instr(movn); break;
 			case SPECIAL_MOVZ:  ic->f = instr(movz); break;
 			}
+
 			ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rs];
 			ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rt];
 			ic->arg[2] = (size_t)&cpu->cd.mips.gpr[rd];
+
 			switch (s6) {
 			case SPECIAL_MFHI:
 				ic->arg[0] = (size_t)&cpu->cd.mips.hi;
@@ -4153,7 +3748,8 @@ X(to_be_translated)
 					}
 				}
 				if (rd != MIPS_GPR_ZERO) {
-					fatal("TODO: rd NON-zero\n");
+					if (!cpu->translation_readahead)
+						fatal("TODO: rd NON-zero\n");
 					goto bad;
 				}
 				/*  These instructions don't use rd.  */
@@ -4164,6 +3760,7 @@ X(to_be_translated)
 
 			if (ic->f == instr(addu))
 				cpu->cd.mips.combination_check = COMBINE(addu);
+
 			break;
 
 		case SPECIAL_JR:
@@ -4183,6 +3780,8 @@ X(to_be_translated)
 				} else {
 					ic->f = instr(jr);
 				}
+				if (cpu->translation_readahead > 2)
+					cpu->translation_readahead = 2;
 				break;
 			case SPECIAL_JALR:
 				if (cpu->machine->show_trace_tree)
@@ -4192,7 +3791,9 @@ X(to_be_translated)
 				break;
 			}
 			if (cpu->delay_slot) {
-				fatal("TODO: branch in delay slot? (1)\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: branch in delay "
+					    "slot? (1)\n");
 				goto bad;
 			}
 			break;
@@ -4290,7 +3891,8 @@ X(to_be_translated)
 			ic->f = samepage_function;
 		}
 		if (cpu->delay_slot) {
-			fatal("TODO: branch in delay slot? (2)\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: branch in delay slot? (2)\n");
 			goto bad;
 		}
 		break;
@@ -4362,6 +3964,8 @@ X(to_be_translated)
 		switch (main_opcode) {
 		case HI6_J:
 			ic->f = instr(j);
+			if (cpu->translation_readahead > 2)
+				cpu->translation_readahead = 2;
 			break;
 		case HI6_JAL:
 			if (cpu->machine->show_trace_tree)
@@ -4373,9 +3977,10 @@ X(to_be_translated)
 		ic->arg[0] = (iword & 0x03ffffff) << 2;
 		ic->arg[1] = (addr & 0xffc) + 8;
 		if (cpu->delay_slot) {
-			fatal("TODO: branch in delay slot (=%i)? (3); addr=%016"
-			    PRIx64" iword=%08"PRIx32"\n", cpu->delay_slot,
-			    (uint64_t)addr, iword);
+			if (!cpu->translation_readahead)
+				fatal("TODO: branch in delay slot (=%i)? (3);"
+				    " addr=%016"PRIx64" iword=%08"PRIx32"\n",
+				    cpu->delay_slot, (uint64_t)addr, iword);
 			goto bad;
 		}
 		break;
@@ -4412,7 +4017,8 @@ X(to_be_translated)
 				    cpu->cd.mips.cpu_type.isa_level < 32) {
 					static int warned = 0;
 					ic->f = instr(reserved);
-					if (!warned) {
+					if (!warned &&
+					    !cpu->translation_readahead) {
 						fatal("{ WARNING: Attempt to "
 						    "execute the WAIT instruct"
 					            "ion, but the emulated CPU "
@@ -4428,7 +4034,8 @@ X(to_be_translated)
 				if (cpu->cd.mips.cpu_type.rev != MIPS_R4100) {
 					static int warned = 0;
 					ic->f = instr(reserved);
-					if (!warned) {
+					if (!warned &&
+					    !cpu->translation_readahead) {
 						fatal("{ WARNING: Attempt to "
 						    "execute a R41xx instruct"
 					            "ion, but the emulated CPU "
@@ -4457,8 +4064,9 @@ X(to_be_translated)
 				} else
 					goto bad;
 				break;
-			default:fatal("UNIMPLEMENTED cop0 (func 0x%02x)\n",
-				    iword & 0xff);
+			default:if (!cpu->translation_readahead)
+					fatal("UNIMPLEMENTED cop0 (func "
+					    "0x%02x)\n", iword & 0xff);
 				goto bad;
 			}
 			break;
@@ -4502,16 +4110,52 @@ X(to_be_translated)
 				    COMBINE(netbsd_r3k_cache_inv);
 
 			break;
-		case 8:	if (iword == 0x4100ffff) {
+		case COPz_MFMCz:
+			if ((iword & 0xffdf) == 0x6000) {
+				/*  MIPS32/64 rev 2 "ei" or "di":   */
+				if (cpu->cd.mips.cpu_type.isa_level < 32 ||
+				    cpu->cd.mips.cpu_type.isa_revision < 2) {
+					static int warning_ei_di = 0;
+					if (!warning_ei_di &&
+					    !cpu->translation_readahead) {
+						fatal("[ WARNING! MIPS32/64 "
+						    "revision 2 di or ei opcode"
+						    " used, but the %s process"
+						    "or does not implement "
+						    "such instructions. Only "
+						    "printing this "
+						    "warning once. ]\n",
+						    cpu->cd.mips.cpu_type.name);
+						warning_ei_di = 1;
+					}
+					ic->f = instr(reserved);
+					break;
+				}
+				ic->f = instr(ei_or_di);
+				ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rt];
+				if (rt == MIPS_GPR_ZERO)
+					ic->arg[0] =
+					    (size_t)&cpu->cd.mips.scratch;
+				ic->arg[1] = iword & 0x20;
+			} else {
+				if (!cpu->translation_readahead)
+					fatal("Unimplemented COP0_MFMCz\n");
+				goto bad;
+			}
+			break;
+		case COPz_BCzc:
+			if (iword == 0x4100ffff) {
 				/*  R2020 DECstation write-loop thingy.  */
 				ic->f = instr(nop);
 			} else {
-				fatal("Unimplemented blah blah zzzz...\n");
+				if (!cpu->translation_readahead)
+					fatal("Unimplemented COP0_BCzc\n");
 				goto bad;
 			}
 			break;
 		
-		default:fatal("UNIMPLEMENTED cop0 (rs = %i)\n", rs);
+		default:if (!cpu->translation_readahead)
+				fatal("UNIMPLEMENTED cop0 (rs = %i)\n", rs);
 			goto bad;
 		}
 		break;
@@ -4538,15 +4182,18 @@ X(to_be_translated)
 			ic->arg[2] = (int32_t) ((imm <<
 			    MIPS_INSTR_ALIGNMENT_SHIFT) + (addr & 0xffc) + 4);
 			if (cpu->delay_slot) {
-				fatal("TODO: branch in delay slot? (4)\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: branch in delay slot 4\n");
 				goto bad;
 			}
 			if (cpu->cd.mips.cpu_type.isa_level <= 3 &&
 			    ic->arg[0] != 0) {
-				fatal("Attempt to execute a non-cc-0 BC*"
-				    " instruction on an isa level %i cpu. "
-				    "TODO: How should this be handled?\n",
-				    cpu->cd.mips.cpu_type.isa_level);
+				if (!cpu->translation_readahead)
+					fatal("Attempt to execute a non-cc-0 "
+					    "BC* instruction on an isa level "
+					    "%i cpu. TODO: How should this be "
+					    "handled?\n",
+					    cpu->cd.mips.cpu_type.isa_level);
 				goto bad;
 			}
 
@@ -4571,7 +4218,8 @@ X(to_be_translated)
 			ic->arg[0] = (uint32_t)iword & ((1 << 26) - 1);
 			break;
 
-		default:fatal("COP1 floating point opcode = 0x%02x\n", rs);
+		default:if (!cpu->translation_readahead)
+			    fatal("COP1 floating point opcode = 0x%02x\n", rs);
 			goto bad;
 		}
 		break;
@@ -4584,8 +4232,29 @@ X(to_be_translated)
 			ic->arg[0] = 2;
 			break;
 		}
-		fatal("COP2 functionality not yet implemented\n");
+		if (!cpu->translation_readahead)
+			fatal("COP2 functionality not yet implemented\n");
 		goto bad;
+		break;
+
+	case HI6_COP3:
+		/*  Always cause a coprocessor unusable exception if
+		    there is no coprocessor 3:  */
+		if (cpu->cd.mips.coproc[3] == NULL) {
+			ic->f = instr(cpu);
+			ic->arg[0] = 3;
+			break;
+		}
+
+		if (iword == 0x4d00ffff) {
+			/*  R2020 writeback thing, used by e.g. NetBSD/pmax
+			    on MIPSMATE.  */
+			ic->f = instr(nop);
+		} else {
+			if (!cpu->translation_readahead)
+				fatal("COP3 iword=0x%08x\n", iword);
+			goto bad;
+		}
 		break;
 
 	case HI6_SPECIAL2:
@@ -4767,11 +4436,14 @@ X(to_be_translated)
 				ic->f = samepage_function;
 			}
 			if (cpu->delay_slot) {
-				fatal("TODO: branch in delay slot? (5)\n");
+				if (!cpu->translation_readahead)
+					fatal("TODO: branch in delay slot:5\n");
 				goto bad;
 			}
 			break;
-		default:fatal("UNIMPLEMENTED regimm rt=%i\n", rt);
+
+		default:if (!cpu->translation_readahead)
+				fatal("UNIMPLEMENTED regimm rt=%i\n", rt);
 			goto bad;
 		}
 		break;
@@ -4851,7 +4523,8 @@ X(to_be_translated)
 		ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rs];
 		ic->arg[2] = (int32_t)imm;
 		if (!store && rt == MIPS_GPR_ZERO) {
-			fatal("HM... unusual load linked\n");
+			if (!cpu->translation_readahead)
+				fatal("HM... unusual load linked\n");
 			goto bad;
 		}
 		break;
@@ -4921,31 +4594,36 @@ X(to_be_translated)
 			/*  Treat as nop for now:  */
 			ic->f = instr(nop);
 		} else {
-			fatal("TODO: lwc3 not implemented yet\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: lwc3 not implemented yet\n");
 			goto bad;
 		}
 		break;
 
 	case HI6_LQ_MDMX:
 		if (cpu->cd.mips.cpu_type.rev == MIPS_R5900) {
-			fatal("TODO: R5900 128-bit loads\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: R5900 128-bit loads\n");
 			goto bad;
 		}
 
-		fatal("TODO: MDMX\n");
+		if (!cpu->translation_readahead)
+			fatal("TODO: MDMX\n");
+
 		goto bad;
 		/*  break  */
 
 	case HI6_SQ_SPECIAL3:
 		if (cpu->cd.mips.cpu_type.rev == MIPS_R5900) {
-			fatal("TODO: R5900 128-bit stores\n");
+			if (!cpu->translation_readahead)
+				fatal("TODO: R5900 128-bit stores\n");
 			goto bad;
 		}
 
 		if (cpu->cd.mips.cpu_type.isa_level < 32 ||
 		    cpu->cd.mips.cpu_type.isa_revision < 2) {
 			static int warning = 0;
-			if (!warning) {
+			if (!warning && !cpu->translation_readahead) {
 				fatal("[ WARNING! SPECIAL3 opcode used, but"
 				    " the %s processor does not implement "
 				    "such instructions. Only printing this "
@@ -4960,13 +4638,42 @@ X(to_be_translated)
 		switch (s6) {
 
 		case SPECIAL3_EXT:
-			/*  TODO: Cleanup and extend to DEXT... etc  */
 			{
 				int msbd = rd, lsb = (iword >> 6) & 0x1f;
 				ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rt];
 				ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rs];
 				ic->arg[2] = (msbd << 5) + lsb;
 				ic->f = instr(ext);
+				if (rt == MIPS_GPR_ZERO)
+					ic->f = instr(nop);
+			}
+			break;
+
+		case SPECIAL3_DEXT:
+		case SPECIAL3_DEXTM:
+		case SPECIAL3_DEXTU:
+			{
+				int msbd = rd, lsb = (iword >> 6) & 0x1f;
+				if (s6 == SPECIAL3_DEXTM)
+					msbd += 32;
+				if (s6 == SPECIAL3_DEXTU)
+					lsb += 32;
+				ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rt];
+				ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rs];
+				ic->arg[2] = (msbd << 6) + lsb;
+				ic->f = instr(dext);
+				if (rt == MIPS_GPR_ZERO)
+					ic->f = instr(nop);
+			}
+			break;
+
+		case SPECIAL3_INS:
+			{
+				int msb = rd, lsb = (iword >> 6) & 0x1f;
+				ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rt];
+				ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rs];
+				ic->arg[2] = (msb << 5) + lsb;
+				ic->f = instr(ins);
 				if (rt == MIPS_GPR_ZERO)
 					ic->f = instr(nop);
 			}
@@ -5013,8 +4720,9 @@ X(to_be_translated)
 					ic->f = instr(nop);
 				break;
 
-			default:fatal("unimplemented rdhwr register rd=%i\n",
-				    rd);
+			default:if (!cpu->translation_readahead)
+					fatal("unimplemented rdhwr "
+					    "register rd=%i\n", rd);
 				goto bad;
 			}
 			break;
@@ -5031,15 +4739,20 @@ X(to_be_translated)
 	default:goto bad;
 	}
 
+
 #ifdef MODE32
 	if (x64) {
 		static int has_warned = 0;
-		if (!has_warned)
+		if (!has_warned && !cpu->translation_readahead) {
 			fatal("[ WARNING/NOTE: attempt to execute a 64-bit"
 			    " instruction on an emulated 32-bit processor; "
 			    "pc=0x%08"PRIx32" ]\n", (uint32_t)cpu->pc);
-		has_warned = 1;
-		ic->f = instr(reserved);
+			has_warned = 1;
+		}
+		if (cpu->translation_readahead)
+			goto bad;
+		else
+			ic->f = instr(reserved);
 	}
 #endif
 

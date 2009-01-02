@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,16 +25,16 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_footbridge.c,v 1.48 2006/09/30 10:09:19 debug Exp $
+ *  $Id: dev_footbridge.c,v 1.57.2.1 2008/01/18 19:12:28 debug Exp $
  *
- *  Footbridge. Used in Netwinder and Cats.
+ *  COMMENT: DC21285 "Footbridge" controller; used in Netwinder and Cats
  *
  *  TODO:
  *	o)  Add actual support for the fcom serial port.
  *	o)  FIQs.
  *	o)  Pretty much everything else as well :)  (This entire thing
  *	    is a quick hack to work primarily with NetBSD and OpenBSD
- *	    as a guest OS.)
+ *	    as guest OSes.)
  */
 
 #include <stdio.h>
@@ -56,6 +56,32 @@
 
 #define	DEV_FOOTBRIDGE_TICK_SHIFT	14
 #define	DEV_FOOTBRIDGE_LENGTH		0x400
+
+#define	N_FOOTBRIDGE_TIMERS		4
+
+struct footbridge_data {
+	struct interrupt irq;
+
+	struct pci_data *pcibus;
+
+	int		console_handle;
+
+	uint32_t	timer_load[N_FOOTBRIDGE_TIMERS];
+	uint32_t	timer_value[N_FOOTBRIDGE_TIMERS];
+	uint32_t	timer_control[N_FOOTBRIDGE_TIMERS];
+
+	struct interrupt timer_irq[N_FOOTBRIDGE_TIMERS];
+	struct timer	*timer[N_FOOTBRIDGE_TIMERS];
+	int		pending_timer_interrupts[N_FOOTBRIDGE_TIMERS];
+
+	int		irq_asserted;
+
+	uint32_t	irq_status;
+	uint32_t	irq_enable;
+
+	uint32_t	fiq_status;
+	uint32_t	fiq_enable;
+};
 
 
 static void timer_tick0(struct timer *t, void *extra)
@@ -81,7 +107,6 @@ static void reload_timer_value(struct cpu *cpu, struct footbridge_data *d,
 	freq /= (double)cycles;
 
 	d->timer_value[timer_nr] = d->timer_load[timer_nr];
-	d->timer_tick_countdown[timer_nr] = 1;
 
 	/*  printf("%i: %i -> %f Hz\n", timer_nr,
 	    d->timer_load[timer_nr], freq);  */
@@ -100,8 +125,6 @@ static void reload_timer_value(struct cpu *cpu, struct footbridge_data *d,
 
 
 /*
- *  dev_footbridge_tick():
- *
  *  The 4 footbridge timers should decrease and cause interrupts. Periodic
  *  interrupts restart as soon as they are acknowledged, non-periodic
  *  interrupts need to be "reloaded" to restart.
@@ -109,16 +132,16 @@ static void reload_timer_value(struct cpu *cpu, struct footbridge_data *d,
  *  TODO: Hm. I thought I had solved this, but it didn't quite work.
  *        This needs to be re-checked against documentation, sometime.
  */
-void dev_footbridge_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(footbridge)
 {
+	struct footbridge_data *d = extra;
 	int i;
-	struct footbridge_data *d = (struct footbridge_data *) extra;
 
 	for (i=0; i<N_FOOTBRIDGE_TIMERS; i++) {
 		if (d->timer_control[i] & TIMER_ENABLE) {
 			if (d->pending_timer_interrupts[i] > 0) {
 				d->timer_value[i] = random() % d->timer_load[i];
-				cpu_interrupt(cpu, IRQ_TIMER_1 + i);
+				INTERRUPT_ASSERT(d->timer_irq[i]);
 			}
 		}
 	}
@@ -126,8 +149,36 @@ void dev_footbridge_tick(struct cpu *cpu, void *extra)
 
 
 /*
- *  dev_footbridge_isa_access():
- *
+ *  footbridge_interrupt_assert():
+ */
+void footbridge_interrupt_assert(struct interrupt *interrupt)
+{
+	struct footbridge_data *d = (struct footbridge_data *) interrupt->extra;
+	d->irq_status |= interrupt->line;
+
+	if ((d->irq_status & d->irq_enable) && !d->irq_asserted) {
+		d->irq_asserted = 1;
+		INTERRUPT_ASSERT(d->irq);
+	}
+}
+
+
+/*
+ *  footbridge_interrupt_deassert():
+ */
+void footbridge_interrupt_deassert(struct interrupt *interrupt)
+{
+	struct footbridge_data *d = (struct footbridge_data *) interrupt->extra;
+	d->irq_status &= ~interrupt->line;
+
+	if (!(d->irq_status & d->irq_enable) && d->irq_asserted) {
+		d->irq_asserted = 0;
+		INTERRUPT_DEASSERT(d->irq);
+	}
+}
+
+
+/*
  *  Reading the byte at 0x79000000 is a quicker way to figure out which ISA
  *  interrupt has occurred (and acknowledging it at the same time), than
  *  dealing with the legacy 0x20/0xa0 ISA ports.
@@ -144,9 +195,6 @@ DEVICE_ACCESS(footbridge_isa)
 	}
 
 	x = cpu->machine->isa_pic_data.last_int;
-	if (x == 0)
-		cpu_interrupt_ack(cpu, 32 + x);
-
 	if (x < 8)
 		odata = cpu->machine->isa_pic_data.pic1->irq_base + x;
 	else
@@ -182,8 +230,6 @@ exit(1);
 
 
 /*
- *  dev_footbridge_pci_access():
- *
  *  The Footbridge PCI configuration space is implemented as a direct memory
  *  space (i.e. not one port for addr and one port for data). This function
  *  translates that into bus_pci calls.
@@ -221,11 +267,6 @@ DEVICE_ACCESS(footbridge_pci)
 }
 
 
-/*
- *  dev_footbridge_access():
- *
- *  The DC21285 registers.
- */
 DEVICE_ACCESS(footbridge)
 {
 	struct footbridge_data *d = extra;
@@ -309,7 +350,10 @@ DEVICE_ACCESS(footbridge)
 	case IRQ_ENABLE_SET:
 		if (writeflag == MEM_WRITE) {
 			d->irq_enable |= idata;
-			cpu_interrupt(cpu, 64);
+			if (d->irq_status & d->irq_enable)
+				INTERRUPT_ASSERT(d->irq);
+			else
+				INTERRUPT_DEASSERT(d->irq);
 		} else {
 			odata = d->irq_enable;
 			fatal("[ WARNING: footbridge read from "
@@ -321,7 +365,10 @@ DEVICE_ACCESS(footbridge)
 	case IRQ_ENABLE_CLEAR:
 		if (writeflag == MEM_WRITE) {
 			d->irq_enable &= ~idata;
-			cpu_interrupt(cpu, 64);
+			if (d->irq_status & d->irq_enable)
+				INTERRUPT_ASSERT(d->irq);
+			else
+				INTERRUPT_DEASSERT(d->irq);
 		} else {
 			odata = d->irq_enable;
 			fatal("[ WARNING: footbridge read from "
@@ -367,7 +414,7 @@ DEVICE_ACCESS(footbridge)
 			/*  debug("[ footbridge: timer %i (1-based), "
 			    "value %i ]\n", timer_nr + 1,
 			    (int)d->timer_value[timer_nr]);  */
-			cpu_interrupt_ack(cpu, IRQ_TIMER_1 + timer_nr);
+			INTERRUPT_DEASSERT(d->timer_irq[timer_nr]);
 		}
 		break;
 
@@ -394,7 +441,7 @@ DEVICE_ACCESS(footbridge)
 			} else {
 				d->pending_timer_interrupts[timer_nr] = 0;
 			}
-			cpu_interrupt_ack(cpu, IRQ_TIMER_1 + timer_nr);
+			INTERRUPT_DEASSERT(d->timer_irq[timer_nr]);
 		}
 		break;
 
@@ -407,7 +454,7 @@ DEVICE_ACCESS(footbridge)
 			d->pending_timer_interrupts[timer_nr] --;
 		}
 
-		cpu_interrupt_ack(cpu, IRQ_TIMER_1 + timer_nr);
+		INTERRUPT_DEASSERT(d->timer_irq[timer_nr]);
 		break;
 
 	default:if (writeflag == MEM_READ) {
@@ -429,15 +476,15 @@ DEVICE_ACCESS(footbridge)
 DEVINIT(footbridge)
 {
 	struct footbridge_data *d;
+	char irq_path[300], irq_path_isa[300];
 	uint64_t pci_addr = 0x7b000000;
 	int i;
 
-	d = malloc(sizeof(struct footbridge_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct footbridge_data)));
 	memset(d, 0, sizeof(struct footbridge_data));
+
+	/*  Connect to the CPU which this footbridge will interrupt:  */
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 
 	/*  DC21285 register access:  */
 	memory_device_register(devinit->machine->memory, devinit->name,
@@ -451,18 +498,53 @@ DEVINIT(footbridge)
 	/*  The "fcom" console:  */
 	d->console_handle = console_start_slave(devinit->machine, "fcom", 0);
 
+	/*  Register 32 footbridge interrupts:  */
+	snprintf(irq_path, sizeof(irq_path), "%s.footbridge",
+	    devinit->interrupt_path);
+	for (i=0; i<32; i++) {
+		struct interrupt interrupt_template;
+		char tmpstr[200];
+
+		memset(&interrupt_template, 0, sizeof(interrupt_template));
+		interrupt_template.line = 1 << i;
+		snprintf(tmpstr, sizeof(tmpstr), "%s.%i", irq_path, i);
+		interrupt_template.name = tmpstr;
+
+		interrupt_template.extra = d;
+		interrupt_template.interrupt_assert =
+		    footbridge_interrupt_assert;
+		interrupt_template.interrupt_deassert =
+		    footbridge_interrupt_deassert;
+		interrupt_handler_register(&interrupt_template);
+
+		/*  Connect locally to some interrupts:  */
+		if (i>=IRQ_TIMER_1 && i<=IRQ_TIMER_4)
+			INTERRUPT_CONNECT(tmpstr, d->timer_irq[i-IRQ_TIMER_1]);
+	}
+
+	switch (devinit->machine->machine_type) {
+	case MACHINE_CATS:
+		snprintf(irq_path_isa, sizeof(irq_path_isa), "%s.10", irq_path);
+		break;
+	case MACHINE_NETWINDER:
+		snprintf(irq_path_isa, sizeof(irq_path_isa), "%s.11", irq_path);
+		break;
+	default:fatal("footbridge unimpl machine type\n");
+		exit(1);
+	}
+
 	/*  A PCI bus:  */
 	d->pcibus = bus_pci_init(
 	    devinit->machine,
-	    devinit->irq_nr,	/*  PCI controller irq  */
+	    irq_path,
 	    0x7c000000,		/*  PCI device io offset  */
 	    0x80000000,		/*  PCI device mem offset  */
 	    0x00000000,		/*  PCI port base  */
 	    0x00000000,		/*  PCI mem base  */
-	    0,			/*  PCI irq base: TODO  */
+	    irq_path,		/*  PCI irq base  */
 	    0x7c000000,		/*  ISA port base  */
 	    0x80000000,		/*  ISA mem base  */
-	    32);		/*  ISA port base  */
+	    irq_path_isa);	/*  ISA port base  */
 
 	/*  ... with some default devices for known machine types:  */
 	switch (devinit->machine->machine_type) {
@@ -497,10 +579,11 @@ DEVINIT(footbridge)
 		d->timer_control[i] = TIMER_MODE_PERIODIC;
 		d->timer_load[i] = TIMER_MAX_VAL;
 	}
-	machine_add_tickfunction(devinit->machine,
-	    dev_footbridge_tick, d, DEV_FOOTBRIDGE_TICK_SHIFT, 0.0);
 
-	devinit->return_ptr = d;
+	machine_add_tickfunction(devinit->machine,
+	    dev_footbridge_tick, d, DEV_FOOTBRIDGE_TICK_SHIFT);
+
+	devinit->return_ptr = d->pcibus;
 	return 1;
 }
 

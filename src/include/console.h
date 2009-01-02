@@ -2,7 +2,7 @@
 #define	CONSOLE_H
 
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: console.h,v 1.17 2006/09/06 04:55:35 debug Exp $
+ *  $Id: console.h,v 1.18.2.1 2008/01/18 19:12:31 debug Exp $
  *
  *  Console functions.  (See console.c for more info.)
  */

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_ppc.c,v 1.64 2006/09/21 11:53:26 debug Exp $
+ *  $Id: cpu_ppc.c,v 1.72.2.1 2008/01/18 19:12:26 debug Exp $
  *
  *  PowerPC/POWER CPU emulation.
  */
@@ -37,6 +37,7 @@
 
 #include "cpu.h"
 #include "devices.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -48,6 +49,8 @@
 #include "ppc_spr_strings.h"
 #include "settings.h"
 #include "symbol.h"
+#include "useremul.h"
+
 
 #define	DYNTRANS_DUALMODE_32
 #include "tmp_ppc_head.c"
@@ -55,6 +58,9 @@
 
 void ppc_pc_to_pointers(struct cpu *);
 void ppc32_pc_to_pointers(struct cpu *);
+
+void ppc_irq_interrupt_assert(struct interrupt *interrupt);
+void ppc_irq_interrupt_deassert(struct interrupt *interrupt);
 
 
 /*
@@ -215,6 +221,20 @@ int ppc_cpu_new(struct cpu *cpu, struct memory *mem, struct machine *machine,
 		CPU_SETTINGS_ADD_REGISTER32(tmpstr, cpu->cd.ppc.sr[i]);
 	}
 
+	/*  Register the CPU as an interrupt handler:  */
+	{
+		struct interrupt template;
+		char name[150];
+		snprintf(name, sizeof(name), "%s", cpu->path);
+		memset(&template, 0, sizeof(template));
+		template.line = 0;
+		template.name = name;
+		template.extra = cpu;
+		template.interrupt_assert = ppc_irq_interrupt_assert;
+		template.interrupt_deassert = ppc_irq_interrupt_deassert;
+		interrupt_handler_register(&template);
+	}
+
 	return 1;
 }
 
@@ -344,8 +364,8 @@ void ppc_exception(struct cpu *cpu, int exception_nr)
 		cpu->cd.ppc.spr[SPR_SRR1] = (cpu->cd.ppc.msr & 0x87c0ffff);
 
 	if (!quiet_mode)
-		fatal("[ PPC Exception 0x%x; pc=0x%"PRIx64" ]\n", exception_nr,
-		    (long long)cpu->pc);
+		fatal("[ PPC Exception 0x%x; pc=0x%"PRIx64" ]\n",
+		    exception_nr, cpu->pc);
 
 	/*  Disable External Interrupts, Recoverable Interrupt Mode,
 	    and go to Supervisor mode  */
@@ -419,8 +439,8 @@ void ppc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 			for (i=0; i<PPC_NGPRS; i++) {
 				if ((i % 4) == 0)
 					debug("cpu%i:", x);
-				debug(" r%02i = 0x%08x ", i,
-				    (int)cpu->cd.ppc.gpr[i]);
+				debug(" r%02i = 0x%08"PRIx32" ", i,
+				    (uint32_t) cpu->cd.ppc.gpr[i]);
 				if ((i % 4) == 3)
 					debug("\n");
 			}
@@ -430,8 +450,8 @@ void ppc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 				int r = (i >> 1) + ((i & 1) << 4);
 				if ((i % 2) == 0)
 					debug("cpu%i:", x);
-				debug(" r%02i = 0x%016llx ", r,
-				    (long long)cpu->cd.ppc.gpr[r]);
+				debug(" r%02i = 0x%016"PRIx64" ", r,
+				    (uint64_t) cpu->cd.ppc.gpr[r]);
 				if ((i % 2) == 1)
 					debug("\n");
 			}
@@ -439,31 +459,40 @@ void ppc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 
 		/*  Other special registers:  */
 		if (bits32) {
-			debug("cpu%i: srr0 = 0x%08x srr1 = 0x%08x\n", x,
-			    (int)cpu->cd.ppc.spr[SPR_SRR0],
-			    (int)cpu->cd.ppc.spr[SPR_SRR1]);
+			debug("cpu%i: srr0 = 0x%08"PRIx32
+			    " srr1 = 0x%08"PRIx32"\n", x,
+			    (uint32_t) cpu->cd.ppc.spr[SPR_SRR0],
+			    (uint32_t) cpu->cd.ppc.spr[SPR_SRR1]);
 		} else {
-			debug("cpu%i: srr0 = 0x%016llx  srr1 = 0x%016llx\n", x,
-			    (long long)cpu->cd.ppc.spr[SPR_SRR0],
-			    (long long)cpu->cd.ppc.spr[SPR_SRR1]);
+			debug("cpu%i: srr0 = 0x%016"PRIx64
+			    "  srr1 = 0x%016"PRIx64"\n", x,
+			    (uint64_t) cpu->cd.ppc.spr[SPR_SRR0],
+			    (uint64_t) cpu->cd.ppc.spr[SPR_SRR1]);
 		}
+
 		debug("cpu%i: msr = ", x);
 		reg_access_msr(cpu, &tmp, 0, 0);
 		if (bits32)
-			debug("0x%08x  ", (int)tmp);
+			debug("0x%08"PRIx32, (uint32_t) tmp);
 		else
-			debug("0x%016llx  ", (long long)tmp);
-		debug("tb  = 0x%08x%08x\n", (int)cpu->cd.ppc.spr[SPR_TBU],
-		    (int)cpu->cd.ppc.spr[SPR_TBL]);
-		debug("cpu%i: dec = 0x%08x", x, (int)cpu->cd.ppc.spr[SPR_DEC]);
+			debug("0x%016"PRIx64, (uint64_t) tmp);
+
+		debug("  tb  = 0x%08"PRIx32"%08"PRIx32"\n",
+		    (uint32_t) cpu->cd.ppc.spr[SPR_TBU],
+		    (uint32_t) cpu->cd.ppc.spr[SPR_TBL]);
+
+		debug("cpu%i: dec = 0x%08"PRIx32,
+		    x, (uint32_t) cpu->cd.ppc.spr[SPR_DEC]);
 		if (!bits32)
-			debug("  hdec = 0x%08x\n",
-			    (int)cpu->cd.ppc.spr[SPR_HDEC]);
+			debug("  hdec = 0x%08"PRIx32"\n",
+			    (uint32_t) cpu->cd.ppc.spr[SPR_HDEC]);
+
 		debug("\n");
 	}
 
 	if (coprocs & 1) {
-		debug("cpu%i: fpscr = 0x%08x\n", x, (int)cpu->cd.ppc.fpscr);
+		debug("cpu%i: fpscr = 0x%08"PRIx32"\n",
+		    x, (uint32_t) cpu->cd.ppc.fpscr);
 
 		/*  TODO: show floating-point values :-)  */
 
@@ -472,16 +501,16 @@ void ppc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 		for (i=0; i<PPC_NFPRS; i++) {
 			if ((i % 2) == 0)
 				debug("cpu%i:", x);
-			debug(" f%02i = 0x%016llx ", i,
-			    (long long)cpu->cd.ppc.fpr[i]);
+			debug(" f%02i = 0x%016"PRIx64" ", i,
+			    (uint64_t) cpu->cd.ppc.fpr[i]);
 			if ((i % 2) == 1)
 				debug("\n");
 		}
 	}
 
 	if (coprocs & 2) {
-		debug("cpu%i:  sdr1 = 0x%llx\n", x,
-		    (long long)cpu->cd.ppc.spr[SPR_SDR1]);
+		debug("cpu%i:  sdr1 = 0x%"PRIx64"\n", x,
+		    (uint64_t) cpu->cd.ppc.spr[SPR_SDR1]);
 		if (cpu->cd.ppc.cpu_type.flags & PPC_601)
 			debug("cpu%i:  PPC601-style, TODO!\n");
 		else {
@@ -491,7 +520,8 @@ void ppc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 				uint32_t lower = cpu->cd.ppc.spr[spr+1];
 				uint32_t len = (((upper & BAT_BL) << 15)
 				    | 0x1ffff) + 1;
-				debug("cpu%i:  %sbat%i: u=0x%08x l=0x%08x ",
+				debug("cpu%i:  %sbat%i: u=0x%08"PRIx32
+				    " l=0x%08"PRIx32" ",
 				    x, i<4? "i" : "d", i&3, upper, lower);
 				if (!(upper & BAT_V)) {
 					debug(" (not valid)\n");
@@ -526,8 +556,10 @@ void ppc_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 	if (coprocs & 4) {
 		for (i=0; i<16; i++) {
 			uint32_t s = cpu->cd.ppc.sr[i];
+
 			debug("cpu%i:", x);
-			debug("  sr%-2i = 0x%08x", i, (int)s);
+			debug("  sr%-2i = 0x%08"PRIx32, i, s);
+
 			s &= (SR_TYPE | SR_SUKEY | SR_PRKEY | SR_NOEXEC);
 			if (s != 0) {
 				debug("  (");
@@ -569,132 +601,23 @@ void ppc_cpu_tlbdump(struct machine *m, int x, int rawflag)
 }
 
 
-static void add_response_word(struct cpu *cpu, char *r, uint64_t value,
-	size_t maxlen, int len)
+/*
+ *  ppc_irq_interrupt_assert():
+ */
+void ppc_irq_interrupt_assert(struct interrupt *interrupt)
 {
-	char *format = (len == 4)? "%08"PRIx64 : "%016"PRIx64;
-	if (len == 4)
-		value &= 0xffffffffULL;
-	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
-		if (len == 4) {
-			value = ((value & 0xff) << 24) +
-				((value & 0xff00) << 8) +
-				((value & 0xff0000) >> 8) +
-				((value & 0xff000000) >> 24);
-		} else {
-			value = ((value & 0xff) << 56) +
-				((value & 0xff00) << 40) +
-				((value & 0xff0000) << 24) +
-				((value & 0xff000000ULL) << 8) +
-				((value & 0xff00000000ULL) >> 8) +
-				((value & 0xff0000000000ULL) >> 24) +
-				((value & 0xff000000000000ULL) >> 40) +
-				((value & 0xff00000000000000ULL) >> 56);
-		}
-	}
-	snprintf(r + strlen(r), maxlen - strlen(r), format, (uint64_t)value);
+	struct cpu *cpu = (struct cpu *) interrupt->extra;
+	cpu->cd.ppc.irq_asserted = 1;
 }
 
 
 /*
- *  ppc_cpu_gdb_stub():
- *
- *  Execute a "remote GDB" command. Returns a newly allocated response string
- *  on success, NULL on failure.
+ *  ppc_irq_interrupt_deassert():
  */
-char *ppc_cpu_gdb_stub(struct cpu *cpu, char *cmd)
+void ppc_irq_interrupt_deassert(struct interrupt *interrupt)
 {
-	if (strcmp(cmd, "g") == 0) {
-		int i;
-		char *r;
-		size_t wlen = cpu->is_32bit?
-		    sizeof(uint32_t) : sizeof(uint64_t);
-		size_t len = 1 + 76 * wlen;
-		r = malloc(len);
-		if (r == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
-		r[0] = '\0';
-		for (i=0; i<128; i++)
-			add_response_word(cpu, r, i, len, wlen);
-		return r;
-	}
-
-	if (cmd[0] == 'p') {
-		int regnr = strtol(cmd + 1, NULL, 16);
-		size_t wlen = cpu->is_32bit?
-		    sizeof(uint32_t) : sizeof(uint64_t);
-		size_t len = 2 * wlen + 1;
-		char *r = malloc(len);
-		r[0] = '\0';
-		if (regnr >= 0 && regnr <= 31) {
-			add_response_word(cpu, r,
-			    cpu->cd.ppc.gpr[regnr], len, wlen);
-		} else if (regnr == 0x40) {
-			add_response_word(cpu, r, cpu->pc, len, wlen);
-		} else if (regnr == 0x42) {
-			add_response_word(cpu, r, cpu->cd.ppc.cr, len, wlen);
-		} else if (regnr == 0x43) {
-			add_response_word(cpu, r, cpu->cd.ppc.spr[SPR_LR],
-			    len, wlen);
-		} else if (regnr == 0x44) {
-			add_response_word(cpu, r, cpu->cd.ppc.spr[SPR_CTR],
-			    len, wlen);
-		} else if (regnr == 0x45) {
-			add_response_word(cpu, r, cpu->cd.ppc.spr[SPR_XER],
-			    len, wlen);
-		} else {
-			/*  Unimplemented:  */
-			add_response_word(cpu, r, 0xcc000 + regnr, len, wlen);
-		}
-		return r;
-	}
-
-	fatal("ppc_cpu_gdb_stub(): TODO\n");
-	return NULL;
-}
-
-
-/*
- *  ppc_cpu_interrupt():
- *
- *  0..31 are used as BeBox interrupt numbers, 32..47 = ISA,
- *  64 is used as a "re-assert" signal to cpu->machine->md_interrupt().
- *
- *  TODO: don't hardcode to BeBox!
- */
-int ppc_cpu_interrupt(struct cpu *cpu, uint64_t irq_nr)
-{
-	/*  fatal("ppc_cpu_interrupt(): 0x%x\n", (int)irq_nr);  */
-	if (irq_nr <= 64) {
-		if (cpu->machine->md_interrupt != NULL)
-			cpu->machine->md_interrupt(
-			    cpu->machine, cpu, irq_nr, 1);
-		else
-			fatal("ppc_cpu_interrupt(): md_interrupt == NULL\n");
-	} else {
-		/*  Assert PPC IRQ:  */
-		cpu->cd.ppc.irq_asserted = 1;
-	}
-	return 1;
-}
-
-
-/*
- *  ppc_cpu_interrupt_ack():
- */
-int ppc_cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr)
-{
-	if (irq_nr <= 64) {
-		if (cpu->machine->md_interrupt != NULL)
-			cpu->machine->md_interrupt(cpu->machine,
-			    cpu, irq_nr, 0);
-	} else {
-		/*  De-assert PPC IRQ:  */
-		cpu->cd.ppc.irq_asserted = 0;
-	}
-	return 1;
+	struct cpu *cpu = (struct cpu *) interrupt->extra;
+	cpu->cd.ppc.irq_asserted = 0;
 }
 
 
@@ -733,15 +656,15 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 		debug("cpu%i: ", cpu->cpu_id);
 
 	if (cpu->cd.ppc.bits == 32)
-		debug("%08x", (int)dumpaddr);
+		debug("%08"PRIx32, (uint32_t) dumpaddr);
 	else
-		debug("%016llx", (long long)dumpaddr);
+		debug("%016"PRIx64, (uint64_t) dumpaddr);
 
 	/*  NOTE: Fixed to big-endian.  */
 	iword = (instr[0] << 24) + (instr[1] << 16) + (instr[2] << 8)
 	    + instr[3];
 
-	debug(": %08x\t", iword);
+	debug(": %08"PRIx32"\t", iword);
 
 	/*
 	 *  Decode the instruction:
@@ -842,9 +765,9 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 		if (cpu->cd.ppc.bits == 32)
 			addr &= 0xffffffff;
 		if (cpu->cd.ppc.bits == 32)
-			debug("0x%x", (int)addr);
+			debug("0x%"PRIx32, (uint32_t) addr);
 		else
-			debug("0x%llx", (long long)addr);
+			debug("0x%"PRIx64, (uint64_t) addr);
 		symbol = get_symbol_name(&cpu->machine->symbol_context,
 		    addr, &offset);
 		if (symbol != NULL)
@@ -875,9 +798,9 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 		if (cpu->cd.ppc.bits == 32)
 			addr &= 0xffffffff;
 		if (cpu->cd.ppc.bits == 32)
-			debug("\t0x%x", (int)addr);
+			debug("\t0x%"PRIx32, (uint32_t) addr);
 		else
-			debug("\t0x%llx", (long long)addr);
+			debug("\t0x%"PRIx64, (uint64_t) addr);
 		symbol = get_symbol_name(&cpu->machine->symbol_context,
 		    addr, &offset);
 		if (symbol != NULL)
@@ -1166,7 +1089,7 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 			if (symbol != NULL)
 				debug(" \t<%s", symbol);
 			else
-				debug(" \t<0x%llx", (long long)addr);
+				debug(" \t<0x%"PRIx64, (uint64_t) addr);
 			if (wlen > 0 && !fpreg /* && !reverse */) {
 				/*  TODO  */
 			}
@@ -1337,10 +1260,10 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 			    ppc_spr_names[spr]==NULL? "?" : ppc_spr_names[spr]);
 			if (running) {
 				if (cpu->cd.ppc.bits == 32)
-					debug(": 0x%x", (int)
+					debug(": 0x%"PRIx32, (uint32_t)
 					    cpu->cd.ppc.spr[spr]);
 				else
-					debug(": 0x%llx", (long long)
+					debug(": 0x%"PRIx64, (uint64_t)
 					    cpu->cd.ppc.spr[spr]);
 			}
 			debug(">");
@@ -1497,10 +1420,10 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 			    ppc_spr_names[spr]==NULL? "?" : ppc_spr_names[spr]);
 			if (running) {
 				if (cpu->cd.ppc.bits == 32)
-					debug(": 0x%x", (int)
+					debug(": 0x%"PRIx32, (uint32_t)
 					    cpu->cd.ppc.gpr[rs]);
 				else
-					debug(": 0x%llx", (long long)
+					debug(": 0x%"PRIx64, (uint64_t)
 					    cpu->cd.ppc.gpr[rs]);
 			}
 			debug(">");
@@ -1653,7 +1576,7 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 		if (symbol != NULL)
 			debug(" \t<%s", symbol);
 		else
-			debug(" \t<0x%llx", (long long)addr);
+			debug(" \t<0x%"PRIx64, (uint64_t) addr);
 		if (wlen > 0 && load && wlen > 0) {
 			unsigned char tw[8];
 			uint64_t tdata = 0;
@@ -1677,12 +1600,12 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 					if (symbol != NULL)
 						debug("%s", symbol);
 					else
-						debug("0x%llx",
-						    (long long)tdata);
+						debug("0x%"PRIx64,
+						    (uint64_t) tdata);
 				} else {
 					/*  TODO: if load==2, then this is
 					    a _signed_ load.  */
-					debug("0x%llx", (long long)tdata);
+					debug("0x%"PRIx64, (uint64_t) tdata);
 				}
 			} else
 				debug(": unreadable");
@@ -1700,12 +1623,12 @@ int ppc_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 				if (symbol != NULL)
 					debug("%s", symbol);
 				else
-					debug("0x%llx", (long long)tdata);
+					debug("0x%"PRIx64, (uint64_t) tdata);
 			} else {
 				if (tdata > -256 && tdata < 256)
 					debug("%i", (int)tdata);
 				else
-					debug("0x%llx", (long long)tdata);
+					debug("0x%"PRIx64, (uint64_t) tdata);
 			}
 		}
 		debug(">");
@@ -1897,8 +1820,8 @@ static void debug_spr_usage(uint64_t pc, int spr)
 			break;
 		} else
 			fatal("[ using UNIMPLEMENTED spr %i (%s), pc = "
-			    "0x%llx ]\n", spr, ppc_spr_names[spr] == NULL?
-			    "UNKNOWN" : ppc_spr_names[spr], (long long)pc);
+			    "0x%"PRIx64" ]\n", spr, ppc_spr_names[spr] == NULL?
+			    "UNKNOWN" : ppc_spr_names[spr], (uint64_t) pc);
 	}
 
 	spr_used[spr >> 2] |= (1 << (spr & 3));

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dec_prom.c,v 1.10 2006/07/26 23:21:48 debug Exp $
+ *  $Id: dec_prom.c,v 1.14.2.1 2008/01/18 19:12:33 debug Exp $
  *
- *  DECstation PROM emulation.
+ *  COMMENT: DECstation PROM emulation
  *
  *  Implementation note: Remember that only the lowest 32 bits of GPRs are
  *  actually valid when using dyntrans with e.g. R3000 CPUs.
@@ -45,6 +45,7 @@
 #include "cpu_mips.h"
 #include "diskimage.h"
 #include "machine.h"
+#include "machine_pmax.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -137,13 +138,8 @@ int dec_jumptable_func(struct cpu *cpu, int vector)
 			int res;
 			unsigned char *tmp_buf;
 
-			tmp_buf = malloc(cpu->cd.mips.gpr[MIPS_GPR_A2]);
-			if (tmp_buf == NULL) {
-				fprintf(stderr, "[ ***  Out of memory in "
-				    "dec_prom.c, allocating %i bytes ]\n",
-				    (int)cpu->cd.mips.gpr[MIPS_GPR_A2]);
-				break;
-			}
+			CHECK_ALLOCATION(tmp_buf =
+			    malloc(cpu->cd.mips.gpr[MIPS_GPR_A2]));
 
 			res = diskimage_access(cpu->machine, disk_id,
 			    DISKIMAGE_SCSI, 0, current_file_offset, tmp_buf,
@@ -476,13 +472,8 @@ int decstation_prom_emul(struct cpu *cpu)
 			int res;
 			unsigned char *tmp_buf;
 
-			tmp_buf = malloc(cpu->cd.mips.gpr[MIPS_GPR_A2]);
-			if (tmp_buf == NULL) {
-				fprintf(stderr, "[ ***  Out of memory in "
-				    "dec_prom.c, allocating %i bytes ]\n",
-				    (int)cpu->cd.mips.gpr[MIPS_GPR_A2]);
-				break;
-			}
+			CHECK_ALLOCATION(tmp_buf =
+			    malloc(cpu->cd.mips.gpr[MIPS_GPR_A2]));
 
 			res = diskimage_access(cpu->machine, disk_id,
 			    DISKIMAGE_SCSI, 0,
@@ -592,10 +583,10 @@ int decstation_prom_emul(struct cpu *cpu)
 		debug("[ DEC PROM getbitmap(0x%08x) ]\n",
 		    (int)cpu->cd.mips.gpr[MIPS_GPR_A0]);
 		store_buf(cpu, cpu->cd.mips.gpr[MIPS_GPR_A0],
-		    (char *)cpu->machine->md.pmax.memmap,
+		    (char *)cpu->machine->md.pmax->memmap,
 		    sizeof(struct dec_memmap));
 		cpu->cd.mips.gpr[MIPS_GPR_V0] =
-		    sizeof(cpu->machine->md.pmax.memmap->bitmap);
+		    sizeof(cpu->machine->md.pmax->memmap->bitmap);
 		break;
 	case 0x88:		/*  disableintr()  */
 		debug("[ DEC PROM disableintr(): TODO ]\n");

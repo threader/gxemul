@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_wdc.c,v 1.69 2006/08/30 17:14:25 debug Exp $
+ *  $Id: dev_wdc.c,v 1.76.2.1 2008/01/18 19:12:30 debug Exp $
  *
- *  Standard "wdc" IDE controller.
+ *  COMMENT: Standard "wdc" IDE controller
  */
 
 #include <stdio.h>
@@ -48,24 +48,12 @@
 #define	WDC_MAX_SECTORS		512
 #define	WDC_INBUF_SIZE		(512*(WDC_MAX_SECTORS+1))
 
-/*
- *  INT_DELAY: This is an old hack which only exists because (some versions of)
- *  NetBSD for hpcmips have interrupt problems. These problems are probably not
- *  specific to GXemul, but are also triggered on real hardware.
- *
- *  See the following URL for more info:
- *  http://mail-index.netbsd.org/port-hpcmips/2004/12/30/0003.html
- *
- *  NetBSD/malta also bugs out if wdc interrupts come too quickly. Hm.
- */
-#define	INT_DELAY		1
-
 extern int quiet_mode;
 
 /*  #define debug fatal  */
 
 struct wdc_data {
-	int		irq_nr;
+	struct interrupt irq;
 	int		addr_mult;
 	int		base_drive;
 	int		data_debug;
@@ -80,8 +68,7 @@ struct wdc_data {
 	int		inbuf_head;
 	int		inbuf_tail;
 
-	int		delayed_interrupt;
-	int		int_asserted;
+	int		int_assert;
 
 	int		write_in_progress;
 	int		write_count;
@@ -112,21 +99,12 @@ struct wdc_data {
 #define COMMAND_RESET	0x100
 
 
-/*
- *  dev_wdc_tick():
- */
-void dev_wdc_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(wdc)
 { 
 	struct wdc_data *d = extra;
-	int old_di = d->delayed_interrupt;
 
-	if (d->delayed_interrupt)
-		d->delayed_interrupt --;
-
-	if (old_di == 1 || d->int_asserted) {
-		cpu_interrupt(cpu, d->irq_nr);
-		d->int_asserted = 1;
-	}
+	if (d->int_assert)
+		INTERRUPT_ASSERT(d->irq);
 }
 
 
@@ -260,16 +238,16 @@ static void wdc_initialize_identify_struct(struct cpu *cpu, struct wdc_data *d)
 	d->identify_struct[2 * 53 + 1] = 0x02;
 
 	/*  57-58: current capacity in sectors  */
-	d->identify_struct[2 * 57 + 0] = ((total_size / 512) >> 24) % 255;
-	d->identify_struct[2 * 57 + 1] = ((total_size / 512) >> 16) % 255;
-	d->identify_struct[2 * 58 + 0] = ((total_size / 512) >> 8) % 255;
-	d->identify_struct[2 * 58 + 1] = (total_size / 512) & 255;
+	d->identify_struct[2 * 58 + 0] = ((total_size / 512) >> 24) % 255;
+	d->identify_struct[2 * 58 + 1] = ((total_size / 512) >> 16) % 255;
+	d->identify_struct[2 * 57 + 0] = ((total_size / 512) >> 8) % 255;
+	d->identify_struct[2 * 57 + 1] = (total_size / 512) & 255;
 
 	/*  60-61: total nr of addressable sectors  */
-	d->identify_struct[2 * 60 + 0] = ((total_size / 512) >> 24) % 255;
-	d->identify_struct[2 * 60 + 1] = ((total_size / 512) >> 16) % 255;
-	d->identify_struct[2 * 61 + 0] = ((total_size / 512) >> 8) % 255;
-	d->identify_struct[2 * 61 + 1] = (total_size / 512) & 255;
+	d->identify_struct[2 * 61 + 0] = ((total_size / 512) >> 24) % 255;
+	d->identify_struct[2 * 61 + 1] = ((total_size / 512) >> 16) % 255;
+	d->identify_struct[2 * 60 + 0] = ((total_size / 512) >> 8) % 255;
+	d->identify_struct[2 * 60 + 1] = (total_size / 512) & 255;
 
 	/*  64: Advanced PIO mode support. 0x02 = mode4, 0x01 = mode3  */
 	d->identify_struct[2 * 64 + 0] = 0x00;
@@ -329,7 +307,7 @@ void wdc__read(struct cpu *cpu, struct wdc_data *d)
 		count -= to_read;
 	}
 
-	d->delayed_interrupt = INT_DELAY;
+	d->int_assert = 1;
 }
 
 
@@ -384,9 +362,6 @@ static int status_byte(struct wdc_data *d, struct cpu *cpu)
 }
 
 
-/*
- *  dev_wdc_altstatus_access():
- */
 DEVICE_ACCESS(wdc_altstatus)
 {
 	struct wdc_data *d = extra;
@@ -437,7 +412,7 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 		debug("[ wdc: command 0x%02x drive %i, but no disk image ]\n",
 		    d->cur_command, d->drive + d->base_drive);
 		d->error |= WDCE_ABRT;
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		return;
 	}
 	if (diskimage_is_a_cdrom(cpu->machine, d->drive + d->base_drive,
@@ -445,7 +420,7 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 		debug("[ wdc: IDENTIFY drive %i, but it is an ATAPI "
 		    "drive ]\n", d->drive + d->base_drive);
 		d->error |= WDCE_ABRT;
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		return;
 	}
 
@@ -473,7 +448,7 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 	case WDCC_IDP:	/*  Initialize drive parameters  */
 		debug("[ wdc: IDP drive %i (TODO) ]\n", d->drive);
 		/*  TODO  */
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case SET_FEATURES:
@@ -488,12 +463,12 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 		default:d->error |= WDCE_ABRT;
 		}
 		/*  TODO: always interrupt?  */
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case WDCC_RECAL:
 		debug("[ wdc: RECAL drive %i ]\n", d->drive);
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case WDCC_IDENTIFY:
@@ -506,31 +481,31 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 			wdc_addtoinbuf(d, d->identify_struct[i+1]);
 			wdc_addtoinbuf(d, d->identify_struct[i+0]);
 		}
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case WDCC_IDLE_IMMED:
 		debug("[ wdc: IDLE_IMMED drive %i ]\n", d->drive);
 		/*  TODO: interrupt here?  */
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case WDCC_SETMULTI:
 		debug("[ wdc: SETMULTI drive %i ]\n", d->drive);
 		/*  TODO: interrupt here?  */
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case ATAPI_SOFT_RESET:
 		debug("[ wdc: ATAPI_SOFT_RESET drive %i ]\n", d->drive);
 		/*  TODO: interrupt here?  */
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		break;
 
 	case ATAPI_PKT_CMD:
 		debug("[ wdc: ATAPI_PKT_CMD drive %i ]\n", d->drive);
 		/*  TODO: interrupt here?  */
-		/*  d->delayed_interrupt = INT_DELAY;  */
+		/*  d->int_assert = 1;  */
 		d->atapi_cmd_in_progress = 1;
 		d->atapi_phase = PHASE_CMDOUT;
 		break;
@@ -538,7 +513,7 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 	case WDCC_DIAGNOSE:
 		debug("[ wdc: WDCC_DIAGNOSE drive %i: TODO ]\n", d->drive);
 		/*  TODO: interrupt here?  */
-		d->delayed_interrupt = INT_DELAY;
+		d->int_assert = 1;
 		d->error = 1;		/*  No error?  */
 		break;
 
@@ -562,9 +537,6 @@ void wdc_command(struct cpu *cpu, struct wdc_data *d, int idata)
 }
 
 
-/*
- *  dev_wdc_access():
- */
 DEVICE_ACCESS(wdc)
 {
 	struct wdc_data *d = extra;
@@ -635,7 +607,7 @@ DEVICE_ACCESS(wdc)
 					} else
 						d->atapi_phase =
 						    PHASE_COMPLETED;
-					d->delayed_interrupt = INT_DELAY;
+					d->int_assert = 1;
 				}
 			} else {
 #if 0
@@ -645,7 +617,7 @@ DEVICE_ACCESS(wdc)
 				    ((d->inbuf_tail - d->inbuf_head) % 512)
 				    == 0)
 #endif
-					d->delayed_interrupt = INT_DELAY;
+					d->int_assert = 1;
 			}
 		} else {
 			int inbuf_len;
@@ -704,8 +676,10 @@ DEVICE_ACCESS(wdc)
 				inbuf_len += WDC_INBUF_SIZE;
 
 			if (d->atapi_cmd_in_progress && inbuf_len == 12) {
-				unsigned char *scsi_cmd = malloc(12);
+				unsigned char *scsi_cmd;
 				int x = 0, res;
+
+				CHECK_ALLOCATION(scsi_cmd = malloc(12));
 
 				if (d->atapi_st != NULL)
 					scsi_transfer_free(d->atapi_st);
@@ -760,7 +734,7 @@ DEVICE_ACCESS(wdc)
 					exit(1);
 				}
 
-				d->delayed_interrupt = INT_DELAY;
+				d->int_assert = 1;
 			}
 
 			if (( d->write_in_progress == WDCC_WRITEMULTI &&
@@ -770,13 +744,10 @@ DEVICE_ACCESS(wdc)
 			    inbuf_len % 512 == 0) ) {
 				int count = (d->write_in_progress ==
 				    WDCC_WRITEMULTI)? d->write_count : 1;
-				unsigned char *buf = malloc(512 * count);
-				unsigned char *b = buf;
+				unsigned char *buf, *b;
 
-				if (buf == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(1);
-				}
+				CHECK_ALLOCATION(buf = malloc(512 * count));
+				b = buf;
 
 				if (d->inbuf_tail+512*count <= WDC_INBUF_SIZE) {
 					b = d->inbuf + d->inbuf_tail;
@@ -794,7 +765,7 @@ DEVICE_ACCESS(wdc)
 				d->write_count -= count;
 				d->write_offset += 512 * count;
 
-				d->delayed_interrupt = INT_DELAY;
+				d->int_assert = 1;
 
 				if (d->write_count == 0)
 					d->write_in_progress = 0;
@@ -808,8 +779,6 @@ DEVICE_ACCESS(wdc)
 		if (writeflag == MEM_READ) {
 			odata = d->error;
 			debug("[ wdc: read from ERROR: 0x%02x ]\n", (int)odata);
-			/*  TODO:  is the error value cleared on read?  */
-			d->error = 0;
 		} else {
 			d->precomp = idata;
 			debug("[ wdc: write to PRECOMP: 0x%02x ]\n",(int)idata);
@@ -903,9 +872,8 @@ DEVICE_ACCESS(wdc)
 			if (!quiet_mode)
 				debug("[ wdc: read from STATUS: 0x%02x ]\n",
 				    (int)odata);
-			cpu_interrupt_ack(cpu, d->irq_nr);
-			d->int_asserted = 0;
-			d->delayed_interrupt = 0;
+			INTERRUPT_DEASSERT(d->irq);
+			d->int_assert = 0;
 		} else {
 			debug("[ wdc: write to COMMAND: 0x%02x ]\n",(int)idata);
 			wdc_command(cpu, d, idata);
@@ -921,12 +889,8 @@ DEVICE_ACCESS(wdc)
 			    (int)relative_addr, (int)idata);
 	}
 
-
-	if (cpu->machine->machine_type != MACHINE_HPCMIPS &&
-	    cpu->machine->machine_type != MACHINE_EVBMIPS &&
-	    cpu->machine->machine_type != MACHINE_ALGOR &&
-	    cpu->machine->machine_type != MACHINE_BEBOX)
-		dev_wdc_tick(cpu, extra);
+	/*  Assert interrupt, if necessary:  */
+	dev_wdc_tick(cpu, extra);
 
 ret:
 	if (writeflag == MEM_READ) {
@@ -946,16 +910,14 @@ DEVINIT(wdc)
 	uint64_t alt_status_addr;
 	int i, tick_shift = WDC_TICK_SHIFT;
 
-	d = malloc(sizeof(struct wdc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct wdc_data)));
 	memset(d, 0, sizeof(struct wdc_data));
-	d->irq_nr     = devinit->irq_nr;
+
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->irq);
 	d->addr_mult  = devinit->addr_mult;
 	d->data_debug = 1;
 	d->io_enabled = 1;
+	d->error      = 1;
 
 	d->inbuf = zeroed_alloc(WDC_INBUF_SIZE);
 
@@ -995,12 +957,8 @@ DEVINIT(wdc)
 	    devinit->addr, DEV_WDC_LENGTH * devinit->addr_mult, dev_wdc_access,
 	    d, DM_DEFAULT, NULL);
 
-	if (devinit->machine->machine_type != MACHINE_HPCMIPS &&
-	    devinit->machine->machine_type != MACHINE_EVBMIPS)
-		tick_shift += 1;
-
 	machine_add_tickfunction(devinit->machine, dev_wdc_tick,
-	    d, tick_shift, 0.0);
+	    d, tick_shift);
 
 	devinit->return_ptr = d;
 

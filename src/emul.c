@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: emul.c,v 1.272 2006/10/31 08:26:56 debug Exp $
+ *  $Id: emul.c,v 1.302.2.1 2008/01/18 19:12:23 debug Exp $
  *
  *  Emulation startup and misc. routines.
  */
@@ -52,8 +52,8 @@
 #include "misc.h"
 #include "net.h"
 #include "settings.h"
-#include "sgi_arcbios.h"
 #include "timer.h"
+#include "useremul.h"
 #include "x11.h"
 
 
@@ -69,38 +69,24 @@ extern int old_instruction_trace;
 extern int old_quiet_mode;
 extern int quiet_mode;
 
-extern struct emul *debugger_emul;
-extern struct diskimage *diskimages[];
-
-static char *diskimage_types[] = DISKIMAGE_TYPES;
-
-
-static void print_separator(void)
-{
-	int i = 79;
-	while (i-- > 0)
-		debug("-");
-	debug("\n");
-}
-
 
 /*
- *  add_dump_points():
+ *  add_breakpoints():
  *
  *  Take the strings breakpoint_string[] and convert to addresses
  *  (and store them in breakpoint_addr[]).
  *
  *  TODO: This function should be moved elsewhere.
  */
-static void add_dump_points(struct machine *m)
+static void add_breakpoints(struct machine *m)
 {
 	int i;
 	int string_flag;
 	uint64_t dp;
 
-	for (i=0; i<m->n_breakpoints; i++) {
+	for (i=0; i<m->breakpoints.n; i++) {
 		string_flag = 0;
-		dp = strtoull(m->breakpoint_string[i], NULL, 0);
+		dp = strtoull(m->breakpoints.string[i], NULL, 0);
 
 		/*
 		 *  If conversion resulted in 0, then perhaps it is a
@@ -109,12 +95,13 @@ static void add_dump_points(struct machine *m)
 		if (dp == 0) {
 			uint64_t addr;
 			int res = get_symbol_addr(&m->symbol_context,
-			    m->breakpoint_string[i], &addr);
+			    m->breakpoints.string[i], &addr);
 			if (!res) {
 				fprintf(stderr,
 				    "ERROR! Breakpoint '%s' could not be"
 					" parsed\n",
-				    m->breakpoint_string[i]);
+				    m->breakpoints.string[i]);
+				exit(1);
 			} else {
 				dp = addr;
 				string_flag = 1;
@@ -131,11 +118,11 @@ static void add_dump_points(struct machine *m)
 				dp |= 0xffffffff00000000ULL;
 		}
 
-		m->breakpoint_addr[i] = dp;
+		m->breakpoints.addr[i] = dp;
 
-		debug("breakpoint %i: 0x%llx", i, (long long)dp);
+		debug("breakpoint %i: 0x%"PRIx64, i, dp);
 		if (string_flag)
-			debug(" (%s)", m->breakpoint_string[i]);
+			debug(" (%s)", m->breakpoints.string[i]);
 		debug("\n");
 	}
 }
@@ -151,598 +138,6 @@ static void fix_console(void)
 
 
 /*
- *  iso_load_bootblock():
- *
- *  Try to load a kernel from an ISO 9660 disk image. iso_type is 1 for
- *  "CD001" (standard), 2 for "CDW01" (ECMA), and 3 for "CDROM" (Sierra).
- *
- *  TODO: This function uses too many magic offsets and so on; it should be
- *  cleaned up some day.
- *
- *  Returns 1 on success, 0 on failure.
- */
-static int iso_load_bootblock(struct machine *m, struct cpu *cpu,
-	int disk_id, int disk_type, int iso_type, unsigned char *buf,
-	int *n_loadp, char ***load_namesp)
-{
-	char str[35];
-	int filenr, i, ofs, dirlen, res = 0, res2, iadd = DEBUG_INDENTATION;
-	int found_dir;
-	uint64_t dirofs;
-	uint64_t fileofs, filelen;
-	unsigned char *dirbuf = NULL, *dp;
-	unsigned char *match_entry = NULL;
-	char *p, *filename_orig;
-	char *filename = strdup(cpu->machine->boot_kernel_filename);
-	unsigned char *filebuf = NULL;
-	char *tmpfname = NULL;
-	char **new_array;
-	int tmpfile_handle;
-
-	if (filename == NULL) {
-		fatal("out of memory\n");
-		exit(1);
-	}
-	filename_orig = filename;
-
-	debug("ISO9660 boot:\n");
-	debug_indentation(iadd);
-
-	/*  Volume ID:  */
-	ofs = iso_type == 3? 48 : 40;
-	memcpy(str, buf + ofs, sizeof(str));
-	str[32] = '\0';  i = 31;
-	while (i >= 0 && str[i]==' ')
-		str[i--] = '\0';
-	if (str[0])
-		debug("\"%s\"", str);
-	else {
-		/*  System ID:  */
-		ofs = iso_type == 3? 16 : 8;
-		memcpy(str, buf + ofs, sizeof(str));
-		str[32] = '\0';  i = 31;
-		while (i >= 0 && str[i]==' ')
-			str[i--] = '\0';
-		if (str[0])
-			debug("\"%s\"", str);
-		else
-			debug("(no ID)");
-	}
-
-	debug(":%s\n", filename);
-
-
-	/*
-	 *  Traverse the directory structure to find the kernel.
-	 */
-
-	dirlen = buf[0x84] + 256*buf[0x85] + 65536*buf[0x86];
-	if (dirlen != buf[0x8b] + 256*buf[0x8a] + 65536*buf[0x89])
-		fatal("WARNING: Root directory length mismatch?\n");
-
-	dirofs = (int64_t)(buf[0x8c] + (buf[0x8d] << 8) + (buf[0x8e] << 16) +
-	    ((uint64_t)buf[0x8f] << 24)) * 2048;
-
-	/*  debug("root = %i bytes at 0x%llx\n", dirlen, (long long)dirofs);  */
-
-	dirbuf = malloc(dirlen);
-	if (dirbuf == NULL) {
-		fatal("out of memory in iso_load_bootblock()\n");
-		exit(1);
-	}
-
-	res2 = diskimage_access(m, disk_id, disk_type, 0, dirofs, dirbuf,
-	    dirlen);
-	if (!res2) {
-		fatal("Couldn't read the disk image. Aborting.\n");
-		goto ret;
-	}
-
-	found_dir = 1;	/*  Assume root dir  */
-	dp = dirbuf; filenr = 1;
-	p = NULL;
-	while (dp < dirbuf + dirlen) {
-		size_t i, nlen = dp[0];
-		int x = dp[2] + (dp[3] << 8) + (dp[4] << 16) +
-		    ((uint64_t)dp[5] << 24);
-		int y = dp[6] + (dp[7] << 8);
-		char direntry[65];
-
-		dp += 8;
-
-		/*
-		 *  As long as there is an \ or / in the filename, then we
-		 *  have not yet found the directory.
-		 */
-		p = strchr(filename, '/');
-		if (p == NULL)
-			p = strchr(filename, '\\');
-
-		/*  debug("%i%s: %i, %i, \"", filenr, filenr == found_dir?
-		    " [CURRENT]" : "", x, y);  */
-		for (i=0; i<nlen && i<sizeof(direntry)-1; i++)
-			if (dp[i]) {
-				direntry[i] = dp[i];
-				/*  debug("%c", dp[i]);  */
-			} else
-				break;
-		/*  debug("\"\n");  */
-		direntry[i] = '\0';
-
-		/*  A directory name match?  */
-		if (p != NULL && strncasecmp(filename, direntry, nlen) == 0
-		    && nlen == (size_t)p - (size_t)filename && found_dir == y) {
-			found_dir = filenr;
-			filename = p+1;
-			dirofs = 2048 * (int64_t)x;
-		}
-
-		dp += nlen;
-
-		/*  16-bit aligned lenght:  */
-		if (nlen & 1)
-			dp ++;
-
-		filenr ++;
-	}
-
-	p = strchr(filename, '/');
-	if (p == NULL)
-		p = strchr(filename, '\\');
-
-	if (p != NULL) {
-		char *blah = filename_orig;
-
-		fatal("could not find '%s' in /", filename);
-
-		/*  Print the first part of the filename:  */
-		while (blah != filename)
-			fatal("%c", *blah++);
-		
-		fatal("\n");
-		goto ret;
-	}
-
-	/*  debug("dirofs = 0x%llx\n", (long long)dirofs);  */
-
-	/*  Free the old dirbuf, and allocate a new one:  */
-	free(dirbuf);
-	dirbuf = malloc(512);
-	if (dirbuf == NULL) {
-		fatal("out of memory in iso_load_bootblock()\n");
-		exit(1);
-	}
-
-	for (;;) {
-		size_t len, i;
-
-		/*  Too close to another sector? Then realign.  */
-		if ((dirofs & 2047) + 70 > 2047) {
-			dirofs = (dirofs | 2047) + 1;
-			/*  debug("realign dirofs = 0x%llx\n", dirofs);  */
-		}
-
-		res2 = diskimage_access(m, disk_id, disk_type, 0, dirofs,
-		    dirbuf, 256);
-		if (!res2) {
-			fatal("Couldn't read the disk image. Aborting.\n");
-			goto ret;
-		}
-
-		dp = dirbuf;
-		len = dp[0];
-		if (len < 2)
-			break;
-
-		/*
-		 *  TODO: Actually parse the directory entry!
-		 *
-		 *  Haha, this must be rewritten.
-		 */
-		for (i=32; i<len; i++) {
-			if (i < len - strlen(filename))
-				if (strncasecmp(filename, (char *)dp + i,
-				    strlen(filename)) == 0) {
-					/*  The filename was found somewhere
-					    in the directory entry.  */
-					if (match_entry != NULL) {
-						fatal("TODO: I'm too lazy to"
-						    " implement a correct "
-						    "directory parser right "
-						    "now... (BUG)\n");
-						exit(1);
-					}
-					match_entry = malloc(512);
-					if (match_entry == NULL) {
-						fatal("out of memory\n");
-						exit(1);
-					}
-					memcpy(match_entry, dp, 512);
-					break;
-				}
-		}
-
-		dirofs += len;
-	}
-
-	if (match_entry == NULL) {
-		char *blah = filename_orig;
-
-		fatal("could not find '%s' in /", filename);
-
-		/*  Print the first part of the filename:  */
-		while (blah != filename)
-			fatal("%c", *blah++);
-		
-		fatal("\n");
-		goto ret;
-	}
-
-	fileofs = match_entry[2] + (match_entry[3] << 8) +
-	    (match_entry[4] << 16) + ((uint64_t)match_entry[5] << 24);
-	filelen = match_entry[10] + (match_entry[11] << 8) +
-	    (match_entry[12] << 16) + ((uint64_t)match_entry[13] << 24);
-	fileofs *= 2048;
-
-	/*  debug("filelen=%llx fileofs=%llx\n", (long long)filelen,
-	    (long long)fileofs);  */
-
-	filebuf = malloc(filelen);
-	if (filebuf == NULL) {
-		fatal("could not allocate %lli bytes to read the file"
-		    " from the disk image!\n", (long long)filelen);
-		goto ret;
-	}
-
-	tmpfname = strdup("/tmp/gxemul.XXXXXXXXXXXX");
-
-	res2 = diskimage_access(m, disk_id, disk_type, 0, fileofs, filebuf,
-	    filelen);
-	if (!res2) {
-		fatal("could not read the file from the disk image!\n");
-		goto ret;
-	}
-
-	tmpfile_handle = mkstemp(tmpfname);
-	if (tmpfile_handle < 0) {
-		fatal("could not create %s\n", tmpfname);
-		exit(1);
-	}
-	write(tmpfile_handle, filebuf, filelen);
-	close(tmpfile_handle);
-
-	debug("extracted %lli bytes into %s\n", (long long)filelen, tmpfname);
-
-	/*  Add the temporary filename to the load_namesp array:  */
-	(*n_loadp)++;
-	new_array = malloc(sizeof(char *) * (*n_loadp));
-	if (new_array == NULL) {
-		fatal("out of memory\n");
-		exit(1);
-	}
-	memcpy(new_array, *load_namesp, sizeof(char *) * (*n_loadp));
-	*load_namesp = new_array;
-
-	/*  This adds a Backspace char in front of the filename; this
-	    is a special hack which causes the file to be removed once
-	    it has been loaded.  */
-	tmpfname = realloc(tmpfname, strlen(tmpfname) + 2);
-	memmove(tmpfname + 1, tmpfname, strlen(tmpfname) + 1);
-	tmpfname[0] = 8;
-
-	(*load_namesp)[*n_loadp - 1] = tmpfname;
-
-	res = 1;
-
-ret:
-	if (dirbuf != NULL)
-		free(dirbuf);
-
-	if (filebuf != NULL)
-		free(filebuf);
-
-	if (match_entry != NULL)
-		free(match_entry);
-
-	free(filename_orig);
-
-	debug_indentation(-iadd);
-	return res;
-}
-
-
-/*
- *  apple_load_bootblock():
- *
- *  Try to load a kernel from a disk image with an Apple Partition Table.
- *
- *  TODO: This function uses too many magic offsets and so on; it should be
- *  cleaned up some day. See http://www.awprofessional.com/articles/
- *	article.asp?p=376123&seqNum=3&rl=1  for some info on the Apple
- *  partition format.
- *
- *  Returns 1 on success, 0 on failure.
- */
-static int apple_load_bootblock(struct machine *m, struct cpu *cpu,
-	int disk_id, int disk_type, int *n_loadp, char ***load_namesp)
-{
-	unsigned char buf[0x8000];
-	int res, partnr, n_partitions = 0, n_hfs_partitions = 0;
-	uint64_t hfs_start, hfs_length;
-
-	res = diskimage_access(m, disk_id, disk_type, 0, 0x0, buf, sizeof(buf));
-	if (!res) {
-		fatal("apple_load_bootblock: couldn't read the disk "
-		    "image. Aborting.\n");
-		return 0;
-	}
-
-	partnr = 0;
-	do {
-		int start, length;
-		int ofs = 0x200 * (partnr + 1);
-		if (partnr == 0)
-			n_partitions = buf[ofs + 7];
-		start = ((uint64_t)buf[ofs + 8] << 24) + (buf[ofs + 9] << 16) +
-		    (buf[ofs + 10] << 8) + buf[ofs + 11];
-		length = ((uint64_t)buf[ofs+12] << 24) + (buf[ofs + 13] << 16) +
-		    (buf[ofs + 14] << 8) + buf[ofs + 15];
-
-		debug("partition %i: '%s', type '%s', start %i, length %i\n",
-		    partnr, buf + ofs + 0x10, buf + ofs + 0x30,
-		    start, length);
-
-		if (strcmp((char *)buf + ofs + 0x30, "Apple_HFS") == 0) {
-			n_hfs_partitions ++;
-			hfs_start = 512 * start;
-			hfs_length = 512 * length;
-		}
-
-		/*  Any more partitions?  */
-		partnr ++;
-	} while (partnr < n_partitions);
-
-	if (n_hfs_partitions == 0) {
-		fatal("Error: No HFS partition found! TODO\n");
-		return 0;
-	}
-	if (n_hfs_partitions >= 2) {
-		fatal("Error: Too many HFS partitions found! TODO\n");
-		return 0;
-	}
-
-	return 0;
-}
-
-
-/*
- *  load_bootblock():
- *
- *  For some emulation modes, it is possible to boot from a harddisk image by
- *  loading a bootblock from a specific disk offset into memory, and executing
- *  that, instead of requiring a separate kernel file.  It is then up to the
- *  bootblock to load a kernel.
- *
- *  Returns 1 on success, 0 on failure.
- */
-static int load_bootblock(struct machine *m, struct cpu *cpu,
-	int *n_loadp, char ***load_namesp)
-{
-	int boot_disk_id, boot_disk_type = 0, n_blocks, res, readofs,
-	    iso_type, retval = 0;
-	unsigned char minibuf[0x20];
-	unsigned char *bootblock_buf;
-	uint64_t bootblock_offset;
-	uint64_t bootblock_loadaddr, bootblock_pc;
-
-	boot_disk_id = diskimage_bootdev(m, &boot_disk_type);
-	if (boot_disk_id < 0)
-		return 0;
-
-	switch (m->machine_type) {
-	case MACHINE_PMAX:
-		/*
-		 *  The first few bytes of a disk contains information about
-		 *  where the bootblock(s) are located. (These are all 32-bit
-		 *  little-endian words.)
-		 *
-		 *  Offset 0x10 = load address
-		 *         0x14 = initial PC value
-		 *         0x18 = nr of 512-byte blocks to read
-		 *         0x1c = offset on disk to where the bootblocks
-		 *                are (in 512-byte units)
-		 *         0x20 = nr of blocks to read...
-		 *         0x24 = offset...
-		 *
-		 *  nr of blocks to read and offset are repeated until nr of
-		 *  blocks to read is zero.
-		 */
-		res = diskimage_access(m, boot_disk_id, boot_disk_type, 0, 0,
-		    minibuf, sizeof(minibuf));
-
-		bootblock_loadaddr = minibuf[0x10] + (minibuf[0x11] << 8)
-		  + (minibuf[0x12] << 16) + ((uint64_t)minibuf[0x13] << 24);
-
-		/*  Convert loadaddr to uncached:  */
-		if ((bootblock_loadaddr & 0xf0000000ULL) != 0x80000000 &&
-		    (bootblock_loadaddr & 0xf0000000ULL) != 0xa0000000) {
-			fatal("\nWARNING! Weird load address 0x%08"PRIx32
-			    " for SCSI id %i.\n\n",
-			    (uint32_t)bootblock_loadaddr, boot_disk_id);
-			if (bootblock_loadaddr == 0) {
-				fatal("I'm assuming that this is _not_ a "
-				    "DEC bootblock.\nAre you sure you are"
-				    " booting from the correct disk?\n");
-				exit(1);
-			}
-		}
-
-		bootblock_loadaddr &= 0x0fffffffULL;
-		bootblock_loadaddr |= 0xffffffffa0000000ULL;
-
-		bootblock_pc = minibuf[0x14] + (minibuf[0x15] << 8)
-		  + (minibuf[0x16] << 16) + ((uint64_t)minibuf[0x17] << 24);
-
-		bootblock_pc &= 0x0fffffffULL;
-		bootblock_pc |= 0xffffffffa0000000ULL;
-		cpu->pc = bootblock_pc;
-
-		debug("DEC boot: loadaddr=0x%08x, pc=0x%08x",
-		    (int)bootblock_loadaddr, (int)bootblock_pc);
-
-		readofs = 0x18;
-
-		for (;;) {
-			res = diskimage_access(m, boot_disk_id, boot_disk_type,
-			    0, readofs, minibuf, sizeof(minibuf));
-			if (!res) {
-				fatal("Couldn't read the disk image. "
-				    "Aborting.\n");
-				return 0;
-			}
-
-			n_blocks = minibuf[0] + (minibuf[1] << 8)
-			  + (minibuf[2] << 16) + ((uint64_t)minibuf[3] << 24);
-
-			bootblock_offset = (minibuf[4] + (minibuf[5] << 8) +
-			  (minibuf[6]<<16) + ((uint64_t)minibuf[7]<<24)) * 512;
-
-			if (n_blocks < 1)
-				break;
-
-			debug(readofs == 0x18? ": %i" : " + %i", n_blocks);
-
-			if (n_blocks * 512 > 65536)
-				fatal("\nWARNING! Unusually large bootblock "
-				    "(%i bytes)\n\n", n_blocks * 512);
-
-			bootblock_buf = malloc(n_blocks * 512);
-			if (bootblock_buf == NULL) {
-				fprintf(stderr, "out of memory in "
-				    "load_bootblock()\n");
-				exit(1);
-			}
-
-			res = diskimage_access(m, boot_disk_id, boot_disk_type,
-			    0, bootblock_offset, bootblock_buf, n_blocks * 512);
-			if (!res) {
-				fatal("WARNING: could not load bootblocks from"
-				    " disk offset 0x%llx\n",
-				    (long long)bootblock_offset);
-			}
-
-			store_buf(cpu, bootblock_loadaddr,
-			    (char *)bootblock_buf, n_blocks * 512);
-
-			bootblock_loadaddr += 512*n_blocks;
-			free(bootblock_buf);
-			readofs += 8;
-		}
-
-		debug(readofs == 0x18? ": no blocks?\n" : " blocks\n");
-		return 1;
-
-	case MACHINE_X86:
-		/*  TODO: "El Torito" etc?  */
-		if (diskimage_is_a_cdrom(cpu->machine, boot_disk_id,
-		    boot_disk_type))
-			break;
-
-		bootblock_buf = malloc(512);
-		if (bootblock_buf == NULL) {
-			fprintf(stderr, "Out of memory.\n");
-			exit(1);
-		}
-
-		debug("loading PC bootsector from %s id %i\n",
-		    diskimage_types[boot_disk_type], boot_disk_id);
-
-		res = diskimage_access(m, boot_disk_id, boot_disk_type, 0, 0,
-		    bootblock_buf, 512);
-		if (!res) {
-			fatal("Couldn't read the disk image. Aborting.\n");
-			return 0;
-		}
-
-		if (bootblock_buf[510] != 0x55 || bootblock_buf[511] != 0xaa)
-			debug("WARNING! The 0x55,0xAA marker is missing! "
-			    "Booting anyway.\n");
-		store_buf(cpu, 0x7c00, (char *)bootblock_buf, 512);
-		free(bootblock_buf);
-
-		return 1;
-	}
-
-
-	/*
-	 *  Try reading a kernel manually from the disk. The code here
-	 *  does not rely on machine-dependent boot blocks etc.
-	 */
-	/*  ISO9660: (0x800 bytes at 0x8000)  */
-	bootblock_buf = malloc(0x800);
-	if (bootblock_buf == NULL) {
-		fprintf(stderr, "Out of memory.\n");
-		exit(1);
-	}
-
-	res = diskimage_access(m, boot_disk_id, boot_disk_type,
-	    0, 0x8000, bootblock_buf, 0x800);
-	if (!res) {
-		fatal("Couldn't read the disk image. Aborting.\n");
-		return 0;
-	}
-
-	iso_type = 0;
-	if (strncmp((char *)bootblock_buf+1, "CD001", 5) == 0)
-		iso_type = 1;
-	if (strncmp((char *)bootblock_buf+1, "CDW01", 5) == 0)
-		iso_type = 2;
-	if (strncmp((char *)bootblock_buf+1, "CDROM", 5) == 0)
-		iso_type = 3;
-
-	if (iso_type != 0) {
-		/*
-		 *  If the user specified a kernel name, then load it from
-		 *  disk.
-		 */
-		if (cpu->machine->boot_kernel_filename == NULL ||
-		    cpu->machine->boot_kernel_filename[0] == '\0')
-			fatal("\nISO9660 filesystem, but no kernel "
-			    "specified? (Use the -j option.)\n");
-		else
-			retval = iso_load_bootblock(m, cpu, boot_disk_id,
-			    boot_disk_type, iso_type, bootblock_buf,
-			    n_loadp, load_namesp);
-	}
-
-	if (retval != 0)
-		goto ret_ok;
-
-	/*  Apple parition table:  */
-	res = diskimage_access(m, boot_disk_id, boot_disk_type,
-	    0, 0x0, bootblock_buf, 0x800);
-	if (!res) {
-		fatal("Couldn't read the disk image. Aborting.\n");
-		return 0;
-	}
-	if (bootblock_buf[0x000] == 'E' && bootblock_buf[0x001] == 'R' &&
-	    bootblock_buf[0x200] == 'P' && bootblock_buf[0x201] == 'M') {
-		if (cpu->machine->boot_kernel_filename == NULL ||
-		    cpu->machine->boot_kernel_filename[0] == '\0')
-			fatal("\nApple partition table, but no kernel "
-			    "specified? (Use the -j option.)\n");
-		else
-			retval = apple_load_bootblock(m, cpu, boot_disk_id,
-			    boot_disk_type, n_loadp, load_namesp);
-	}
-
-ret_ok:
-	free(bootblock_buf);
-	return retval;
-}
-
-
-/*
  *  emul_new():
  *
  *  Returns a reasonably initialized struct emul.
@@ -750,12 +145,8 @@ ret_ok:
 struct emul *emul_new(char *name)
 {
 	struct emul *e;
-	e = malloc(sizeof(struct emul));
-	if (e == NULL) {
-		fprintf(stderr, "out of memory in emul_new()\n");
-		exit(1);
-	}
 
+	CHECK_ALLOCATION(e = malloc(sizeof(struct emul)));
 	memset(e, 0, sizeof(struct emul));
 
 	e->settings = settings_new();
@@ -771,12 +162,7 @@ struct emul *emul_new(char *name)
 	e->next_serial_nr = 1;
 
 	if (name != NULL) {
-		e->name = strdup(name);
-		if (e->name == NULL) {
-			fprintf(stderr, "out of memory in emul_new()\n");
-			exit(1);
-		}
-
+		CHECK_ALLOCATION(e->name = strdup(name));
 		settings_add(e->settings, "name", 0,
 		    SETTINGS_TYPE_STRING, SETTINGS_FORMAT_STRING,
 		    (void *) &e->name);
@@ -828,18 +214,13 @@ struct machine *emul_add_machine(struct emul *e, char *name)
 	char tmpstr[20];
 	int i;
 
-	m = machine_new(name, e);
+	m = machine_new(name, e, e->n_machines);
 	m->serial_nr = (e->next_serial_nr ++);
 
-	i = e->n_machines;
+	i = e->n_machines ++;
 
-	e->n_machines ++;
-	e->machines = realloc(e->machines,
-	    sizeof(struct machine *) * e->n_machines);
-	if (e->machines == NULL) {
-		fprintf(stderr, "emul_add_machine(): out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(e->machines = realloc(e->machines,
+	    sizeof(struct machine *) * e->n_machines));
 
 	e->machines[i] = m;
 
@@ -980,7 +361,11 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 	uint64_t memory_amount, entrypoint = 0, gp = 0, toc = 0;
 	int byte_order;
 
-	debug("machine \"%s\":\n", m->name);
+	if (m->name != NULL)
+		debug("machine \"%s\":\n", m->name);
+	else
+		debug("machine:\n");
+
 	debug_indentation(iadd);
 
 	/*  For userland-only, this decides which ARCH/cpu_name to use:  */
@@ -1034,20 +419,11 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 		/*  TODO: This should be moved elsewhere...  */
 		if (m->machine_type == MACHINE_BEBOX)
 			m->ncpus = 2;
-		else if (m->machine_type == MACHINE_ARC &&
-		    m->machine_subtype == MACHINE_ARC_NEC_R96)
-			m->ncpus = 2;
-		else if (m->machine_type == MACHINE_ARC &&
-		    m->machine_subtype == MACHINE_ARC_NEC_R98)
-			m->ncpus = 4;
 		else
 			m->ncpus = 1;
 	}
-	m->cpus = malloc(sizeof(struct cpu *) * m->ncpus);
-	if (m->cpus == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+
+	CHECK_ALLOCATION(m->cpus = malloc(sizeof(struct cpu *) * m->ncpus));
 	memset(m->cpus, 0, sizeof(struct cpu *) * m->ncpus);
 
 	debug("cpu0");
@@ -1064,18 +440,6 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 	}
 	debug("\n");
 
-#if 0
-	/*  Special case: The Playstation Portable has an additional CPU:  */
-	if (m->machine_type == MACHINE_PSP) {
-		debug("cpu%i: ", m->ncpus);
-		m->cpus[m->ncpus] = cpu_new(m->memory, m,
-		    0  /*  use 0 here to show info with debug()  */,
-		    "Allegrex" /*  TODO  */);
-		debug("\n");
-		m->ncpus ++;
-	}
-#endif
-
 	if (m->use_random_bootstrap_cpu)
 		m->bootstrap_cpu = random() % m->ncpus;
 	else
@@ -1089,16 +453,17 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 		    m->userland_emul, NULL, NULL, NULL);
 
 		switch (m->arch) {
-#ifdef ENABLE_ALPHA
+
 		case ARCH_ALPHA:
 			cpu->memory_rw = alpha_userland_memory_rw;
 			break;
-#endif
-		default:cpu->memory_rw = userland_memory_rw;
+
+		default:
+			cpu->memory_rw = userland_memory_rw;
 		}
 	}
 
-	if (m->use_x11)
+	if (m->x11_md.in_use)
 		x11_init(m);
 
 	/*  Fill memory with random bytes:  */
@@ -1167,8 +532,11 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 			fread(buf, 1, sizeof(buf), tmp_f);
 			if (buf[0]==0x1f && buf[1]==0x8b) {
 				size_t zzlen = strlen(name_to_load)*2 + 100;
-				char *zz = malloc(zzlen);
+				char *zz;
+
+				CHECK_ALLOCATION(zz = malloc(zzlen));
 				debug("gunziping %s\n", name_to_load);
+
 				/*
 				 *  gzip header found.  If this was a file
 				 *  extracted from, say, a CDROM image, then it
@@ -1185,8 +553,17 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 				} else {
 					/*  gunzip into new temp file:  */
 					int tmpfile_handle;
-					char *new_temp_name =
-					    strdup("/tmp/gxemul.XXXXXXXXXXXX");
+					char *new_temp_name;
+					char *tmpdir = getenv("TMPDIR");
+
+					if (tmpdir == NULL)
+						tmpdir = DEFAULT_TMP_DIR;
+
+					CHECK_ALLOCATION(new_temp_name =
+					    malloc(300));
+					snprintf(new_temp_name, 300,
+					    "%s/gxemul.XXXXXXXXXXXX", tmpdir);
+
 					tmpfile_handle = mkstemp(new_temp_name);
 					close(tmpfile_handle);
 					snprintf(zz, zzlen, "gunzip -c '%s' > "
@@ -1198,62 +575,6 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 				free(zz);
 			}
 			fclose(tmp_f);
-		}
-
-		/*
-		 *  Ugly (but usable) hack for Playstation Portable:  If the
-		 *  filename ends with ".pbp" and the file contains an ELF
-		 *  header, then extract the ELF file into a temporary file.
-		 */
-		if (strlen(name_to_load) > 4 && strcasecmp(name_to_load +
-		    strlen(name_to_load) - 4, ".pbp") == 0 &&
-		    (tmp_f = fopen(name_to_load, "r")) != NULL) {
-			off_t filesize, j, found=0;
-			unsigned char *buf;
-			fseek(tmp_f, 0, SEEK_END);
-			filesize = ftello(tmp_f);
-			fseek(tmp_f, 0, SEEK_SET);
-			buf = malloc(filesize);
-			if (buf == NULL) {
-				fprintf(stderr, "out of memory while trying"
-				    " to read %s\n", name_to_load);
-				exit(1);
-			}
-			fread(buf, 1, filesize, tmp_f);
-			fclose(tmp_f);
-			/*  Search for the ELF header, from offset 1 (!):  */
-			for (j=1; j<filesize - 4; j++)
-				if (memcmp(buf + j, ELFMAG, SELFMAG) == 0) {
-					found = j;
-					break;
-				}
-			if (found != 0) {
-				int tmpfile_handle;
-				char *new_temp_name =
-				    strdup("/tmp/gxemul.XXXXXXXXXXXX");
-				debug("extracting ELF from %s (offset 0x%x)\n",
-				    name_to_load, (int)found);
-				tmpfile_handle = mkstemp(new_temp_name);
-				write(tmpfile_handle, buf + found,
-				    filesize - found);
-				close(tmpfile_handle);
-				name_to_load = new_temp_name;
-				remove_after_load = 1;
-			}
-		}
-
-		/*  Special things required _before_ loading the file:  */
-		switch (m->arch) {
-		case ARCH_X86:
-			/*
-			 *  X86 machines normally don't need to load any files,
-			 *  they can boot from disk directly. Therefore, an x86
-			 *  machine usually boots up in 16-bit real mode. When
-			 *  loading a 32-bit (or even 64-bit) ELF, that's not
-			 *  very nice, hence this special case.
-			 */
-			pc_bios_simple_pmode_setup(cpu);
-			break;
 		}
 
 		byte_order = NO_BYTE_ORDER_OVERRIDE;
@@ -1289,36 +610,20 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 			cpu->pc &= 0xfffffffc;
 			break;
 
-		case ARCH_AVR:
-			cpu->pc &= 0xfffff;
-			if (cpu->pc & 1) {
-				fatal("AVR: lowest bit of pc set: TODO\n");
+		case ARCH_M32R:
+			if (cpu->pc & 3) {
+				fatal("M32R: lowest bits of pc set: TODO\n");
 				exit(1);
 			}
+			cpu->pc &= 0xfffffffc;
 			break;
 
-		case ARCH_AVR32:
-			cpu->pc = (uint32_t) cpu->pc;
-			if (cpu->pc & 1) {
-				fatal("AVR32: lowest bit of pc set: TODO\n");
+		case ARCH_M88K:
+			if (cpu->pc & 3) {
+				fatal("M88K: lowest bits of pc set: TODO\n");
 				exit(1);
 			}
-			break;
-
-		case ARCH_RCA180X:
-			cpu->pc &= 0xffff;
-			break;
-
-		case ARCH_HPPA:
-			break;
-
-		case ARCH_I960:
-			break;
-
-		case ARCH_IA64:
-			break;
-
-		case ARCH_M68K:
+			cpu->pc &= 0xfffffffc;
 			break;
 
 		case ARCH_MIPS:
@@ -1349,28 +654,6 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 			break;
 
 		case ARCH_SPARC:
-			break;
-
-		case ARCH_TRANSPUTER:
-			cpu->pc &= 0xffffffffULL;
-			break;
-
-		case ARCH_X86:
-			/*
-			 *  NOTE: The toc field is used to indicate an ELF32
-			 *  or ELF64 load.
-			 */
-			switch (toc) {
-			case 0:	/*  16-bit? TODO  */
-				cpu->pc &= 0xffffffffULL;
-				break;
-			case 1:	/*  32-bit.  */
-				cpu->pc &= 0xffffffffULL;
-				break;
-			case 2:	/*  64-bit:  TODO  */
-				fatal("64-bit x86 load. TODO\n");
-				exit(1);
-			}
 			break;
 
 		default:
@@ -1416,8 +699,8 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 			m->cpus[i]->running = 0;
 	}
 
-	/*  Add PC dump points:  */
-	add_dump_points(m);
+	/*  Parse and add breakpoints:  */
+	add_breakpoints(m);
 
 	/*  TODO: This is MIPS-specific!  */
 	if (m->machine_type == MACHINE_PMAX &&
@@ -1432,53 +715,32 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 	    m->machine_type == MACHINE_SGI) && m->prom_emulation)
 		add_arc_components(m);
 
-	debug("starting cpu%i at ", m->bootstrap_cpu);
+	debug("cpu%i: starting at ", m->bootstrap_cpu);
+
 	switch (m->arch) {
-
-	case ARCH_ARM:
-		/*  ARM cpus aren't 64-bit:  */
-		debug("0x%08x", (int)entrypoint);
-		break;
-
-	case ARCH_AVR:
-		/*  Atmel AVR uses a 16-bit or 22-bit program counter:  */
-		debug("0x%04x", (int)entrypoint);
-		break;
 
 	case ARCH_MIPS:
 		if (cpu->is_32bit) {
-			debug("0x%08x", (int)m->cpus[
-			    m->bootstrap_cpu]->pc);
+			debug("0x%08"PRIx32, (uint32_t)
+			    m->cpus[m->bootstrap_cpu]->pc);
 			if (cpu->cd.mips.gpr[MIPS_GPR_GP] != 0)
-				debug(" (gp=0x%08x)", (int)m->cpus[
-				    m->bootstrap_cpu]->cd.mips.gpr[
+				debug(" (gp=0x%08"PRIx32")", (uint32_t)
+				    m->cpus[m->bootstrap_cpu]->cd.mips.gpr[
 				    MIPS_GPR_GP]);
 		} else {
-			debug("0x%016llx", (long long)m->cpus[
-			    m->bootstrap_cpu]->pc);
+			debug("0x%016"PRIx64, (uint64_t)
+			    m->cpus[m->bootstrap_cpu]->pc);
 			if (cpu->cd.mips.gpr[MIPS_GPR_GP] != 0)
-				debug(" (gp=0x%016llx)", (long long)
+				debug(" (gp=0x%016"PRIx64")", (uint64_t)
 				    cpu->cd.mips.gpr[MIPS_GPR_GP]);
 		}
 		break;
 
-	case ARCH_PPC:
-		if (cpu->cd.ppc.bits == 32)
-			debug("0x%08x", (int)entrypoint);
-		else
-			debug("0x%016llx", (long long)entrypoint);
-		break;
-
-	case ARCH_X86:
-		debug("0x%04x:0x%llx", cpu->cd.x86.s[X86_S_CS],
-		    (long long)cpu->pc);
-		break;
-
 	default:
 		if (cpu->is_32bit)
-			debug("0x%08x", (int)cpu->pc);
+			debug("0x%08"PRIx32, (uint32_t) cpu->pc);
 		else
-			debug("0x%016llx", (long long)cpu->pc);
+			debug("0x%016"PRIx64, (uint64_t) cpu->pc);
 	}
 	debug("\n");
 
@@ -1493,17 +755,22 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
  */
 void emul_dumpinfo(struct emul *e)
 {
-	int j, nm, iadd = DEBUG_INDENTATION;
+	int i;
 
 	if (e->net != NULL)
 		net_dumpinfo(e->net);
 
-	nm = e->n_machines;
-	for (j=0; j<nm; j++) {
-		debug("machine %i: \"%s\"\n", j, e->machines[j]->name);
-		debug_indentation(iadd);
-		machine_dumpinfo(e->machines[j]);
-		debug_indentation(-iadd);
+	for (i = 0; i < e->n_machines; i++) {
+		if (e->n_machines > 1)
+			debug("machine %i: \"%s\"\n", i, e->machines[i]->name);
+		else
+			debug("machine:\n");
+
+		debug_indentation(DEBUG_INDENTATION);
+
+		machine_dumpinfo(e->machines[i]);
+
+		debug_indentation(-DEBUG_INDENTATION);
 	}
 }
 
@@ -1577,43 +844,34 @@ struct emul *emul_create_from_configfile(char *fname)
 /*
  *  emul_run():
  *
- *	o)  Set up things needed before running emulations.
+ *	o)  Set up things needed before running an emulation.
  *
- *	o)  Run emulations (one or more, in parallel).
+ *	o)  Run instructions in all machines.
  *
  *	o)  De-initialize things.
  */
-void emul_run(struct emul **emuls, int n_emuls)
+void emul_run(struct emul *emul)
 {
-	struct emul *e;
 	int i = 0, j, go = 1, n, anything;
-
-	if (n_emuls < 1) {
-		fprintf(stderr, "emul_run(): no thing to do\n");
-		return;
-	}
 
 	atexit(fix_console);
 
 	/*  Initialize the interactive debugger:  */
-	debugger_init(emuls, n_emuls);
+	debugger_init(emul);
 
 	/*  Run any additional debugger commands before starting:  */
-	for (i=0; i<n_emuls; i++) {
-		struct emul *emul = emuls[i];
-		if (emul->n_debugger_cmds > 0) {
-			int j;
-			if (i == 0)
-				print_separator();
-			for (j = 0; j < emul->n_debugger_cmds; j ++) {
-				debug("> %s\n", emul->debugger_cmds[j]);
-				debugger_execute_cmd(emul->debugger_cmds[j],
-				    strlen(emul->debugger_cmds[j]));
-			}
+	if (emul->n_debugger_cmds > 0) {
+		int j;
+		if (i == 0)
+			print_separator_line();
+		for (j = 0; j < emul->n_debugger_cmds; j ++) {
+			debug("> %s\n", emul->debugger_cmds[j]);
+			debugger_execute_cmd(emul->debugger_cmds[j],
+			    strlen(emul->debugger_cmds[j]));
 		}
 	}
 
-	print_separator();
+	print_separator_line();
 	debug("\n");
 
 
@@ -1627,7 +885,8 @@ void emul_run(struct emul **emuls, int n_emuls)
 	 *  (or sends SIGSTOP) and then continues. It makes sure that the
 	 *  terminal is in an expected state.
 	 */
-	console_init_main(emuls[0]);	/*  TODO: what is a good argument?  */
+	console_init_main(emul);
+
 	signal(SIGINT, debugger_activate);
 	signal(SIGCONT, console_sigcont);
 
@@ -1635,60 +894,55 @@ void emul_run(struct emul **emuls, int n_emuls)
 	if (!verbose)
 		quiet_mode = 1;
 
-	/*  Initialize all CPUs in all machines in all emulations:  */
-	for (i=0; i<n_emuls; i++) {
-		e = emuls[i];
-		if (e == NULL)
-			continue;
-		for (j=0; j<e->n_machines; j++)
-			cpu_run_init(e->machines[j]);
-	}
+
+	/*  Initialize all CPUs in all machines:  */
+	for (j=0; j<emul->n_machines; j++)
+		cpu_run_init(emul->machines[j]);
 
 	/*  TODO: Generalize:  */
-	if (emuls[0]->machines[0]->show_trace_tree)
-		cpu_functioncall_trace(emuls[0]->machines[0]->cpus[0],
-		    emuls[0]->machines[0]->cpus[0]->pc);
+	if (emul->machines[0]->show_trace_tree)
+		cpu_functioncall_trace(emul->machines[0]->cpus[0],
+		    emul->machines[0]->cpus[0]->pc);
 
 	/*  Start emulated clocks:  */
 	timer_start();
 
+
 	/*
 	 *  MAIN LOOP:
 	 *
-	 *  Run all emulations in parallel, running each machine in
-	 *  each emulation.
+	 *  Run all emulations in parallel, running instructions from each
+	 *  cpu in each machine.
 	 */
 	while (go) {
+		struct cpu *bootcpu = emul->machines[0]->cpus[
+		    emul->machines[0]->bootstrap_cpu];
+
 		go = 0;
 
 		/*  Flush X11 and serial console output every now and then:  */
-		if (emuls[0]->machines[0]->ninstrs >
-		    emuls[0]->machines[0]->ninstrs_flush + (1<<19)) {
-			x11_check_event(emuls, n_emuls);
+		if (bootcpu->ninstrs > bootcpu->ninstrs_flush + (1<<19)) {
+			x11_check_event(emul);
 			console_flush();
-			emuls[0]->machines[0]->ninstrs_flush =
-			    emuls[0]->machines[0]->ninstrs;
+			bootcpu->ninstrs_flush = bootcpu->ninstrs;
 		}
 
-		if (emuls[0]->machines[0]->ninstrs >
-		    emuls[0]->machines[0]->ninstrs_show + (1<<25)) {
-			emuls[0]->machines[0]->ninstrs_since_gettimeofday +=
-			    (emuls[0]->machines[0]->ninstrs -
-			     emuls[0]->machines[0]->ninstrs_show);
-			cpu_show_cycles(emuls[0]->machines[0], 0);
-			emuls[0]->machines[0]->ninstrs_show =
-			    emuls[0]->machines[0]->ninstrs;
+		if (bootcpu->ninstrs > bootcpu->ninstrs_show + (1<<25)) {
+			bootcpu->ninstrs_since_gettimeofday +=
+			    (bootcpu->ninstrs - bootcpu->ninstrs_show);
+			cpu_show_cycles(emul->machines[0], 0);
+			bootcpu->ninstrs_show = bootcpu->ninstrs;
 		}
 
 		if (single_step == ENTER_SINGLE_STEPPING) {
 			/*  TODO: Cleanup!  */
 			old_instruction_trace =
-			    emuls[0]->machines[0]->instruction_trace;
+			    emul->machines[0]->instruction_trace;
 			old_quiet_mode = quiet_mode;
 			old_show_trace_tree =
-			    emuls[0]->machines[0]->show_trace_tree;
-			emuls[0]->machines[0]->instruction_trace = 1;
-			emuls[0]->machines[0]->show_trace_tree = 1;
+			    emul->machines[0]->show_trace_tree;
+			emul->machines[0]->instruction_trace = 1;
+			emul->machines[0]->show_trace_tree = 1;
 			quiet_mode = 0;
 			single_step = SINGLE_STEPPING;
 		}
@@ -1696,32 +950,19 @@ void emul_run(struct emul **emuls, int n_emuls)
 		if (single_step == SINGLE_STEPPING)
 			debugger();
 
-		for (i=0; i<n_emuls; i++) {
-			e = emuls[i];
-
-			for (j=0; j<e->n_machines; j++) {
-				if (e->machines[j]->gdb.port > 0)
-					debugger_gdb_check_incoming(
-					    e->machines[j]);
-
-				anything = machine_run(e->machines[j]);
-				if (anything)
-					go = 1;
-			}
+		for (j=0; j<emul->n_machines; j++) {
+			anything = machine_run(emul->machines[j]);
+			if (anything)
+				go = 1;
 		}
 	}
 
 	/*  Stop any running timers:  */
 	timer_stop();
 
-	/*  Deinitialize all CPUs in all machines in all emulations:  */
-	for (i=0; i<n_emuls; i++) {
-		e = emuls[i];
-		if (e == NULL)
-			continue;
-		for (j=0; j<e->n_machines; j++)
-			cpu_run_deinit(e->machines[j]);
-	}
+	/*  Deinitialize all CPUs in all machines:  */
+	for (j=0; j<emul->n_machines; j++)
+		cpu_run_deinit(emul->machines[j]);
 
 	/*  force_debugger_at_exit flag set? Then enter the debugger:  */
 	if (force_debugger_at_exit) {
@@ -1732,14 +973,14 @@ void emul_run(struct emul **emuls, int n_emuls)
 
 	/*  Any machine using X11? Then wait before exiting:  */
 	n = 0;
-	for (i=0; i<n_emuls; i++)
-		for (j=0; j<emuls[i]->n_machines; j++)
-			if (emuls[i]->machines[j]->use_x11)
-				n++;
+	for (j=0; j<emul->n_machines; j++)
+		if (emul->machines[j]->x11_md.in_use)
+			n++;
+
 	if (n > 0) {
 		printf("Press enter to quit.\n");
 		while (!console_charavail(MAIN_CONSOLE)) {
-			x11_check_event(emuls, n_emuls);
+			x11_check_event(emul);
 			usleep(10000);
 		}
 		console_readchar(MAIN_CONSOLE);

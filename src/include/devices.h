@@ -2,7 +2,7 @@
 #define	DEVICES_H
 
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,16 +28,28 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: devices.h,v 1.218 2006/10/02 09:26:53 debug Exp $
+ *  $Id: devices.h,v 1.242.2.1 2008/01/18 19:12:32 debug Exp $
  *
  *  Memory mapped devices.
  *
- *  TODO: Separate into lots of smaller files? That might speed up a compile,
- *        but I'm not sure that it's a price worth paying.
+ *  NOTE:  Many of these devices are legacy devices, that are here for one
+ *         of these two reasons:
+ *
+ *		A)  Devices introduced before the DEVINIT system had to
+ *		    be declared somewhere.
+ *
+ *		B)  The way interrupt controllers and such were implemented
+ *		    up until release 0.4.3 requires that several parts of
+ *		    the program access internal fields of interrupt
+ *		    controllers' structs.
+ *
+ *         Both A and B need to be solved.
  */
 
 #include <sys/types.h>
 #include <inttypes.h>
+
+#include "interrupt.h"
 
 struct cpu;
 struct machine;
@@ -51,7 +63,7 @@ struct timer;
 
 /*  dev_8259.c:  */
 struct pic8259_data {
-	int		irq_nr;		/*  if connected to another 8259  */
+	struct interrupt irq;
 
 	int		irq_base;
 	int		current_command;
@@ -77,11 +89,6 @@ struct dec_ioasic_data {
 int dev_dec_ioasic_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
 struct dec_ioasic_data *dev_dec_ioasic_init(struct cpu *cpu, struct memory *mem, uint64_t baseaddr, int rackmount_flag);
 
-/*  dev_algor.c:  */
-struct algor_data {
-	uint64_t	base_addr;
-};
-
 /*  dev_asc.c:  */
 #define	DEV_ASC_DEC_LENGTH		0x40000
 #define	DEV_ASC_PICA_LENGTH		0x1000
@@ -89,50 +96,29 @@ struct algor_data {
 #define	DEV_ASC_PICA		2
 int dev_asc_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
 void dev_asc_init(struct machine *machine, struct memory *mem, uint64_t baseaddr,
-	int irq_nr, void *turbochannel, int mode,
+	char *irq_path, void *turbochannel, int mode,
 	size_t (*dma_controller)(void *dma_controller_data,
 		unsigned char *data, size_t len, int writeflag),
 	void *dma_controller_data);
 
-/*  dev_au1x00.c:  */
-struct au1x00_ic_data {
-	int		ic_nr;
-	uint32_t	request0_int;
-	uint32_t	request1_int;
-	uint32_t	config0;
-	uint32_t	config1;
-	uint32_t	config2;
-	uint32_t	source;
-	uint32_t	assign_request;
-	uint32_t	wakeup;
-	uint32_t	mask;
-};
-
-int dev_au1x00_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct au1x00_ic_data *dev_au1x00_init(struct machine *machine, struct memory *mem);
-
-/*  dev_bebox.c:  */
-struct bebox_data {
-	/*  The 5 motherboard registers:  */  
-	uint32_t	cpu0_int_mask;
-	uint32_t	cpu1_int_mask;
-	uint32_t	int_status;
-	uint32_t	xpi;
-	uint32_t	resets;
-};
-
 /*  dev_bt431.c:  */
 #define	DEV_BT431_LENGTH		0x20
 #define	DEV_BT431_NREGS			0x800	/*  ?  */
-int dev_bt431_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
+int dev_bt431_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
 struct vfb_data;
-void dev_bt431_init(struct memory *mem, uint64_t baseaddr, struct vfb_data *vfb_data, int color_fb_flag);
+void dev_bt431_init(struct memory *mem, uint64_t baseaddr,
+	struct vfb_data *vfb_data, int color_fb_flag);
 
 /*  dev_bt455.c:  */
 #define	DEV_BT455_LENGTH		0x20
-int dev_bt455_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
+int dev_bt455_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
 struct vfb_data;
-void dev_bt455_init(struct memory *mem, uint64_t baseaddr, struct vfb_data *vfb_data);
+void dev_bt455_init(struct memory *mem, uint64_t baseaddr,
+	struct vfb_data *vfb_data);
 
 /*  dev_bt459.c:  */
 #define	DEV_BT459_LENGTH		0x20
@@ -146,14 +132,7 @@ int dev_bt459_access(struct cpu *cpu, struct memory *mem,
 struct vfb_data;
 void dev_bt459_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr, uint64_t baseaddr_irq, struct vfb_data *vfb_data,
-	int color_fb_flag, int irq_nr, int type);
-
-/*  dev_cons.c:  */
-struct cons_data {
-	int	console_handle;
-	int	irq_nr;
-	int	in_use;
-};
+	int color_fb_flag, char *irq_path, int type);
 
 /*  dev_colorplanemask.c:  */
 #define	DEV_COLORPLANEMASK_LENGTH	0x0000000000000010
@@ -163,33 +142,17 @@ int dev_colorplanemask_access(struct cpu *cpu, struct memory *mem,
 void dev_colorplanemask_init(struct memory *mem, uint64_t baseaddr,
 	unsigned char *color_plane_mask);
 
-/*  dev_cpc700.c:  */
-struct cpc700_data {
-	struct pci_data	*pci_data;
-	uint32_t	sr;	/*  Status register (interrupt)  */
-	uint32_t	er;	/*  Enable register  */
-};
-struct cpc700_data *dev_cpc700_init(struct machine *, struct memory *);
-
 /*  dev_dc7085.c:  */
 #define	DEV_DC7085_LENGTH		0x0000000000000080
 /*  see dc7085.h for more info  */
 void dev_dc7085_tick(struct cpu *cpu, void *);
-int dev_dc7085_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-int dev_dc7085_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int irq_nr, int use_fb);
+int dev_dc7085_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+int dev_dc7085_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path, int use_fb);
 
 /*  dev_dec5800.c:  */
-#define	DEV_DEC5800_LENGTH			0x1000	/*  ?  */
-struct dec5800_data {
-        uint32_t        csr;
-	uint32_t	vector_0x50;
-};
-int dev_dec5800_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct dec5800_data *dev_dec5800_init(struct machine *machine, struct memory *mem, uint64_t baseaddr);
-/*  16 slots, 0x2000 bytes each  */
-#define	DEV_DECBI_LENGTH			0x20000
-int dev_decbi_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_decbi_init(struct memory *mem, uint64_t baseaddr);
 #define	DEV_DECCCA_LENGTH			0x10000	/*  ?  */
 #define	DEC_DECCCA_BASEADDR			0x19000000	/*  ?  I just made this up  */
 int dev_deccca_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
@@ -197,10 +160,6 @@ void dev_deccca_init(struct memory *mem, uint64_t baseaddr);
 #define	DEV_DECXMI_LENGTH			0x800000
 int dev_decxmi_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
 void dev_decxmi_init(struct memory *mem, uint64_t baseaddr);
-
-/*  dev_eagle.c:  */
-struct pci_data *dev_eagle_init(struct machine *machine, struct memory *mem,
-	int irqbase, int pciirq);
 
 /*  dev_fb.c:  */
 #define	DEV_FB_LENGTH		0x3c0000	/*  3c0000 to not colide with */
@@ -269,99 +228,23 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr, int vfb_type, int visible_xsize, int visible_ysize,
 	int xsize, int ysize, int bit_depth, char *name);
 
-/*  dev_footbridge:  */
-#define N_FOOTBRIDGE_TIMERS		4
-struct footbridge_data {
-	struct pci_data *pcibus;
-
-	int		console_handle;
-
-	int		timer_tick_countdown[N_FOOTBRIDGE_TIMERS];
-	uint32_t	timer_load[N_FOOTBRIDGE_TIMERS];
-	uint32_t	timer_value[N_FOOTBRIDGE_TIMERS];
-	uint32_t	timer_control[N_FOOTBRIDGE_TIMERS];
-
-	struct timer	*timer[N_FOOTBRIDGE_TIMERS];
-	int		pending_timer_interrupts[N_FOOTBRIDGE_TIMERS];
-
-	uint32_t        irq_status;
-	uint32_t        irq_enable;
-
-	uint32_t        fiq_status;
-	uint32_t        fiq_enable;
-}; 
-
-/*  dev_gc.c:  */
-struct gc_data {
-	int		reassert_irq;
-	uint32_t	status_hi;
-	uint32_t	status_lo;
-	uint32_t	enable_hi;
-	uint32_t	enable_lo;
-};
-struct gc_data *dev_gc_init(struct machine *, struct memory *, uint64_t addr,
-	int reassert_irq);
-
 /*  dev_gt.c:  */
 #define	DEV_GT_LENGTH			0x1000
 int dev_gt_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 	unsigned char *data, size_t len, int writeflag, void *);
 struct pci_data *dev_gt_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int pciirq, int type);
-
-/*  dev_i80321.c:  */
-struct i80321_data {
-	/*  Interrupt Controller  */
-	int		reassert_irq;
-	uint32_t	status;
-	uint32_t	enable;
-
-	uint32_t	pci_addr;
-	struct pci_data	*pci_bus;
-
-	/*  Memory Controller:  */
-	uint32_t        mcu_reg[0x100 / sizeof(uint32_t)];
-};
+	uint64_t baseaddr, char *timer_irq_path, char *isa_irq_path, int type);
 
 /*  dev_jazz.c:  */
-#define	DEV_JAZZ_LENGTH			0x280
-struct jazz_data {
-	struct cpu	*cpu;
-
-	/*  Jazz stuff:  */
-	uint32_t	int_enable_mask;
-	uint32_t	int_asserted;
-
-	/*  ISA stuff:  */
-	uint32_t	isa_int_enable_mask;
-	uint32_t	isa_int_asserted;
-
-	int		interval;
-	int		interval_start;
-
-	int		jazz_timer_value;
-	int		jazz_timer_current;
-
-	uint64_t	dma_translation_table_base;
-	uint64_t	dma_translation_table_limit;
-
-	uint32_t	dma0_mode;
-	uint32_t	dma0_enable;
-	uint32_t	dma0_count;
-	uint32_t	dma0_addr;
-
-	uint32_t	dma1_mode;
-	/*  same for dma1,2,3 actually (TODO)  */
-
-	int		led;
-};
 size_t dev_jazz_dma_controller(void *dma_controller_data,
 	unsigned char *data, size_t len, int writeflag);
 
 /*  dev_kn01.c:  */
-#define	DEV_KN01_CSR_LENGTH		0x0000000000000004
-int dev_kn01_csr_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_kn01_csr_init(struct memory *mem, uint64_t baseaddr, int color_fb);
+#define	DEV_KN01_LENGTH			4
+int dev_kn01_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_kn01_init(struct memory *mem, uint64_t baseaddr, int color_fb);
 #define	DEV_VDAC_LENGTH			0x20
 #define	DEV_VDAC_MAPWA			    0x00
 #define	DEV_VDAC_MAP			    0x04
@@ -370,17 +253,11 @@ void dev_kn01_csr_init(struct memory *mem, uint64_t baseaddr, int color_fb);
 #define	DEV_VDAC_OVERWA			    0x10
 #define	DEV_VDAC_OVER			    0x14
 #define	DEV_VDAC_OVERRA			    0x1c
-int dev_vdac_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_vdac_init(struct memory *mem, uint64_t baseaddr, unsigned char *rgb_palette, int color_fb_flag);
-
-/*  dev_kn02.c:  */
-struct kn02_csr {
-	uint8_t		csr[sizeof(uint32_t)];
-	uint8_t		filler[4096 - sizeof(uint32_t)];  /*  for dyntrans mapping  */
-};
-int dev_kn02_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct kn02_csr *dev_kn02_init(struct cpu *cpu, struct memory *mem,
-	uint64_t baseaddr);
+int dev_vdac_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_vdac_init(struct memory *mem, uint64_t baseaddr,
+	unsigned char *rgb_palette, int color_fb_flag);
 
 /*  dev_kn220.c:  */
 #define	DEV_DEC5500_IOBOARD_LENGTH		0x100000
@@ -390,11 +267,6 @@ struct dec5500_ioboard_data *dev_dec5500_ioboard_init(struct cpu *cpu, struct me
 int dev_sgec_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
 void dev_sgec_init(struct memory *mem, uint64_t baseaddr, int irq_nr);
 
-/*  dev_kn230.c:  */
-struct kn230_csr {
-	uint32_t	csr;
-};
-
 /*  dev_le.c:  */
 #define	DEV_LE_LENGTH			0x1c0200
 int dev_le_access(struct cpu *cpu, struct memory *mem,
@@ -402,24 +274,7 @@ int dev_le_access(struct cpu *cpu, struct memory *mem,
 	int writeflag, void *);
 void dev_le_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr, uint64_t buf_start, uint64_t buf_end,
-	int irq_nr, int len);
-
-/*  dev_m700_fb.c:  */
-#define	DEV_M700_FB_LENGTH		0x10000		/*  TODO?  */
-int dev_m700_fb_access(struct cpu *cpu, struct memory *mem,
-	uint64_t relative_addr, unsigned char *data, size_t len,
-	int writeflag, void *);
-void dev_m700_fb_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, uint64_t baseaddr2);
-
-/*  dev_malta.c:  */
-struct malta_data {
-	uint8_t		assert_lo;
-	uint8_t		assert_hi;
-	uint8_t		disable_lo;
-	uint8_t		disable_hi;
-	int		poll_mode;
-};
+	char *irq_path, int len);
 
 /*  dev_mc146818.c:  */
 #define	DEV_MC146818_LENGTH		0x0000000000000100
@@ -437,7 +292,7 @@ int dev_mc146818_access(struct cpu *cpu, struct memory *mem,
 	uint64_t relative_addr, unsigned char *data, size_t len,
 	int writeflag, void *);
 void dev_mc146818_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int access_style, int addrdiv);
+	uint64_t baseaddr, char *irq_path, int access_style, int addrdiv);
 
 /*  dev_pckbc.c:  */
 #define	DEV_PCKBC_LENGTH		0x10
@@ -448,68 +303,30 @@ int dev_pckbc_access(struct cpu *cpu, struct memory *mem,
 	uint64_t relative_addr, unsigned char *data, size_t len,
 	int writeflag, void *);
 int dev_pckbc_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int type, int keyboard_irqnr, int mouse_irqnr,
-	int in_use, int pc_style_flag);
-
-/*  dev_pmppc.c:  */
-int dev_pmppc_board_access(struct cpu *cpu, struct memory *mem,
-	uint64_t relative_addr, unsigned char *data, size_t len, int writeflag,
-	void *);
-void dev_pmppc_init(struct memory *mem);
-
-/*  dev_ps2_spd.c:  */
-#define	DEV_PS2_SPD_LENGTH		0x800
-int dev_ps2_spd_access(struct cpu *cpu, struct memory *mem,
-	uint64_t relative_addr, unsigned char *data, size_t len,
-	int writeflag, void *);
-void dev_ps2_spd_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr);
-
-/*  dev_ps2_stuff.c:  */
-#include "ps2_dmacreg.h"
-#define N_PS2_DMA_CHANNELS              10
-#define	N_PS2_TIMERS			4
-struct ps2_data {
-	uint32_t	timer_count[N_PS2_TIMERS];
-	uint32_t	timer_comp[N_PS2_TIMERS];
-	uint32_t	timer_mode[N_PS2_TIMERS];
-	uint32_t	timer_hold[N_PS2_TIMERS];	/*  NOTE: only 0 and 1 are valid  */
-
-        uint64_t	dmac_reg[DMAC_REGSIZE / 0x10];
-
-	uint64_t	other_memory_base[N_PS2_DMA_CHANNELS];
-
-	uint32_t	intr;
-	uint32_t	imask;
-	uint32_t	sbus_smflg;
-};
-#define	DEV_PS2_STUFF_LENGTH		0x10000
-int dev_ps2_stuff_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct ps2_data *dev_ps2_stuff_init(struct machine *machine, struct memory *mem, uint64_t baseaddr);
+	uint64_t baseaddr, int type, char *keyboard_irqpath,
+	char *mouse_irqpath, int in_use, int pc_style_flag);
 
 /*  dev_pmagja.c:  */
 #define	DEV_PMAGJA_LENGTH		0x3c0000
-int dev_pmagja_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_pmagja_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int irq_nr);
-
-/*  dev_prep.c:  */
-struct prep_data {
-	uint32_t	int_status;
-};
+int dev_pmagja_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_pmagja_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path);
 
 /*  dev_px.c:  */
 struct px_data {
-	struct memory	*fb_mem;
-	struct vfb_data	*vfb_data;
-	int		type;
-	char		*px_name;
-	int		irq_nr;
-	int		bitdepth;
-	int		xconfig;
-	int		yconfig;
+	struct memory		*fb_mem;
+	struct vfb_data		*vfb_data;
+	int			type;
+	char			*px_name;
+	struct interrupt	irq;
+	int			bitdepth;
+	int			xconfig;
+	int			yconfig;
 
-	uint32_t	intr;
-	unsigned char	sram[128 * 1024];
+	uint32_t		intr;
+	unsigned char		sram[128 * 1024];
 };
 /*  TODO: perhaps these types are wrong?  */
 #define	DEV_PX_TYPE_PX			0
@@ -519,8 +336,8 @@ struct px_data {
 #define	DEV_PX_LENGTH			0x3c0000
 int dev_px_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 	unsigned char *data, size_t len, int writeflag, void *);
-void dev_px_init(struct machine *machine, struct memory *mem, uint64_t baseaddr,
-	int px_type, int irq_nr);
+void dev_px_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, int px_type, char *irq_path);
 
 /*  dev_ram.c:  */
 #define	DEV_RAM_RAM				0
@@ -580,70 +397,47 @@ struct sgi_ip22_data {
 int dev_sgi_ip22_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
 struct sgi_ip22_data *dev_sgi_ip22_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int guiness_flag);
 
-/*  dev_sgi_ip30.c:  */
-#define	DEV_SGI_IP30_LENGTH		0x80000
-struct sgi_ip30_data {
-	/*  ip30:  */
-	uint64_t		imask0;		/*  0x10000  */
-	uint64_t		reg_0x10018;
-	uint64_t		isr;		/*  0x10030  */
-	uint64_t		reg_0x20000;
-	uint64_t		reg_0x30000;
-
-	/*  ip30_2:  */
-	uint64_t		reg_0x0029c;
-
-	/*  ip30_3:  */
-	uint64_t		reg_0x00284;
-
-	/*  ip30_4:  */
-	uint64_t		reg_0x000b0;
-
-	/*  ip30_5:  */
-	uint64_t		reg_0x00000;
-};
-int dev_sgi_ip30_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct sgi_ip30_data *dev_sgi_ip30_init(struct machine *machine, struct memory *mem, uint64_t baseaddr);
-
 /*  dev_sgi_ip32.c:  */
-#define	DEV_CRIME_LENGTH		0x0000000000001000
-struct crime_data {
-	unsigned char	reg[DEV_CRIME_LENGTH];
-	int		irq_nr;
-	int		use_fb;
-};
-int dev_crime_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct crime_data *dev_crime_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int irq_nr, int use_fb);
-#define	DEV_MACE_LENGTH			0x100
-struct mace_data {
-	unsigned char	reg[DEV_MACE_LENGTH];
-	int		irqnr;
-};
-int dev_mace_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct mace_data *dev_mace_init(struct memory *mem, uint64_t baseaddr, int irqnr);
+void dev_crime_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path, int use_fb);
 #define	DEV_MACEPCI_LENGTH		0x1000
-int dev_macepci_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct pci_data *dev_macepci_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int pciirq);
+int dev_macepci_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+struct pci_data *dev_macepci_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path);
 #define	DEV_SGI_MEC_LENGTH		0x1000
-int dev_sgi_mec_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_sgi_mec_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int irq_nr, unsigned char *macaddr);
+int dev_sgi_mec_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_sgi_mec_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path, unsigned char *macaddr);
 #define	DEV_SGI_UST_LENGTH		0x10000
-int dev_sgi_ust_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
+int dev_sgi_ust_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
 void dev_sgi_ust_init(struct memory *mem, uint64_t baseaddr);
 #define	DEV_SGI_MTE_LENGTH		0x10000
-int dev_sgi_mte_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
+int dev_sgi_mte_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
 void dev_sgi_mte_init(struct memory *mem, uint64_t baseaddr);
 
 /*  dev_sii.c:  */
 #define	DEV_SII_LENGTH			0x100
 void dev_sii_tick(struct cpu *cpu, void *);
-int dev_sii_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_sii_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, uint64_t buf_start, uint64_t buf_end, int irq_nr);
+int dev_sii_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
+	unsigned char *data, size_t len, int writeflag, void *);
+void dev_sii_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, uint64_t buf_start, uint64_t buf_end,
+	char *irq_path);
 
 /*  dev_ssc.c:  */
 #define	DEV_SSC_LENGTH			0x1000
-int dev_ssc_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_ssc_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int irq_nr, int use_fb, uint32_t *);
+int dev_ssc_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
+	unsigned char *data, size_t len, int writeflag, void *);
+void dev_ssc_init(struct machine *machine, struct memory *mem,
+	uint64_t baseaddr, char *irq_path, int use_fb);
 
 /*  dev_turbochannel.c:  */
 #define	DEV_TURBOCHANNEL_LEN		0x0470
@@ -652,18 +446,11 @@ int dev_turbochannel_access(struct cpu *cpu, struct memory *mem,
 	int writeflag, void *);
 void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 	int slot_nr, uint64_t baseaddr, uint64_t endaddr, char *device_name,
-	int irq);
+	char *irq_path);
 
 /*  dev_uninorth.c:  */
 struct pci_data *dev_uninorth_init(struct machine *machine, struct memory *mem,
 	uint64_t addr, int irqbase, int pciirq);
-
-/*  dev_v3.c:  */
-struct v3_data {
-	struct pci_data	*pci_data;
-	uint16_t	lb_map0;
-};
-struct v3_data *dev_v3_init(struct machine *, struct memory *);
 
 /*  dev_vga.c:  */
 int dev_vga_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
@@ -672,46 +459,8 @@ void dev_vga_init(struct machine *machine, struct memory *mem,
 	uint64_t videomem_base, uint64_t control_base, char *name);
 
 /*  dev_vr41xx.c:  */
-#define	DEV_VR41XX_LENGTH		0x800		/*  TODO?  */
-struct vr41xx_data {
-	int		cpumodel;
-
-	int		kiu_console_handle;
-	uint32_t	kiu_offset;
-	int		kiu_irq_nr;
-	int		kiu_int_assert;
-	int		d0;
-	int		d1;
-	int		d2;
-	int		d3;
-	int		d4;
-	int		d5;
-	int		dont_clear_next;
-	int		escape_state;
-
-	int		pending_timer_interrupts;
-	struct timer	*timer;
-
-	/*  See icureg.h in NetBSD for more info.  */
-	uint16_t	sysint1;
-	uint16_t	msysint1;
-	uint16_t	giuint;
-	uint16_t	giumask;
-	uint16_t	sysint2;
-	uint16_t	msysint2;
-};
-
-int dev_vr41xx_access(struct cpu *cpu, struct memory *mem,
-	uint64_t relative_addr, unsigned char *data, size_t len,
-	int writeflag, void *);
 struct vr41xx_data *dev_vr41xx_init(struct machine *machine,
 	struct memory *mem, int cpumodel);
-
-/*  dev_wdsc.c:  */
-#define	DEV_WDSC_NREGS			0x100		/*  8-bit register select  */
-#define	DEV_WDSC_LENGTH			0x10
-int dev_wdsc_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-void dev_wdsc_init(struct machine *machine, struct memory *mem, uint64_t baseaddr, int controller_nr, int irq_nr);
 
 /*  lk201.c:  */
 struct lk201_data {

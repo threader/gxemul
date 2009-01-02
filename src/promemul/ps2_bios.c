@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: ps2_bios.c,v 1.4 2006/07/26 23:21:48 debug Exp $
+ *  $Id: ps2_bios.c,v 1.7.2.1 2008/01/18 19:12:34 debug Exp $
  *
- *  Playstation 2 SIFBIOS emulation.
+ *  COMMENT: Playstation 2 SIFBIOS emulation
  */
 
 #include <stdio.h>
@@ -41,7 +41,7 @@
 #include "cpu.h"
 #include "cpu_mips.h"
 #include "machine.h"
-#include "misc.h"
+#include "memory.h"
 
 
 extern int quiet_mode;

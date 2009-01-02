@@ -2,7 +2,7 @@
 #define	BUS_PCI_H
 
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: bus_pci.h,v 1.30 2006/08/12 19:32:20 debug Exp $
+ *  $Id: bus_pci.h,v 1.33.2.1 2008/01/18 19:12:31 debug Exp $
  */
 
 #include "misc.h"
@@ -47,8 +47,16 @@ struct pci_data;
 #else
 
 struct pci_data {
-	/*  IRQ nr of the controller itself.  */
-	int		irq_nr;
+	/*
+	 *  IRQ paths:
+	 *
+	 *  irq_path		Path of the controller itself.
+	 *  irq_path_isa	Path base of ISA interrupts.
+	 *  irq_path_pci	Path base of PCI interrupts.
+	 */
+	char		*irq_path;
+	char		*irq_path_isa;
+	char		*irq_path_pci;
 
 	/*
 	 *  Default I/O port, memory, and irq bases for PCI and legacy ISA
@@ -63,11 +71,9 @@ struct pci_data {
 
 	uint64_t	pci_portbase;
 	uint64_t	pci_membase;
-	int		pci_irqbase;
 
 	uint64_t	isa_portbase;
 	uint64_t	isa_membase;
-	int		isa_irqbase;
 
 	/*  Current base when allocating space for PCI devices:  */
 	uint64_t	cur_pci_portbase;
@@ -144,10 +150,10 @@ void bus_pci_data_access(struct cpu *cpu, struct pci_data *pci_data,
 	uint64_t *data, int len, int writeflag);
 
 /*  Initialization:  */
-struct pci_data *bus_pci_init(struct machine *machine, int irq_nr,
+struct pci_data *bus_pci_init(struct machine *machine, char *irq_path,
 	uint64_t pci_actual_io_offset, uint64_t pci_actual_mem_offset,
-	uint64_t pci_portbase, uint64_t pci_membase, int pci_irqbase,
-	uint64_t isa_portbase, uint64_t isa_membase, int isa_irqbase);
+	uint64_t pci_portbase, uint64_t pci_membase, char *pci_irqbase,
+	uint64_t isa_portbase, uint64_t isa_membase, char *isa_irqbase);
 
 /*  Add a PCI device to a PCI bus:  */
 void bus_pci_add(struct machine *machine, struct pci_data *pci_data,

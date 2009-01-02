@@ -2,7 +2,7 @@
 #define	CPU_ALPHA_H
 
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_alpha.h,v 1.44 2006/09/01 11:39:50 debug Exp $
+ *  $Id: cpu_alpha.h,v 1.49.2.1 2008/01/18 19:12:31 debug Exp $
  */
 
 #include "misc.h"
@@ -134,6 +134,8 @@ struct alpha_cpu {
 	uint64_t		load_linked_addr;
 	int			ll_flag;
 
+	int			irq_asserted;
+
 	/*  OSF1 PALcode specific:  */
 	uint64_t		vptptr;		/*  Virtual Page Table Ptr  */
 	uint64_t		sysvalue;
@@ -149,7 +151,7 @@ struct alpha_cpu {
 	 */
 	DYNTRANS_ITC(alpha)
 	VPH_TLBS(alpha,ALPHA)
-	VPH64(alpha,ALPHA,uint8_t)
+	VPH64(alpha,ALPHA)
 };
 
 

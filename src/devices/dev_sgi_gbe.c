@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,10 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_sgi_gbe.c,v 1.34 2006/03/04 12:38:48 debug Exp $
+ *  $Id: dev_sgi_gbe.c,v 1.37.2.1 2008/01/18 19:12:30 debug Exp $
  *
- *  SGI "gbe", graphics controller. Framebuffer.
+ *  COMMENT: SGI "gbe", graphics controller + framebuffer
+ *
  *  Loosely inspired by Linux code.
  */
 
@@ -83,7 +84,7 @@ struct sgi_gbe_data {
  *  These numbers (when << 16 bits) are pointers to the tiles. Tiles are
  *  512x128 in 8-bit mode, 256x128 in 16-bit mode, and 128x128 in 32-bit mode.
  */
-void dev_sgi_gbe_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(sgi_gbe)
 {
 	struct sgi_gbe_data *d = extra;
 	int tile_nr = 0, on_screen = 1, xbase = 0, ybase = 0;
@@ -204,9 +205,6 @@ for (i=0; i<pixels_per_line * d->bitdepth / 8; i++)
 }
 
 
-/*
- *  dev_sgi_gbe_access():
- */
 DEVICE_ACCESS(sgi_gbe)
 {
 	struct sgi_gbe_data *d = extra;
@@ -413,19 +411,12 @@ odata = random();	/*  testhack for the ip32 prom  */
 }
 
 
-/*
- *  dev_sgi_gbe_init():
- */
 void dev_sgi_gbe_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr)
 {
 	struct sgi_gbe_data *d;
 
-	d = malloc(sizeof(struct sgi_gbe_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct sgi_gbe_data)));
 	memset(d, 0, sizeof(struct sgi_gbe_data));
 
 	/*  640x480 for Linux:  */
@@ -443,6 +434,6 @@ void dev_sgi_gbe_init(struct machine *machine, struct memory *mem,
 
 	memory_device_register(mem, "sgi_gbe", baseaddr, DEV_SGI_GBE_LENGTH,
 	    dev_sgi_gbe_access, d, DM_DEFAULT, NULL);
-	machine_add_tickfunction(machine, dev_sgi_gbe_tick, d, 18, 0.0);
+	machine_add_tickfunction(machine, dev_sgi_gbe_tick, d, 18);
 }
 

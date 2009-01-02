@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_turbochannel.c,v 1.46 2006/01/01 13:17:17 debug Exp $
+ *  $Id: dev_turbochannel.c,v 1.50.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  Generic framework for TURBOchannel devices, used in DECstation machines.
+ *  COMMENT: TURBOchannel bus framework, used in DECstation machines
  */
 
 #include <stdio.h>
@@ -41,7 +41,7 @@
 #include "sfbreg.h"
 
 
-#define	DEVICE_NAME_BUFLEN		9
+#define	DEVICE_MAX_NAMELEN		9
 #define	CARD_NAME_BUFLEN		9
 #define	CARD_FIRMWARE_BUFLEN		5
 
@@ -49,11 +49,10 @@ struct turbochannel_data {
 	int		slot_nr;
 	uint64_t	baseaddr;
 	uint64_t	endaddr;
-	int		irq;
 
 	int		rom_skip;
 
-	char		device_name[DEVICE_NAME_BUFLEN];  /*  NUL-terminated  */
+	char		device_name[DEVICE_MAX_NAMELEN];  /*  NUL-terminated  */
 
 	/*  These should be terminated with spaces  */
 	char		card_firmware_version[CARD_NAME_BUFLEN];
@@ -63,9 +62,6 @@ struct turbochannel_data {
 };
 
 
-/*
- *  dev_turbochannel_access():
- */
 DEVICE_ACCESS(turbochannel)
 {
 	struct turbochannel_data *d = extra;
@@ -178,7 +174,7 @@ DEVICE_ACCESS(turbochannel)
  */
 void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 	int slot_nr, uint64_t baseaddr, uint64_t endaddr,
-	char *device_name, int irq)
+	char *device_name, char *irq_path)
 {
 	struct vfb_data *fb;
 	struct turbochannel_data *d;
@@ -194,18 +190,14 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 		exit(1);
 	}
 
-	d = malloc(sizeof(struct turbochannel_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct turbochannel_data)));
 	memset(d, 0, sizeof(struct turbochannel_data));
+
 	d->slot_nr  = slot_nr;
 	d->baseaddr = baseaddr;
 	d->endaddr  = endaddr;
-	d->irq      = irq;
 
-	strlcpy(d->device_name, device_name, DEVICE_NAME_BUFLEN);
+	strlcpy(d->device_name, device_name, DEVICE_MAX_NAMELEN);
 
 	strncpy(d->card_firmware_version, "V5.3a   ", CARD_NAME_BUFLEN);
 	strncpy(d->card_vendor_name,      "DEC     ", CARD_NAME_BUFLEN);
@@ -233,14 +225,15 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 
 	if (strcmp(device_name, "PMAD-AA")==0) {
 		/*  le in NetBSD, Lance ethernet  */
-		dev_le_init(machine, mem, baseaddr, 0, 0, irq, DEV_LE_LENGTH);
+		dev_le_init(machine, mem, baseaddr, 0, 0,
+		    irq_path, DEV_LE_LENGTH);
 		/*  One ROM at 0x1c03e0, and one at 0x3c0000.  */
 		rom_skip = 0x300;
 		rom_offset = 0x1c0000;
 		rom_length = 0x201000;
 	} else if (strcmp(device_name, "PMAZ-AA")==0) {
 		/*  asc in NetBSD, SCSI  */
-		dev_asc_init(machine, mem, baseaddr, irq, d,
+		dev_asc_init(machine, mem, baseaddr, irq_path, d,
 		    DEV_ASC_DEC, NULL, NULL);
 		rom_offset = 0xc0000;
 		/*  There is a copy at 0x0, at least that's where Linux
@@ -258,7 +251,7 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 		fb = dev_fb_init(machine, mem, baseaddr, VFB_GENERIC,
 		    1024,864, 1024,1024,8, device_name);
 		dev_bt459_init(machine, mem, baseaddr + VFB_CFB_BT459,
-		    baseaddr + 0x300000, fb, 8, irq, BT459_BA);
+		    baseaddr + 0x300000, fb, 8, irq_path, BT459_BA);
 		/*  ROM at both 0x380000 and 0x3c0000?  */
 		rom_offset = 0x380000;
 		rom_length = 0x080000;
@@ -271,15 +264,15 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 		/*  TODO: the CLEAR doesn't get through, as the address
 			range is already in use by the asic  */
 		dev_bt459_init(machine, mem, baseaddr + SFB_OFFSET_BT459,
-		    baseaddr + SFB_CLEAR, fb, 8, irq, BT459_BBA);
+		    baseaddr + SFB_CLEAR, fb, 8, irq_path, BT459_BBA);
 		rom_offset = 0x0;	/*  ? TODO  */
 	} else if (strcmp(device_name, "PMAG-CA")==0) {
 		/*  px in NetBSD  */
-		dev_px_init(machine, mem, baseaddr, DEV_PX_TYPE_PX, irq);
+		dev_px_init(machine, mem, baseaddr, DEV_PX_TYPE_PX, irq_path);
 		rom_offset = 0x3c0000;
 	} else if (strcmp(device_name, "PMAG-DA")==0) {
 		/*  pxg in NetBSD  */
-		dev_px_init(machine, mem, baseaddr, DEV_PX_TYPE_PXG, irq);
+		dev_px_init(machine, mem, baseaddr, DEV_PX_TYPE_PXG, irq_path);
 		rom_offset = 0x3c0000;
 	} else if (strcmp(device_name, "PMAG-EA")==0) {
 		/*  pxg+ in NetBSD: TODO  (not supported by the kernel
@@ -289,7 +282,7 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 	} else if (strcmp(device_name, "PMAG-FA")==0) {
 		/*  "pxg+ Turbo" in NetBSD  */
 		dev_px_init(machine, mem, baseaddr,
-		    DEV_PX_TYPE_PXGPLUSTURBO, irq);
+		    DEV_PX_TYPE_PXGPLUSTURBO, irq_path);
 		rom_offset = 0x3c0000;
 	} else if (strcmp(device_name, "PMAG-DV")==0) {
 		/*  xcfb in NetBSD: TODO  */
@@ -299,7 +292,7 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 		rom_offset = 0x3c0000;
 	} else if (strcmp(device_name, "PMAG-JA")==0) {
 		/*  "Truecolor", mixed 8- and 24-bit  */
-		dev_pmagja_init(machine, mem, baseaddr, irq);
+		dev_pmagja_init(machine, mem, baseaddr, irq_path);
 		rom_offset = 0;		/*  NOTE: 0, not 0x3c0000  */
 	} else if (strcmp(device_name, "PMAG-RO")==0) {
 		/*  This works at least B/W in Ultrix, so far.  */
@@ -307,7 +300,7 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 		    VFB_GENERIC, 1280,1024, 1280,1024, 8, "PMAG-RO");
 		/*  TODO: bt463 at offset 0x040000, not bt459  */
 		dev_bt459_init(machine, mem, baseaddr + 0x40000, 0,
-		    fb, 8, irq, 0);		/*  TODO: type  */
+		    fb, 8, irq_path, 0);		/*  TODO: type  */
 		dev_bt431_init(mem, baseaddr + 0x40010, fb, 8);  /*  cursor  */
 		rom_offset = 0x3c0000;
 	} else if (device_name[0] == '\0') {
@@ -323,11 +316,8 @@ void dev_turbochannel_init(struct machine *machine, struct memory *mem,
 	d->rom_skip = rom_skip;
 
 	nlen = strlen(device_name) + 30;
-	name2 = malloc(nlen);
-	if (name2 == NULL) {
-		fprintf(stderr, "out of memory in dev_turbochannel_init()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name2 = malloc(nlen));
+
 	if (*device_name)
 		snprintf(name2, nlen, "turbochannel [%s]", device_name);
 	else

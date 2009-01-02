@@ -1,70 +1,86 @@
-$Id: TODO,v 1.410 2006/11/06 05:32:38 debug Exp $
 
-This file is my list of things I want to work on in the future. It is in
-random order, and some parts of it are probably out-to-date by now.
+NOTE!
+
+I have begun working on GXemul 0.5.0, which is a total rewrite of GXemul
+from scratch. This is the _OLD_ todo file.
+
+===============================================================================
 
 
-Dyntrans:
-	x)  Instruction combination collisions? How to avoid easily...
-	x)  Think about how to do both SHmedia and SHcompact in a reasonable
-	    way! (Or AMD64 long/protected/real, for that matter.)
-	x)  68K emulation; think about how to do variable instruction
-	    lengths across page boundaries.
-	x)  Dyntrans with valgrind-inspired memory checker. (In memory_rw,
-	    it would be reasonably simple to add; in each individual fast
-	    load/store routine = a lot more work, and it would become
-	    kludgy very fast.)
-	x)  Dyntrans with SMP... lots of work to be done here.
-	x)  Dyntrans with cache emulation... lots of work here as well.
-	o)  dev_mp doesn't work well with dyntrans yet
-	o)  In general, IPIs, CAS, LL/SC etc must be made to work with dyntrans
-	x)  Redesign/rethink the delay slot mechanism used for e.g. MIPS,
-		so that it caches a translation (that is, an instruction
-		word and the instr_call it was translated to the last
-		time), so that it doesn't need to do slow
-		to_be_translated for each end of page?
-	x)  Program Counter statistics:
-		Per machine? What about SMP? All data to the same file?
-		A debugger command should be possible to use to enable/
-		disable statistics gathering.
-		Configuration file option!
-	x)  Breakpoints:
-		o) Physical vs virtual addresses!
-		o) 32-bit vs 64-bit sign extension for MIPS, and others?
-	x)  INVALIDATION should cause translations in _all_ cpus to be
-	    invalidated, e.g. on a write to a write-protected page
-	    (containing code)
-	x)  16-bit encodings? (MIPS16, ARM Thumb, 32-bit SH on SH64)
-	x)  Lots of other stuff: see src/cpus/README_DYNTRANS
-	x)  true recompilation backend? think carefully about this,
-	    experiment in a separate project (not in GXemul)
-		o) First test would be to just implement a simple
-		   instruction such as MIPS' addiu or lui, on AMD64
-		   hosts...
 
-Simple Valgrind-like checks?
-	o)  Mark every address with bits which tell whether or not the address
-	    has been written to.
-	o)  What should happen when programs are loaded?  Text/data, bss (zero
-	    filled). But stack space and heap is uninitialized.
-	o)  Uninitialized local variables:
-		A load from a place on the stack which has not previously
-		been stored to => warning. Increasing the stack pointer using
-		any available means should reset the memory to uninitialized.
-	o)  If calls to malloc() and free() can be intercepted:
-		o)  Access to a memory area after free() => warning.
-		o)  Memory returned by malloc() is marked as not-initialized.
-		o)  Non-passive, but good to have: Change the argument
-		    given to malloc, to return a slightly larger memory
-		    area, i.e.  margin_before + size + margin_after,
-		    and return the pointer  + margin_before.
-		    Any access to the margin_before or _after space results
-		    in warnings. (free() must be modified to free the
-		    actually allocated address.)
+$Id: TODO,v 1.560.2.2 2008/01/18 19:12:22 debug Exp $
+
+Some things, in no specific order, that I'd like to fix:
+(Some items in this list are perhaps already fixed.)
+
+-------------------------------------------------------------------------------
+
+NetBSD 4.0 regression testing:
+
+OK:
+	X  pmax 	including X Windows out-of-the-box! :)
+	X  arc  	1.6.2 -> 4.0! Yay!
+	X  hpcmips	works? but clock is standing still? (install says
+				50 MB/second!)
+	X  landisk	works fine :)
+	X  dreamcast	works fine
+	X  cats		ok, but with EXTREMELY LONG delays during boot
+	X  evbmips	works, but clock is going too fast.
+	X  macppc	ok
+
+Failed / Not tested:
+	   algor	iso is missing from ftp.netbsd.org
+	   cobalt	iso is missing from ftp.netbsd.org
+	   netwinder	iso is missing from ftp.netbsd.org
+
+Not tested: (lack of time, or no ISO image available?)
+	   sgimips
+	   evbarm
+	   prep
+	   pmppc
+
+-------------------------------------------------------------------------------
+
+Play around with the SGI O2 PROM image again, from the real O2.
+
+0.3.7: Ok, starts up with graphics (_IF_ the cache detection is skipped)
+
+20051112: Ok with graphics
+20051127: Ok
+20051201: Ok			<-- Somewhere between 20051201 and 20051203
+20051203: Not work.		    I apparently lost the graphical boot
+20051211: Does NOT work.
+
+0.3.8: Boots but switches to serial console ("could not open console") (also with
+       cache detection skipped manually)
+0.4.0: The cache detection breakpoint is not triggered :(
+
+-------------------------------------------------------------------------------
+
+M88K:
+	o)  FIP != NIP + 4, in rte! (Simulate delayed branch stuff.)
+	o)  cpu_dyntrans.c: MEMORY_USER_ACCESS implementation for M88K!
+	o)  xmem: Set transaction registers!
+	o)  CMMUs:
+		o)  Translation invalidations, could be optimized.
+		o)  Move initialization from dev_mvme187 to somewhere
+		    more reasonable?
+	o)  Instruction trace by using bits of ??IP control regs.
+	o)  Interrupts (these are machine dependent, though).
+	o)  Implement devices etc. for one or more machine modes,
+	    to get some guest OS running. OpenBSD/mvme88k on MVME187
+	    seems to be the smartest path to follow for now.
+		o)  VME bus device
+		o)  PCC2
+		o)  Cirrus Logic serial port controller
+	o)  Instruction disassembly, and implementation:
+		o)  See http://www.panggih.staff.ugm.ac.id/download/GCC/info/gcc.i5
+		    for some strange cases of when "div" can fail (?)
+		o)  Floating point stuff
+		o)  "Graphics" instructions (M88110-specific)
 
 MIPS:
 	o)  Nicer MIPS status bits in register dumps.
-	o)  Alignment exceptions.
 	o)  Floating point exception correctness.
 	o)  Fix this? Triggered by NetBSD/sgimips? Hm:
 		to_be_translated(): TODO: unimplemented instruction:
@@ -72,92 +88,82 @@ MIPS:
 	o)  Some more work on opcodes.
 		x) MIPS64 revision 2.
 			o)  Find out which actual CPUs implement the rev2 ISA!
+			o)  DINS, DINSM, DINSU etc
 			o)  DROTR32 and similar MIPS64 rev 2 instructions,
 			    which have a rotation bit which differs from
 			    previous ISAs.
-			o)  EI and DI instructions for MIPS64/32 rev 2.
-			    NOTE: These are _NOT_ the same as for R5900!
 		x) _MAYBE_ TX79 and R5900 actually differ in their
 		   opcodes? Check this carefully!
 	o)  Dyntrans: Count register updates are probably not 100% correct yet.
-	o)  Refactor code for performance and readability/maintainability.
 	o)  (Re)implement 128-bit loads/stores for R5900.
+	o)  Coprocessor 1x (i.e. 3) should cause cp1 exceptions, not 3?
+		(See http://lists.gnu.org/archive/html/qemu-devel/2007-05/msg00005.html)
 	o)  R4000 and others:
 		x)  watchhi/watchlo exceptions, and other exception
 		    handling details
+	o)  MIPS 5K* have 42 physical address bits, not 40/44?
 	o)  R10000 and others:  (R12000, R14000 ?)
+		x)  The code before the line
+			/*  reg[COP0_PAGEMASK] = cpu->cd.mips.coproc[0]->tlbs[0].mask & PAGEMASK_MASK;  */
+		    in cpu_mips.c is not correct for R10000 according to
+		    Lemote's Godson patches for GXemul. TODO: Go through all
+		    register definitions according to http://techpubs.sgi.com/library/tpl/cgi-bin/getdoc.cgi/hdwr/bks/SGI_Developer/books/R10K_UM/sgi_html/t5.Ver.2.0.book_263.html#HEADING334
+		    and make sure everything works with R10000.
+		    Then test with OpenBSD/sgi?
+		x)  Entry LO mask (as above).
 		x)  memory space, exceptions, ...
 		x)  use cop0 framemask for tlb lookups
 		    (http://techpubs.sgi.com/library/tpl/cgi-bin/getdoc.cgi/hdwr/bks/SGI_Developer/books/R10K_UM/sgi_html/t5.Ver.2.0.book_284.html)
 
 SuperH:
-	x)  DMA (0xffa00000)
-	x)  Instruction tracing should include symbols for branch targets,
-	    and so on...
+	x)  Auto-generation of loads/stores! This should get rid of at least
+	    the endianness check in each load/store.
+	x)  Experiment with whether or not correct ITLB emulation is
+	    actually needed. (20070522: I'm turning it off today.)
 	x)  SH4 interrupt controller:
-		x)  Implement correct priorities of interrupts
+		x)  MASKING should be possible!
+	x)  SH4 DMA (0xffa00000)
+	x)  SH4 UBC (0xff200000)
+	x)  Store queues can copy 32 bytes at a time, there's no need to
+	    copy individual 32-bit words. (Performance improvement.)
 	x)  SH4 BSC (Bus State Controller)
-	x)  NetBSD/evbsh3, dreamcast, mmeye, hpcsh! Linux?
-	x)  Replace pc-relative loads with immediate load, if within the
-	    same page. (Similar to the same optimization for ARM.)
-	x)  Floating point exception correctness.
+	x)  Instruction tracing should include symbols for branch targets,
+	    and so on, to make the output more human readable.
+	x)  SH3-specific devices: Pretty much everything!
+	x)  NetBSD/evbsh3, hpcsh! Linux?
 	x)  Floating point speed!
-	x)  Think carefully about how to implement SH5/SH64 (for evbsh5).
+	x)  Floating point exception correctness.
+	x)  Exceptions for unaligned load/stores. OpenBSD/landisk uses
+	    this mechanism for its reboot code (machine_reset).
+
+Landisk SH4:
+	x)  When NetBSD/landisk 4.0 has been released, make sure it works
+	    in the emulator. (Update documentation, etc.)
+	    NetBSD HEAD (as of April 2007) hangs during bootup, because it
+	    turns on/off interrupts in an unfortunately synchronized way
+	    with dyntrans. This needs to be fixed.
 
 Dreamcast:
-	x)  CD image bootup:
-		0)  Find IP.BIN, and load it to 0x8c008000.
-		1)  Run code at 0x8c008300 (SEGA license code).
-		2)  When the license code runs a "boot menu" syscall,
-		    load the 1ST_READ.BIN file (unscrambled?) to 0x8c010000.
-		3)  Run code at 0x8c00b800 (Bootstrap 1). This will in turn
-		    jump to 0x8c00e000 (Bootstrap 2), and then jump to
-		    0x8c010000, to start the program.
-		(Try with e.g. Comstedt's Serial IP Slave, to make sure it
-		works as expected.)
-	x)  LAN adapter.
+	x)  G2 DMA
+	x)  LAN adapter (dev_mb8696x.c).  NetBSD root-on-nfs.
 	x)  PVR:  Lots of stuff. See dev_pvr.c.
+	x)  Better GDROM support
+	x)  Modem
+	x)  PCI bridge/bus?
 	x)  Maple bus:
 		x)  Correct controller input
 		x)  Mouse input
-	x)  PROM/BIOS calls:
-		x)  GD-ROM emulation
-	x)  NetBSD/dreamcast: Root on nfs?
-	x)  Linux/dreamcast? (The gentoo kernel currently crashes.)
+	x)  Software emulation of BIOS calls:
+		x)  GD-ROM emulation: Use the GDROM device.
+		x)  Use the VGA font as a fake ROM font. (Better than
+		    nothing.)
+	x)  Make as many as possible of the KOS examples run!
 	x)  More homebrew demos/games.
-	x)  Sound emulation (ARM cpu).
-	x)  VME processor emulation?
-
-Transputer:
-	x)  Implement support for Helios binaries.
-	x)  Stack and register contents at startup?
-	x)  Figure out how to boot an entire Helios distribution.
-	x)  Implement all instructions. :)
-
-RCA1802/RCA1805, CHIP8:
-	x)  CHIP8 -> RCA180x conversion
-		x)  Think about how to do dual-mode, variable-instr-length
-		    ISAs, and switch between modes.
-		x)  1805 "extended" opcode -> trigger CHIP8 emulation?
-			That is, all calls 0NNN could point to 0x68 opcodes,
-			which, if running on a 1802 in CHIP8-emulation-mode,
-			would be manually interpreted.
-		x)  Better solution:
-			CHIP8 calls to 00xx => handle at high level,
-			      calls to 0xxx in general = call 180X machine code
-				(0000 = reboot?)
-	x)  1802 info: http://www.nyx.net/~lturner/public_html/Cosmac.html
-	    and:  http://www.elf-emulation.com/1802.html
-	x)  1805 extended opcodes: Implement at least disassembly support!
-	x)  Keyboard input.
-	x)  Sound (beep only).
-	x)  Slow-down to correct speed? Wikipedia: "it was usually operated
-	    at 3.58 MHz/2 to suit the requirements of the 1861 chip which
-	    gave a speed of a little over 100,000 instructions per second"
-	    (Note that _CHIP8_ emulation would then be even slower.)
-	x)  SCHIP48 (Super) emulation:
-		Some more opcodes, 128x64 framebuffer, larger
-		sprites and fonts.
+	x)  SPU: Sound emulation (ARM cpu).
+	x)  VME processor emulation? "(Sanyo LC8670 "Potato")" according to
+	    Wikipedia, LC86K87 according to Comstedt's page. See
+	    http://www.maushammer.com/vmu.html for a good description of
+	    the differences between LC86104C and the one used in the VME.
 
 Alpha:
 	x)  OSF1 PALcode, Virtual memory support.
@@ -168,36 +174,20 @@ Alpha:
 	x)  More Alpha machine types, so it could work with
 	    OpenBSD, FreeBSD, and Linux too?
 
-SPARC:
+SPARC (both the ISA and the machines):
 	o)  Implement Adress space identifiers; load/stores etc.
-	o)  Save/restore register windows etc!
+	o)  Exception/trap/interrupt handling.
+	o)  Save/restore register windows etc! Both v9 and pre-v9!
 	o)  Finish the subcc and addcc flag computation code.
 	o)  Add more registers (floating point, control regs etc)
-	o)  Exception/trap handling.
 	o)  Disassemly of some more instructions?
 	o)  Are sll etc 32-bit sign-extending or zero-extending?
-	o)  Finish the GDB register stuff.
-	x)  Floating point exception correctness.
+	o)  Floating point exception correctness.
 	o)  SPARC v8, v7 etc?
-
-Debugger:
-	o)  How does SMP debugging work? Does it simply use "threads"?
-		What if the guest OS (running on an emulated SMP machine)
-		has a usertask running, with userland threads?
-	o)  Try to make the debugger more modular and, if possible, reentrant!
-	o)  Remove the emul command? (But show network info if showing
-		machines?)
-	o)  Settings:
-		x)  Special handlers for Write!
-			+)  MIPS coproc regs
-			+)  Alpha/MIPS/SPARC zero registers
-			+)  x86 64/32/16-bit registers
-		x)  Value formatter for resulting output.
-	o)  see src/debugger.c for more
+	o)  More machine modes and devices.
 
 POWER/PowerPC:
-	x)  find and fix the bug which causes NetBSD/macppc to fail after
-	    an install!
+	x)  Fix DECR timer speed, so it matches the host.
 	x)  NetBSD/prep 3.x triggers a possible bug in the emulator:
 	    <wdc_exec_command(0xd005e514,0xd60cdd30,0,8,..)>
 	      <ata_get_xfer(0,0xd60cdd30,0,8,..)>
@@ -221,42 +211,148 @@ POWER/PowerPC:
 	x)  Floating point exception correctness.
 	x)  Alignment exceptions.
 
+PReP:
+	x)  Clock time! ("Bad battery blah blah")
+
 Algor:
 	o)  Other models than the P5064?
 	o)  PCI interrupts... needed for stuff like the tlp NIC?
+
+BeBox:
+	o)  Interrupts. There seems to be a problem with WDC interrupts
+	    "after a short while", although a few interrupts get through?
+	o)  Perhaps find a copy of BeOS and try it?
+
+Malta:
+	o)  The Linux/Malta kernel at people.debian.org/~ths/qemu/malta/
+	    almost works:
+		./gxemul -x -o 'rd_start=0x80800000 rd_size=10000000 init=/bin/sh' -C 4KEc
+		  -e malta 0x80800000:people.debian.org/~ths/qemu/malta/initrd.gz 
+		  people.debian.org/~ths/qemu/malta/vmlinux
+	    (Remove "init=/bin/sh" to boot into the Debian installer.)
+	    There are at least two things that need to be fixed:
+		1. PCI IDE; make Linux oops.
+		2. Implement the NIC.
 
 HPCmips:
 	x)  Mouse/pad support! :)
 	x)  A NIC? (As a PCMCIA device?)
 
-AVR:
-	o)  Everything.
-
-AVR32:
-	o)  Everything. It would be good if there was NetBSD/avr32 to
-	    experiment with...
-
 ARM:
 	o)  See netwinder_reset() in NetBSD; the current "an internal error
 	    occured" message after reboot/halt is too ugly.
-	o)  ARM "wait"-like instruction?
-	o)  try to get netbsd/evbarm 3.x running (iq80321)
+	o)  Generic ARM "wait"-like instruction?
+	o)  try to get netbsd/evbarm 3.x or 4.x running (iq80321)
 	o)  make the xscale counter registers (ccnt) work
 	o)  make the ata controller usable for FreeBSD!
-	o)  zaurus for openbsd...
-	o)  debian/cats crashes because of unimplemented coproc stuff.
+	o)  Debian/cats crashes because of unimplemented coproc stuff.
 	    fix this?
 
 Test machines:
-	+ dev_fb block fill and copy
-	+ dev_fb draw characters (from the built-in font)?
-	+ dev_fb input device? mouse pointer coordinates and buttons
+	o)  dev_fb block fill and copy
+	o)  dev_fb draw characters (from the built-in font)?
+	o)  dev_fb input device? mouse pointer coordinates and buttons
 		(allow changes in these to cause interrupts as well?)
-	+ Redefine the halt() function so that it stops "sometimes
-	  soon", i.e. usage in demo code should be:
+	o)  Redefine the halt() function so that it stops "sometimes
+	    soon", i.e. usage in demo code should be:
 		for (;;) {
 			halt();
 		}
+
+Debugger:
+	o)  How does SMP debugging work? Does it simply use "threads"?
+	    What if the guest OS (running on an emulated SMP machine)
+	    has a usertask running, with userland threads?
+	o)  Try to make the debugger more modular and, if possible, reentrant!
+	o)  Memory dumps should be able to dump both physical and
+	    virtual emulated memory.
+	o)  Evaluate expressions within []? That would allow stuff like
+	    cpu[x] where x is an expression.
+	o)  "pc = pc + 4" doesn't work! Bug. Should work. ("pc=pc+4" works.)
+	o)  Settings:
+		x)  Special handlers for Write!
+			+)  MIPS coproc regs
+			+)  Alpha/MIPS/SPARC zero registers
+			+)  x86 64/32/16-bit registers
+		x)  Value formatter for resulting output.
+	o)  Call stack display (back-trace) of emulated programs.
+	o)  Nicer looking output of register dumps, floating point registers,
+	    etc. Warn about weird/invalid register contents.
+	o)  Ctrl-C doesn't enter the debugger on some OSes (HP-UX?)...
+
+Dyntrans:
+	x)  NOTE: ARM etc. that load pc-relative constants, on writes to
+	    pages that contain translations, the ENTIRE page must be
+	    invalidated, not just the 1/32th that was code.
+	x)  For 32-bit emulation modes, that have emulated TLBs: tlbindex
+	    arrays of mapped pages? Things to think about:
+		x)  Only 32-bit mode! (64-bit => too much code)
+		x)  One array for global pages, and one array _PER ASID_,
+		    for those archs that support that. On M88K, there should
+		    be one array for userspace, and one for supervisor, etc.
+		x)  Larger-than-4K-pages must fill several bits in the array.
+		x)  No TLB search will be necessary.
+		x)  Total host space used, for 4 KB pages: 1 MB per table,
+		    i.e. 65 MB for 32-bit MIPS, 2 MB for M88K, if one byte
+		    is used as the tlb index.
+		x)  (The index is actually +1, so that 0 means no hit.)
+	x)  "Merge" the cur_physpage and cur_ic_page variables/pointers to
+	    one? I.e. change cur_ic_page to cur_physpage.ic_page or something.
+	x)  Instruction combination collisions? How to avoid easily...
+	x)  superh -- no hostpage for e.g. 0x8c000000. devices as ram!
+	x)  Think about how to do both SHmedia and SHcompact in a reasonable
+	    way! (Or AMD64 long/protected/real, for that matter.)
+	x)  68K emulation; think about how to do variable instruction
+	    lengths across page boundaries.
+	x)  Dyntrans with valgrind-inspired memory checker. (In memory_rw,
+	    it would be reasonably simple to add; in each individual fast
+	    load/store routine = a lot more work, and it would become
+	    kludgy very fast.)
+	x)  Dyntrans with SMP... lots of work to be done here.
+	x)  Dyntrans with cache emulation... lots of work here as well.
+	x)  Remove the concept of base RAM completely; it would be more
+	    generic to allow RAM devices to be used "anywhere".
+	o)  dev_mp doesn't work well with dyntrans yet
+	o)  In general, IPIs, CAS, LL/SC etc must be made to work with dyntrans
+	x)  Redesign/rethink the delay slot mechanism used for e.g. MIPS,
+		so that it caches a translation (that is, an instruction
+		word and the instr_call it was translated to the last
+		time), so that it doesn't need to do slow
+		to_be_translated for each end of page?
+	x)  Program Counter statistics:
+		Per machine? What about SMP? All data to the same file?
+		A debugger command should be possible to use to enable/
+		disable statistics gathering.
+		Configuration file option!
+	x)  Breakpoints:
+		o) Physical vs virtual addresses!
+		o) 32-bit vs 64-bit sign extension for MIPS, and others?
+	x)  INVALIDATION should cause translations in _all_ cpus to be
+	    invalidated, e.g. on a write to a write-protected page
+	    (containing code)
+	x)  16-bit encodings? (MIPS16, ARM Thumb, etc)
+	x)  Lots of other stuff: see src/cpus/README_DYNTRANS
+	x)  Native code generation backends... think carefully about this.
+
+Simple Valgrind-like checks?
+	o)  Mark every address with bits which tell whether or not the address
+	    has been written to.
+	o)  What should happen when programs are loaded?  Text/data, bss (zero
+	    filled). But stack space and heap is uninitialized.
+	o)  Uninitialized local variables:
+		A load from a place on the stack which has not previously
+		been stored to => warning. Increasing the stack pointer using
+		any available means should reset the memory to uninitialized.
+	o)  If calls to malloc() and free() can be intercepted:
+		o)  Access to a memory area after free() => warning.
+		o)  Memory returned by malloc() is marked as not-initialized.
+		o)  Non-passive, but good to have: Change the argument
+		    given to malloc, to return a slightly larger memory
+		    area, i.e.  margin_before + size + margin_after,
+		    and return the pointer  + margin_before.
+		    Any access to the margin_before or _after space results
+		    in warnings. (free() must be modified to free the
+		    actually allocated address.)
 
 Better CD Image file support:
 	x)  Support CD formats that contain more than 1 track, e.g.
@@ -267,6 +363,15 @@ Better CD Image file support:
 	    possibly other live-CD formats.)
 
 Networking:
+	x)  Redesign of the networking subsystem, at least the NAT translation
+		part. The current way of allowing raw ethernet frames to be
+		transfered to/from the emulator via UDP should probably be
+		extended to allow the frames to be transmitted other ways as
+		well.
+	x)  Also adding support for connecting ttys (either to xterms, or to
+		pipes/sockets etc, or even to PPP->NAT or SLIP->NAT :-).
+	x)  Documentation updates (!) are very important, making it easier to
+		use the (already existing) network emulation features.
 	x)  Fix performance problems caused by only allowing a
 	    single TCP packet to be unacked.
 	x)  Don't hardcode offsets into packets!
@@ -299,6 +404,7 @@ Cache simulation:
 	    is another option (easier to implement, but very very slow).
 
 Documentation:
+	x)  Update the documentation regarding the testmachine interrupts.
 	x)  Note about sandboxing/security:
 		Not all emulated instructions fail in the way they would
 		do on real hardware (e.g. a userspace program writing to
@@ -308,7 +414,6 @@ Documentation:
 		securely".
 	x)  Try NetBSD/arc 4.x! (It seems to work with disk images!)
 	x)  NetBSD/pmax 4 install instructions: xterm instead of vt100!
-	x)  DEVICE_TICK in technical.html
 	x)  Rewrite the section about experimental devices, after the
 	    framebuffer acceleration has been implemented, and demos
 	    written. (Symbolic names instead of numbers; example
@@ -317,23 +422,6 @@ Documentation:
 	x)  "a very simple linear framebuffer device (for graphics output)"
 	    under "which machines does gxemul emulate" ==> better
 	    description?
-	x)  Better description on how to set up a cross compiler?
-	    Example for MIPS64.
-	o)  Automagic documentation generation?
-		x)  machines, cpus, devices.
-		x)  REMEMBER that several machines/devices can be in
-			the same source file!
-	o)  Try to rewrite the install instructions for those machines
-	    that use 3MAX into using CATS or hpcmips? (To remove the need
-	    to use a raw ffs partition, using up all of the disk image.)
-
-More generic out_of_memory error reporting, and check everywhere!
-	Causes:	OpenBSD has low default limits for normal users.
-		Host is 32-bit? (32-bit hosts are limited to 4 GB or less
-		of userspace memory.)
-		You are actually low on RAM. (As trivial as this might sound,
-		Unix systems usually allow processes to allocate virtual
-		memory beyond the amount of RAM in the machine.)
 
 The Device subsystem:
 	x)  allow devices to be moved and/or changed in size (down to a
@@ -343,12 +431,18 @@ The Device subsystem:
 	    registering new devices, and for moving existing ones.
 	    cpu->invalidate translation caches, for all CPUs that
 	    are connected to a specific memory.
-	x)  keep track of interrupts and busses? actually, allowing any device
-	    to be a bus might be a nice idea.
-	x)  turn interrupt controllers into devices? :-)
-	x)  refactor various clocks/nvram/cmos into one device?
 
 PCI:
+	x)  Pretty much everything related to runtime configuration, device
+	    slots, interrupts, etc must be redesigned/cleaned up. The current
+	    code is very hardcoded and ugly.
+	o)  Allow cards to be added/removed during runtime more easily.
+	o)  Allow cards to be enabled/disabled (i/o ports, etc, like
+	    NetBSD needs for disk controller detection).
+	o)  Allow devices to be moved in memory during runtime.
+	o)  Interrupts per PCI slot, etc. (A-D).
+	o)  PCI interrupt controller logic... very hard to get right,
+	    because these differ a lot from one machine to the next.
 	x)  last write was ffffffff ==> fix this, it should be used
 	    together with a mask to get the correct bits. also, not ALL
 	    bits are size bits! (lowest 4 vs lowest 2?)
@@ -356,50 +450,18 @@ PCI:
 	x)  generalize the interrupt routing stuff (lines etc)
 
 Clocks and timers:
+	x)  Fix the PowerPC DECR interrupt speed! (MacPPC and PReP speed, etc.)
 	x)  DON'T HARDCODE 100 HZ IN cpu_mips_coproc.c!
-	x)  Test the 8253? Right now it doesn't seem to be used?
-	x)  NetWinder timeofday is incorrect!
+	x)  NetWinder timeofday is incorrect! Huh? grep -R for ta_rtc_read in
+	    NetBSD sources; it doesn't seem to be initialized _AT ALL_?!
 	x)  Cobalt TOD is incorrect!
 	x)  Go through all other machines, one by one, and fix them.
-
-Busses:
-	o)  Redesign the entire "mainbus" concept!
-		x)  Busses should be placed in a hierarchical tree (?)
-		x)  Specific clock/bus speeds, cpu speeds etc.
-	o)  Interrupt routing subsystem:
-		x)  IF POSSIBLE, try to make the new system work with the
-		    current system, but print annoying warning messages. :)
-		    Think carefully about this.
-		x)  Registry for all available interrupts.
-			+)  Each interrupt controller (including CPU cores
-			    that can handle interrupts) should register its
-			    interrupts, e.g.
-				cpu[0].irq[3]
-				cpu[0].irq[3].pcmcia_slot[1]
-				cpu[0].irq.pci[3]
-			+)  Note: MIPS cpus have multiple irqs in the core,
-			    while some other CPUs only have one (irq[0]
-			    or just irq).
-		x)  Users should use interrupt _names_ instead of integers
-		    when attaching to an interrupt controller, but when
-		    asserting/deasserting irq lines, small integers must
-		    still be used (for obvious performance reasons).
-		    Figure out a way to do this nicely!
-		x)  Any users need to say whether they need the interrupt line
-		    exclusively or allow shared access.
-		x)  Must work with everything from native IRQs to
-		    TurboChannel/PCI/ISA/ADB/PCMCIA/...
-		x)  Must work with SMP emulation!
-		x)  Make it with device_add(). How does the end user find
-		    out the name of an interrupt controller/line in e.g.
-		    a configuration file?
-	o)  Synchronization over network? or at least in dyntrans within
-	    one emulated machine
-	o)  Convert to real busses: TurboChannel, PCMCIA, ADB
 
 Config file parser:
 	o)  Rewrite it from scratch!
 	o)  Usage of any expression available through the debugger
+	o)  Allow interrupt controllers to be added! and interrupts
+	    to be used in more ways than before
 	o)  Support for running debugger commands (like the -c
 	    command line option)
 
@@ -410,13 +472,25 @@ Floating point layer:
 	o)  non-IEEE modes (i.e. x86)?
 
 Userland emulation:
-	x)  Lots of stuff; freebsd and netbsd (and linux?) syscalls.
-	x)  Dynamic linking? Hm.
+	x)  Try to prefix "/emul/mips/" or similar to all filenames,
+	    and only if that fails, try the given filename.
+            Read this setting from an environment variable, and only
+            if there is none, fall back to hardcoded string.
+	x)  File descriptor (0,1,2) assumptions? Find and fix these?
+	x)  Dynamic linking!
+	x)  Lots of stuff; freebsd, netbsd, linux, ... syscalls.
+	x)  Initial register/stack contents (environment, command line args).
+	x)  Return value (from main).
+	x)  mmap emulation layer
+	x)  errno emulation layer
+	x)  ioctl emulation layer for all devices :-[
+	x)  struct conversions for many syscalls
 
 Sound:
 	x)  generic sound framework
 	x)  add one or more sound cards as devices; add a testmachine
 	    sound card first?
+	x)  Dreamcast sound? Generic PCI sound cards?
 
 ASC SCSI controller:
 	x)  NetBSD/arc 2.0 uses the ASC controller in a way which GXemul
@@ -442,9 +516,13 @@ Caches / memory hierarchies: (this is mostly MIPS-specific)
 	    possible.
 
 File/disk/symbol handling:
+	o)  Make sure that disks can be added/removed during runtime!
+	    (Perhaps this needs a reasonably large re-write.)
 	o)  Remove some of the complexity in file format guessing, for
 		Ultrix kernels that are actually disk images?
-	o)  Better handling of tape files
+	o)  Remove temporary files (/tmp/gxemul.blahblah) if loading fails
+	    for some reason (unrecognized file, etc).
+	o)  Better handling of tape files	
 	o)  Read function argument count and types from binaries? (ELF?)
 	o)  Better demangling of C++ names. Note: GNU's C++ differs from e.g.
 	    Microsoft's C++, so multiple schemes must be possible. See
@@ -453,17 +531,14 @@ File/disk/symbol handling:
 Userland ABI emulation:
 	o)  see src/useremul.c
 
-Terminal/console:
-	o)  allow emulated serial ports to be connected to the outside
-	    world in a more generic way, or even to other emulated
-	    machines(?)
-
-Save state of the whole emulated machine, to be able to load it back
-	in later?  (Memory, all device's states, all registers and
-	so on.  Like taking a snapshot. (SimOS seems to do this,
-	according to its website.))
-
 Better framebuffer and X-windows functionality:
+	o)  Do a complete rewrite of the framebuffer/console stuff, so that:
+		1)  It does not rely on X11 specifically.
+		2)  It is possible to interact with emulated framebuffers
+		    and consoles "remotely", e.g. via a web page which
+		    controls multiple virtualized machines.
+		3)  It is possible to run on (hypothetical) non-X11
+		    graphics systems.
 	o)  Generalize the update_x1y1x2y2 stuff to an extend-region()
 	    function...
 	o)  -Yx sometimes causes crashes.
@@ -488,5 +563,7 @@ Better framebuffer and X-windows functionality:
 		    to change the font of an xterm in X in the
 		    emulator)
 	o)  Generalize the framebuffer stuff by moving _ALL_ X11
-		specific code to src/x11.c!
+		specific code to a separate module.
+
+-------------------------------------------------------------------------------
 

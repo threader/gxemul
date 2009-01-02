@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_dreamcast_rtc.c,v 1.1 2006/10/19 10:15:57 debug Exp $
+ *  $Id: dev_dreamcast_rtc.c,v 1.4.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  Dreamcast Real-Time Clock.
+ *  COMMENT: Dreamcast Real-Time Clock
  *
  *  Pretty basic; two 32-bit words at physical addresses 0x00710000 and
  *  0x00710004 hold the high and low 16-bit parts, respectively, of the
@@ -44,7 +44,6 @@
 
 #include "cpu.h"
 #include "device.h"
-#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -59,8 +58,7 @@ struct dreamcast_rtc_data {
 
 DEVICE_ACCESS(dreamcast_rtc)
 {
-	/*  struct dreamcast_rtc_data *d =
-	    (struct dreamcast_rtc_data *) extra;  */
+	/*  struct dreamcast_rtc_data *d = extra;  */
 	uint64_t idata = 0, odata = 0;
 	struct timeval tv;
 
@@ -86,7 +84,8 @@ DEVICE_ACCESS(dreamcast_rtc)
 			odata &= 0xffff;
 		break;
 
-	default:if (writeflag == MEM_READ) {
+	default:
+		if (writeflag == MEM_READ) {
 			fatal("[ dreamcast_rtc: read from addr 0x%x ]\n",
 			    (int)relative_addr);
 		} else {
@@ -104,16 +103,12 @@ DEVICE_ACCESS(dreamcast_rtc)
 
 DEVINIT(dreamcast_rtc)
 {
-	struct machine *machine = devinit->machine;
-	struct dreamcast_rtc_data *d =
-	    malloc(sizeof(struct dreamcast_rtc_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct dreamcast_rtc_data *d;
+
+	CHECK_ALLOCATION(d = malloc(sizeof(struct dreamcast_rtc_data)));
 	memset(d, 0, sizeof(struct dreamcast_rtc_data));
 
-	memory_device_register(machine->memory, devinit->name,
+	memory_device_register(devinit->machine->memory, devinit->name,
 	    0x00710000, 0x100, dev_dreamcast_rtc_access, d, DM_DEFAULT, NULL);
 
 	return 1;

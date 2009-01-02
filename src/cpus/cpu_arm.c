@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_arm.c,v 1.64 2006/09/09 09:04:32 debug Exp $
+ *  $Id: cpu_arm.c,v 1.72.2.1 2008/01/18 19:12:24 debug Exp $
  *
  *  ARM CPU emulation.
  *
@@ -39,15 +39,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include "arm_cpu_types.h"
 #include "cpu.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
 #include "of.h"
 #include "settings.h"
 #include "symbol.h"
+#include "useremul.h"
 
 #define DYNTRANS_32
 #include "tmp_arm_head.c"
@@ -67,6 +70,9 @@ static int arm_exception_to_mode[N_ARM_EXCEPTIONS] = ARM_EXCEPTION_TO_MODE;
 /*  For quick_pc_to_pointers():  */
 void arm_pc_to_pointers(struct cpu *cpu);
 #include "quick_pc_to_pointers.h"
+
+void arm_irq_interrupt_assert(struct interrupt *interrupt);
+void arm_irq_interrupt_deassert(struct interrupt *interrupt);
 
 
 /*
@@ -168,6 +174,23 @@ int arm_cpu_new(struct cpu *cpu, struct memory *mem,
 	CPU_SETTINGS_ADD_REGISTER64("pc", cpu->pc);
 	for (i=0; i<N_ARM_REGS - 1; i++)
 		CPU_SETTINGS_ADD_REGISTER32(arm_regname[i], cpu->cd.arm.r[i]);
+
+	/*  Register the CPU's "IRQ" and "FIQ" interrupts:  */
+	{
+		struct interrupt template;
+		char name[50];
+		snprintf(name, sizeof(name), "%s.irq", cpu->path);
+
+                memset(&template, 0, sizeof(template));
+                template.line = 0;
+                template.name = name;
+                template.extra = cpu;
+                template.interrupt_assert = arm_irq_interrupt_assert;
+                template.interrupt_deassert = arm_irq_interrupt_deassert;
+                interrupt_handler_register(&template);
+
+		/*  FIQ: TODO  */
+        }
 
 	return 1;
 }
@@ -704,120 +727,19 @@ void arm_cpu_tlbdump(struct machine *m, int x, int rawflag)
 }
 
 
-static void add_response_word(struct cpu *cpu, char *r, uint32_t value,
-	size_t maxlen)
-{
-	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
-		value = ((value & 0xff) << 24) +
-			((value & 0xff00) << 8) +
-			((value & 0xff0000) >> 8) +
-			((value & 0xff000000) >> 24);
-	}
-	snprintf(r + strlen(r), maxlen - strlen(r), "%08"PRIx32, value);
-}
-
-
 /*
- *  arm_cpu_gdb_stub():
- *
- *  Execute a "remote GDB" command. Returns a newly allocated response string
- *  on success, NULL on failure.
+ *  arm_irq_interrupt_assert():
+ *  arm_irq_interrupt_deassert():
  */
-char *arm_cpu_gdb_stub(struct cpu *cpu, char *cmd)
+void arm_irq_interrupt_assert(struct interrupt *interrupt)
 {
-	if (strcmp(cmd, "g") == 0) {
-		/*  15 gprs, pc, 8 fprs, fps, cpsr.  */
-		int i;
-		char *r;
-		size_t len = 1 + 18 * sizeof(uint32_t);
-		r = malloc(len);
-		if (r == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
-		r[0] = '\0';
-		for (i=0; i<15; i++)
-			add_response_word(cpu, r, cpu->cd.arm.r[i], len);
-		add_response_word(cpu, r, cpu->pc, len);
-		/*  TODO: fprs:  */
-		for (i=0; i<8; i++)
-			add_response_word(cpu, r, 0, len);
-		/*  TODO: fps  */
-		add_response_word(cpu, r, 0, len);
-		add_response_word(cpu, r, cpu->cd.arm.cpsr, len);
-		return r;
-	}
-
-	if (cmd[0] == 'p') {
-		int regnr = strtol(cmd + 1, NULL, 16);
-		size_t len = 2 * sizeof(uint32_t) + 1;
-		char *r = malloc(len);
-		r[0] = '\0';
-		if (regnr == ARM_PC) {
-			add_response_word(cpu, r, cpu->pc, len);
-		} else if (regnr >= 0 && regnr < ARM_PC) {
-			add_response_word(cpu, r, cpu->cd.arm.r[regnr], len);
-		} else if (regnr >= 0x10 && regnr <= 0x17) {
-			/*  TODO: fprs  */
-			add_response_word(cpu, r, 0, len);
-			add_response_word(cpu, r, 0, len);
-			add_response_word(cpu, r, 0, len);
-		} else if (regnr == 0x18) {
-			/*  TODO: fps  */
-			add_response_word(cpu, r, 0, len);
-		} else if (regnr == 0x19) {
-			add_response_word(cpu, r, cpu->cd.arm.cpsr, len);
-		}
-		return r;
-	}
-
-	fatal("arm_cpu_gdb_stub(): TODO\n");
-	return NULL;
+	struct cpu *cpu = (struct cpu *) interrupt->extra;
+	cpu->cd.arm.irq_asserted = 1;
 }
-
-
-/*
- *  arm_cpu_interrupt():
- *
- *  0..31 are used as footbridge interrupt numbers, 32..47 = ISA,
- *  64 is used as a "re-assert" signal to cpu->machine->md_interrupt().
- *
- *  TODO: don't hardcode to footbridge!
- */
-int arm_cpu_interrupt(struct cpu *cpu, uint64_t irq_nr)
+void arm_irq_interrupt_deassert(struct interrupt *interrupt)
 {
-	/*  fatal("arm_cpu_interrupt(): 0x%x\n", (int)irq_nr);  */
-	if (irq_nr <= 64) {
-		if (cpu->machine->md_interrupt != NULL)
-			cpu->machine->md_interrupt(cpu->machine,
-			    cpu, irq_nr, 1);
-		else
-			fatal("arm_cpu_interrupt(): irq_nr=%i md_interrupt =="
-			    " NULL\n", (int)irq_nr);
-	} else {
-		/*  Assert ARM IRQs:  */
-		cpu->cd.arm.irq_asserted = 1;
-	}
-
-	return 1;
-}
-
-
-/*
- *  arm_cpu_interrupt_ack():
- */
-int arm_cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr)
-{
-	if (irq_nr <= 64) {
-		if (cpu->machine->md_interrupt != NULL)
-			cpu->machine->md_interrupt(cpu->machine,
-			    cpu, irq_nr, 0);
-	} else {
-		/*  De-assert ARM IRQs:  */
-		cpu->cd.arm.irq_asserted = 0;
-	}
-
-	return 1;
+	struct cpu *cpu = (struct cpu *) interrupt->extra;
+	cpu->cd.arm.irq_asserted = 0;
 }
 
 

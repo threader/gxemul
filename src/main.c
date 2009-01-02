@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: main.c,v 1.284 2006/09/19 10:50:08 debug Exp $
+ *  $Id: main.c,v 1.311.2.1 2008/01/18 19:12:24 debug Exp $
  */
 
 #include <stdio.h>
@@ -45,9 +45,10 @@
 #include "misc.h"
 #include "settings.h"
 #include "timer.h"
+#include "useremul.h"
 
 
-extern volatile int single_step;
+extern int single_step;
 extern int force_debugger_at_exit;
 
 extern int optind;
@@ -59,7 +60,8 @@ int extra_argc;
 char **extra_argv;
 char *progname;
 
-int skip_srandom_call = 0;
+size_t dyntrans_cache_size = DEFAULT_DYNTRANS_CACHE_SIZE;
+static int skip_srandom_call = 0;
 
 
 /*****************************************************************************
@@ -194,21 +196,15 @@ void internal_w(char *arg)
  */
 static void usage(int longusage)
 {
-	printf("GXemul");
-#ifdef VERSION
-	printf(" " VERSION);
-#endif
-	printf("    Copyright (C) 2003-2006  Anders Gavare\n");
+	printf("GXemul "VERSION"    Copyright (C) 2003-2008  Anders Gavare\n");
 	printf("Read the source code and/or documentation for "
 	    "other Copyright messages.\n");
 
 	printf("\nusage: %s [machine, other, and general options] [file "
 	    "[...]]\n", progname);
 	printf("   or  %s [general options] @configfile\n", progname);
-#ifdef UNSTABLE_DEVEL
 	printf("   or  %s [userland, other, and general options] file "
 	    "[args ...]\n", progname);
-#endif
 
 	if (!longusage) {
 		printf("\nRun  %s -h  for help on command line options.\n",
@@ -236,14 +232,16 @@ static void usage(int longusage)
 	printf("                gH;S;  set geometry to H heads and S"
 	    " sectors-per-track\n");
 	printf("                i      IDE\n");
+	printf("                oOFS;  set base offset to OFS (for ISO9660"
+	    " filesystems)\n");
 	printf("                r      read-only (don't allow changes to the"
 	    " file)\n");
 	printf("                s      SCSI\n");
 	printf("                t      tape\n");
+	printf("                V      add an overlay\n");
 	printf("                0-7    force a specific ID\n");
-	printf("  -G port   listen to gdb remote connections on this port\n");
 	printf("  -I hz     set the main cpu frequency to hz (not used by "
-	    "all combinations\n            of machines and guest OSes)");
+	    "all combinations\n            of machines and guest OSes)\n");
 	printf("  -i        display each instruction as it is executed\n");
 	printf("  -J        disable dyntrans instruction combinations\n");
 	printf("  -j name   set the name of the kernel; for DECstation "
@@ -284,6 +282,7 @@ static void usage(int longusage)
 	printf("                d    disable statistics gathering at "
 	    "startup\n");
 	printf("                o    overwrite instead of append\n");
+	printf("  -T        halt on non-existant memory accesses\n");
 	printf("  -t        show function trace tree\n");
 	printf("  -U        enable slow_serial_interrupts_hack_for_linux\n");
 #ifdef WITH_X11
@@ -299,11 +298,9 @@ static void usage(int longusage)
 	printf("  -z disp   add disp as an X11 display to use for "
 	    "framebuffers\n");
 
-#ifdef UNSTABLE_DEVEL
 	printf("\nUserland options:\n");
 	printf("  -u emul   userland-only (syscall) emulation (use -H to"
 	    " get a list of\n            available emulation modes)\n");
-#endif
 
 	printf("\nGeneral options:\n");
 	printf("  -c cmd    add cmd as a command to run before starting "
@@ -312,6 +309,8 @@ static void usage(int longusage)
 	printf("  -H        display a list of possible CPU and "
 	    "machine types\n");
 	printf("  -h        display this help message\n");
+	printf("  -k n      set dyntrans translation caches to n MB (default"
+	    " size is %i MB)\n", DEFAULT_DYNTRANS_CACHE_SIZE / 1048576);
 	printf("  -K        force the debugger to be entered at the end "
 	    "of a simulation\n");
 	printf("  -q        quiet mode (don't print startup messages)\n");
@@ -327,12 +326,12 @@ static void usage(int longusage)
 	    "To load a raw binary into memory, add \"address:\" in front "
 	    "of the filename,\n"
 	    "or \"address:skiplen:\" or \"address:skiplen:initialpc:\".\n"
-	    "Examples:\n"
+	    "\nExamples:\n"
 	    "    0xbfc00000:rom.bin                    for a raw ROM image\n"
 	    "    0xbfc00000:0x100:rom.bin              for an image with "
 	    "0x100 bytes header\n"
 	    "    0xbfc00000:0x100:0xbfc00884:rom.bin   "
-	    "start with pc=0xbfc00884\n");
+	    "start with pc=0xbfc00884\n\n");
 }
 
 
@@ -349,14 +348,10 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 	char *type = NULL, *subtype = NULL;
 	int n_cpus_set = 0;
 	int msopts = 0;		/*  Machine-specific options used  */
-	struct machine *m = emul_add_machine(emul, "default");
+	struct machine *m = emul_add_machine(emul, NULL);
 
 	char *opts =
-	    "C:c:Dd:E:e:G:HhI:iJj:KM:Nn:Oo:p:QqRrSs:tU"
-#ifdef UNSTABLE_DEVEL
-	    "u:"
-#endif
-	    "VvW:"
+	    "C:c:Dd:E:e:HhI:iJj:k:KM:Nn:Oo:p:QqRrSs:TtUu:VvW:"
 #ifdef WITH_X11
 	    "XxY:"
 #endif
@@ -365,19 +360,16 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 	while ((ch = getopt(argc, argv, opts)) != -1) {
 		switch (ch) {
 		case 'C':
-			m->cpu_name = strdup(optarg);
+			CHECK_ALLOCATION(m->cpu_name = strdup(optarg));
 			msopts = 1;
 			break;
 		case 'c':
 			emul->n_debugger_cmds ++;
-			emul->debugger_cmds = realloc(emul->debugger_cmds,
-			    emul->n_debugger_cmds * sizeof(char *));
-			if (emul->debugger_cmds == NULL) {
-			        fatal("out of memory\n");
-			        exit(1);
-			}
-			emul->debugger_cmds[emul->n_debugger_cmds-1] =
-			    strdup(optarg);
+			CHECK_ALLOCATION(emul->debugger_cmds =
+			    realloc(emul->debugger_cmds,
+			    emul->n_debugger_cmds * sizeof(char *)));
+			CHECK_ALLOCATION(emul->debugger_cmds[emul->
+			    n_debugger_cmds-1] = strdup(optarg));
 			break;
 		case 'D':
 			skip_srandom_call = 1;
@@ -385,13 +377,11 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 		case 'd':
 			/*  diskimage_add() is called further down  */
 			(*n_diskimagesp) ++;
-			(*diskimagesp) = realloc(*diskimagesp,
-			    sizeof(char *) * (*n_diskimagesp));
-			if (*diskimagesp == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(1);
-			}
-			(*diskimagesp)[(*n_diskimagesp) - 1] = strdup(optarg);
+			CHECK_ALLOCATION( (*diskimagesp) =
+			    realloc(*diskimagesp,
+			    sizeof(char *) * (*n_diskimagesp)) );
+			CHECK_ALLOCATION( (*diskimagesp)[(*n_diskimagesp) - 1] =
+			    strdup(optarg) );
 			using_switch_d = 1;
 			msopts = 1;
 			break;
@@ -409,17 +399,6 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 				exit(1);
 			}
 			subtype = optarg;
-			msopts = 1;
-			break;
-		case 'G':
-			m->gdb.port = atoi(optarg);
-			if (m->gdb.port < 1 || m->gdb.port > 65535) {
-				fprintf(stderr, "Invalid debugger port %i.\n",
-				    m->gdb.port);
-				exit(1);
-			}
-			/*  Note: implicit -V  */
-			single_step = ENTER_SINGLE_STEPPING;
 			msopts = 1;
 			break;
 		case 'H':
@@ -441,12 +420,17 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			msopts = 1;
 			break;
 		case 'j':
-			m->boot_kernel_filename = strdup(optarg);
-			if (m->boot_kernel_filename == NULL) {
-				fprintf(stderr, "out of memory\n");
+			CHECK_ALLOCATION(m->boot_kernel_filename =
+			    strdup(optarg));
+			msopts = 1;
+			break;
+		case 'k':
+			dyntrans_cache_size = atoi(optarg) * 1048576;
+			if (dyntrans_cache_size < 1) {
+				fprintf(stderr, "The dyntrans cache size must"
+				    " be at least 1 MB.\n");
 				exit(1);
 			}
-			msopts = 1;
 			break;
 		case 'K':
 			force_debugger_at_exit = 1;
@@ -469,25 +453,12 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			msopts = 1;
 			break;
 		case 'o':
-			m->boot_string_argument = strdup(optarg);
-			if (m->boot_string_argument == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(1);
-			}
+			CHECK_ALLOCATION(m->boot_string_argument =
+			    strdup(optarg));
 			msopts = 1;
 			break;
 		case 'p':
-			if (m->n_breakpoints >= MAX_BREAKPOINTS) {
-				fprintf(stderr, "too many breakpoints\n");
-				exit(1);
-			}
-			m->breakpoint_string[m->n_breakpoints] = strdup(optarg);
-			if (m->breakpoint_string[m->n_breakpoints] == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(1);
-			}
-			m->breakpoint_flags[m->n_breakpoints] = 0;
-			m->n_breakpoints ++;
+			machine_add_breakpoint_string(m, optarg);
 			msopts = 1;
 			break;
 		case 'Q':
@@ -513,6 +484,10 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			machine_statistics_init(m, optarg);
 			msopts = 1;
 			break;
+		case 'T':
+			m->halt_on_nonexistant_memaccess = 1;
+			msopts = 1;
+			break;
 		case 't':
 			m->show_trace_tree = 1;
 			msopts = 1;
@@ -522,11 +497,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			msopts = 1;
 			break;
 		case 'u':
-			m->userland_emul = strdup(optarg);
-			if (m->userland_emul == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(1);
-			}
+			CHECK_ALLOCATION(m->userland_emul = strdup(optarg));
 			m->machine_type = MACHINE_USERLAND;
 			msopts = 1;
 			break;
@@ -540,19 +511,19 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			internal_w(optarg);
 			exit(0);
 		case 'X':
-			m->use_x11 = 1;
+			m->x11_md.in_use = 1;
 			msopts = 1;
 			/*  FALL-THROUGH  */
 		case 'x':
 			console_allow_slaves(1);
 			break;
 		case 'Y':
-			m->x11_scaledown = atoi(optarg);
-			if (m->x11_scaledown < -1) {
-				m->x11_scaleup = - m->x11_scaledown;
-				m->x11_scaledown = 1;
+			m->x11_md.scaledown = atoi(optarg);
+			if (m->x11_md.scaledown < -1) {
+				m->x11_md.scaleup = - m->x11_md.scaledown;
+				m->x11_md.scaledown = 1;
 			}
-			if (m->x11_scaledown < 1) {
+			if (m->x11_md.scaledown < 1) {
 				fprintf(stderr, "Invalid scaledown value.\n");
 				exit(1);
 			}
@@ -564,21 +535,12 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			msopts = 1;
 			break;
 		case 'z':
-			m->x11_n_display_names ++;
-			m->x11_display_names = realloc(
-			    m->x11_display_names,
-			    m->x11_n_display_names * sizeof(char *));
-			if (m->x11_display_names == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(1);
-			}
-			m->x11_display_names[m->x11_n_display_names-1] =
-			    strdup(optarg);
-			if (m->x11_display_names
-			    [m->x11_n_display_names-1] == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(1);
-			}
+			m->x11_md.n_display_names ++;
+			CHECK_ALLOCATION(m->x11_md.display_names = realloc(
+			    m->x11_md.display_names,
+			    m->x11_md.n_display_names * sizeof(char *)));
+			CHECK_ALLOCATION(m->x11_md.display_names[
+			    m->x11_md.n_display_names-1] = strdup(optarg));
 			msopts = 1;
 			break;
 		default:
@@ -663,11 +625,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 		else
 			s2 ++;
 
-		m->boot_kernel_filename = strdup(s2);
-		if (m->boot_kernel_filename == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(1);
-		}
+		CHECK_ALLOCATION(m->boot_kernel_filename = strdup(s2));
 	}
 
 	if (m->n_gfx_cards < 0 || m->n_gfx_cards > 3) {
@@ -675,7 +633,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 		exit(1);
 	}
 
-	if (!using_switch_Z && !m->use_x11)
+	if (!using_switch_Z && !m->x11_md.in_use)
 		m->n_gfx_cards = 0;
 
 	return 0;
@@ -700,10 +658,11 @@ int main(int argc, char *argv[])
 	const int constant_no = 0;
 	const int constant_false = 0;
 
-	struct emul **emuls;
+	struct emul *emul;
+	int config_file = 0;
+
 	char **diskimages = NULL;
 	int n_diskimages = 0;
-	int n_emuls;
 	int i;
 
 
@@ -727,8 +686,11 @@ int main(int argc, char *argv[])
 	settings_add(global_settings, "false", 0, SETTINGS_TYPE_INT,
 	    SETTINGS_FORMAT_BOOL, (void *)&constant_false);
 
+	/*  Read-only settings:  */
 	settings_add(global_settings, "single_step", 0,
 	    SETTINGS_TYPE_INT, SETTINGS_FORMAT_YESNO, (void *)&single_step);
+
+	/*  Read/write settings:  */
 	settings_add(global_settings, "force_debugger_at_exit", 1,
 	    SETTINGS_TYPE_INT, SETTINGS_FORMAT_YESNO,
 	    (void *)&force_debugger_at_exit);
@@ -745,23 +707,12 @@ int main(int argc, char *argv[])
 	timer_init();
 	useremul_init();
 
-	emuls = malloc(sizeof(struct emul *));
-	if (emuls == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	/*  Create a simple emulation setup:  */
+	emul = emul_new(NULL);
+	settings_add(global_settings, "emul", 1,
+	    SETTINGS_TYPE_SUBSETTINGS, 0, emul->settings);
 
-	/*  Allocate space for a simple emul setup:  */
-	n_emuls = 1;
-	emuls[0] = emul_new(NULL);
-	if (emuls[0] == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-	settings_add(global_settings, "emul[0]", 1,
-	    SETTINGS_TYPE_SUBSETTINGS, 0, emuls[0]->settings);
-
-	get_cmd_args(argc, argv, emuls[0], &diskimages, &n_diskimages);
+	get_cmd_args(argc, argv, emul, &diskimages, &n_diskimages);
 
 	if (!skip_srandom_call) {
 		struct timeval tv;
@@ -770,23 +721,15 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Print startup message:  */
-	debug("GXemul");
-#ifdef VERSION
-	debug(" " VERSION);
-#endif
-	debug("    Copyright (C) 2003-2006  Anders Gavare\n");
-	debug("Read the source code and/or documentation for "
-	    "other Copyright messages.\n\n");
-
-	if (emuls[0]->machines[0]->machine_type == MACHINE_NONE) {
-		n_emuls --;
-	} else {
-		for (i=0; i<n_diskimages; i++)
-			diskimage_add(emuls[0]->machines[0], diskimages[i]);
-	}
+	debug("GXemul "VERSION"    Copyright (C) 2003-2008  Anders Gavare\n"
+	    "Read the source code and/or documentation for other Copyright "
+	    "messages.\n\n");
 
 	/*  Simple initialization, from command line arguments:  */
-	if (n_emuls > 0) {
+	if (emul->machines[0]->machine_type != MACHINE_NONE) {
+		for (i=0; i<n_diskimages; i++)
+			diskimage_add(emul->machines[0], diskimages[i]);
+
 		/*  Make sure that there are no configuration files as well:  */
 		for (i=1; i<argc; i++)
 			if (argv[i][0] == '@') {
@@ -799,48 +742,44 @@ int main(int argc, char *argv[])
 			}
 
 		/*  Initialize one emul:  */
-		emul_simple_init(emuls[0]);
+		emul_simple_init(emul);
 	}
 
-	/*  Initialize emulations from config files:  */
+	/*  Initialize an emulation from a config file:  */
 	for (i=1; i<argc; i++) {
 		if (argv[i][0] == '@') {
-			char tmpstr[50];
 			char *s = argv[i] + 1;
-			if (strlen(s) == 0 && i+1 < argc &&
-			    argv[i+1][0] != '@') {
-				i++;
-				s = argv[i];
-			}
-			n_emuls ++;
-			emuls = realloc(emuls, sizeof(struct emul *) * n_emuls);
-			if (emuls == NULL) {
-				fprintf(stderr, "out of memory\n");
+
+			if (config_file) {
+				fprintf(stderr, "More than one configuration "
+				    "file cannot be used.\n");
 				exit(1);
 			}
 
-			/*  Always allow slave xterms when using multiple
-			    emulations:  */
+			if (strlen(s) == 0 && i+1 < argc && *argv[i+1] != '@')
+				s = argv[++i];
+
+			/*  Always allow slave xterms:  */
 			console_allow_slaves(1);
 
-			/*  Destroy the temporary emuls[0], since it will
+			/*  Destroy the temporary emul, since it will
 			    be overwritten:  */
-			if (n_emuls == 1) {
-				emul_destroy(emuls[0]);
-				settings_remove(global_settings, "emul[0]");
+			if (emul != NULL) {
+				emul_destroy(emul);
+				settings_remove(global_settings, "emul");
+				emul = NULL;
 			}
 
-			emuls[n_emuls - 1] =
-			    emul_create_from_configfile(s);
+			emul = emul_create_from_configfile(s);
 
-			snprintf(tmpstr, sizeof(tmpstr), "emul[%i]", n_emuls-1);
-			settings_add(global_settings, tmpstr, 1,
-			    SETTINGS_TYPE_SUBSETTINGS, 0,
-			    emuls[n_emuls-1]->settings);
+			settings_add(global_settings, "emul", 1,
+			    SETTINGS_TYPE_SUBSETTINGS, 0, emul->settings);
+
+			config_file = 1;
 		}
 	}
 
-	if (n_emuls == 0) {
+	if (emul->n_machines == 0) {
 		fprintf(stderr, "No emulations defined. Maybe you forgot to "
 		    "use -E xx and/or -e yy, to specify\nthe machine type."
 		    " For example:\n\n    %s -e 3max -d disk.img\n\n"
@@ -853,8 +792,8 @@ int main(int argc, char *argv[])
 	console_warn_if_slaves_are_needed(1);
 
 
-	/*  Run all emulations:  */
-	emul_run(emuls, n_emuls);
+	/*  Run the emulation:  */
+	emul_run(emul);
 
 
 	/*
@@ -863,8 +802,7 @@ int main(int argc, char *argv[])
 
 	console_deinit();
 
-	for (i=0; i<n_emuls; i++)
-		emul_destroy(emuls[i]);
+	emul_destroy(emul);
 
 	settings_remove_all(global_settings);
 	settings_destroy(global_settings);

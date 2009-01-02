@@ -1,4 +1,4 @@
-$Id: HISTORY,v 1.1421 2006/11/06 05:32:37 debug Exp $
+$Id: HISTORY,v 1.1635.2.6 2008/02/24 05:54:33 debug Exp $
 
 Changelog for GXemul:
 ---------------------
@@ -1130,7 +1130,7 @@ Changelog for GXemul:
 20041110	Some minor bintrans updates.
 20041111	Minor updates.
 20041112	A little rewrite of the bintrans system (again :-), this time
-		a lot more na�ve and non-optimizing, in order to support delay
+		a lot more naïve and non-optimizing, in order to support delay
 		slots in a much simpler way.
 		Ultrix 4.5 boots into a usable desktop on my home machine in
 		3min 28sec, compared to 6-8 minutes without bintrans.
@@ -3140,7 +3140,7 @@ Changelog for GXemul:
 		Enabling SuperH for stable (non-development) builds.
 		Adding NetBSD/dreamcast to the documentation, although it
 		doesn't support root-on-nfs yet.
-20061029	Changing usleep(1) calls in the debugger to to usleep(10000)
+20061029	Changing usleep(1) calls in the debugger to usleep(10000)
 		(according to Brian Foley, this makes GXemul run better on
 		MacOS X).
 		Making the Maple "Controller" do something (enough to barely
@@ -3154,4 +3154,548 @@ Changelog for GXemul:
 		Testing for the release.
 
 ==============  RELEASE 0.4.3  ==============
+
+20061107	Adding a new disk image option (-d o...) which sets the ISO9660
+		filesystem base offset; also making some other hacks to allow
+		NetBSD/dreamcast and homebrew demos/games to boot directly
+		from a filesystem image.
+		Moving Dreamcast-specific stuff in the documentation to its
+		own page (dreamcast.html).
+		Adding a border to the Dreamcast PVR framebuffer.
+20061108	Adding a -T command line option (again?), for halting the
+		emulator on unimplemented memory accesses.
+20061109	Continuing on various SH4 and Dreamcast related things.
+		The emulator should now halt on more unimplemented device
+		accesses, instead of just printing a warning, forcing me to
+		actually implement missing stuff :)
+20061111	Continuing on SH4 and Dreamcast stuff.
+		Adding a bogus Landisk (SH4) machine mode.
+20061112	Implementing some parts of the Dreamcast GDROM device. With
+		some ugly hacks, NetBSD can (barely) mount an ISO image.
+20061113	NetBSD/dreamcast now starts booting from the Live CD image,
+		but crashes randomly quite early on in the boot process.
+20061122	Beginning on a skeleton interrupt.h and interrupt.c for the
+		new interrupt subsystem.
+20061124	Continuing on the new interrupt system; taking the first steps
+		to attempt to connect CPUs (SuperH and MIPS) and devices
+		(dev_cons and SH4 timer interrupts) to it. Many things will
+		probably break from now on.
+20061125	Converting dev_ns16550, dev_8253 to the new interrupt system.
+		Attempting to begin to convert the ISA bus.
+20061130	Incorporating a patch from Brian Foley for the configure
+		script, which checks for X11 libs in /usr/X11R6/lib64 (which
+		is used on some Linux systems).
+20061227	Adding a note in the man page about booting from Dreamcast
+		CDROM images (i.e. that no external kernel is needed).
+20061229	Continuing on the interrupt system rewrite: beginning to
+		convert more devices, adding abort() calls for legacy interrupt
+		system calls so that everything now _has_ to be rewritten!
+		Almost all machine modes are now completely broken.
+20061230	More progress on removing old interrupt code, mostly related
+		to the ISA bus + devices, the LCA bus (on AlphaBook1), and
+		the Footbridge bus (for CATS). And some minor PCI stuff.
+		Connecting the ARM cpu to the new interrupt system.
+		The CATS, NetWinder, and QEMU_MIPS machine modes now work with
+		the new interrupt system :)
+20061231	Connecting PowerPC CPUs to the new interrupt system.
+		Making PReP machines (IBM 6050) work again.
+		Beginning to convert the GT PCI controller (for e.g. Malta
+		and Cobalt emulation). Some things work, but not everything.
+		Updating Copyright notices for 2007.
+20070101	Converting dev_kn02 from legacy style to devinit; the 3max
+		machine mode now works with the new interrupt system :-]
+20070105	Beginning to convert the SGI O2 machine to the new interrupt
+		system; finally converting O2 (IP32) devices to devinit, etc.
+20070106	Continuing on the interrupt system redesign/rewrite; KN01
+		(PMAX), KN230, and Dreamcast ASIC interrupts should work again,
+		moving out stuff from machine.h and devices.h into the
+		corresponding devices, beginning the rewrite of i80321
+		interrupts, etc.
+20070107	Beginning on the rewrite of Eagle interrupt stuff (PReP, etc).
+20070117	Beginning the rewrite of Algor (V3) interrupts (finally
+		changing dev_v3 into devinit style).
+20070118	Removing the "bus" registry concept from machine.h, because
+		it was practically meaningless.
+		Continuing on the rewrite of Algor V3 ISA interrupts.
+20070121	More work on Algor interrupts; they are now working again,
+		well enough to run NetBSD/algor. :-)
+20070122	Converting VR41xx (HPCmips) interrupts. NetBSD/hpcmips
+		can be installed using the new interrupt system :-)
+20070123	Making the testmips mode work with the new interrupt system.
+20070127	Beginning to convert DEC5800 devices to devinit, and to the
+		new interrupt system.
+		Converting Playstation 2 devices to devinit, and converting
+		the interrupt system. Also fixing a severe bug: the interrupt
+		mask register on Playstation 2 is bitwise _toggled_ on writes.
+20070128	Removing the dummy NetGear machine mode and the 8250 device
+		(which was only used by the NetGear machine).
+		Beginning to convert the MacPPC GC (Grand Central) interrupt
+		controller to the new interrupt system.
+		Converting Jazz interrupts (PICA61 etc.) to the new interrupt
+		system. NetBSD/arc can be installed again :-)
+		Fixing the JAZZ timer (hardcoding it at 100 Hz, works with
+		NetBSD and it is better than a completely dummy timer as it
+		was before).
+		Converting dev_mp to the new interrupt system, although I
+		haven't had time to actually test it yet.
+		Completely removing src/machines/interrupts.c, cpu_interrupt
+		and cpu_interrupt_ack in src/cpu.c, and
+		src/include/machine_interrupts.h! Adding fatal error messages
+		+ abort() in the few places that are left to fix.
+		Converting dev_z8530 to the new interrupt system.
+		FINALLY removing the md_int struct completely from the
+		machine struct.
+		SH4 fixes (adding a PADDR invalidation in the ITLB replacement
+		code in memory_sh.c); the NetBSD/dreamcast LiveCD now runs
+		all the way to the login prompt, and can be interacted with :-)
+		Converting the CPC700 controller (PCI and interrupt controller
+		for PM/PPC) to the new interrupt system.
+20070129	Fixing MACE ISA interrupts (SGI IP32 emulation). Both NetBSD/
+		sgimips' and OpenBSD/sgi's ramdisk kernels can now be
+		interacted with again.
+20070130	Moving out the MIPS multi_lw and _sw instruction combinations
+		so that they are auto-generated at compile time instead.
+20070131	Adding detection of amd64/x86_64 hosts in the configure script,
+		for doing initial experiments (again :-) with native code
+		generation.
+		Adding a -k command line option to set the size of the dyntrans
+		cache, and a -B command line option to disable native code
+		generation, even if GXemul was compiled with support for
+		native code generation for the specific host CPU architecture.
+20070201	Experimenting with a skeleton for native code generation.
+		Changing the default behaviour, so that native code generation
+		is now disabled by default, and has to be enabled by using
+		-b on the command line.
+20070202	Continuing the native code generation experiments.
+		Making PCI interrupts work for Footbridge again.
+20070203	More native code generation experiments.
+		Removing most of the native code generation experimental code,
+		it does not make sense to include any quick hacks like this.
+		Minor cleanup/removal of some more legacy MIPS interrupt code.
+20070204	Making i80321 interrupts work again (for NetBSD/evbarm etc.),
+		and fixing the timer at 100 Hz.
+20070206	Experimenting with removing the wdc interrupt slowness hack.
+20070207	Lowering the number of dyntrans TLB entries for MIPS from
+		192 to 128, resulting in a minor speed improvement.
+		Minor optimization to the code invalidation routine in
+		cpu_dyntrans.c.
+20070208	Increasing (experimentally) the nr of dyntrans instructions per
+		loop from 60 to 120.
+20070210	Commenting out (experimentally) the dyntrans_device_danger
+		detection in memory_rw.c.
+		Changing the testmips and baremips machines to use a revision 2
+		MIPS64 CPU by default, instead of revision 1.
+		Removing the dummy i960, IA64, x86, AVR32, and HP PA-RISC
+		files, the PC bios emulation, and the Olivetti M700 (ARC) and
+		db64360 emulation modes.
+20070211	Adding an "mp" demo to the demos directory, which tests the
+		SMP functionality of the testmips machine.
+		Fixing PReP interrupts some more. NetBSD/prep now boots again.
+20070216	Adding a "nop workaround" for booting Mach/PMAX to the
+		documentation; thanks to Artur Bujdoso for the values.
+		Converting more of the MacPPC interrupt stuff to the new
+		system.
+		Beginning to convert BeBox interrupts to the new system.
+		PPC603e should NOT have the PPC_NO_DEC flag! Removing it.
+		Correcting BeBox clock speed (it was set to 100 in the NetBSD
+		bootinfo block, but should be 33000000/4), allowing NetBSD
+		to start without using the (incorrect) PPC_NO_DEC hack.
+20070217	Implementing (slow) AltiVec vector loads and stores, allowing
+		NetBSD/macppc to finally boot using the GENERIC kernel :-)
+		Updating the documentation with install instructions for
+		NetBSD/macppc.
+20070218-19	Regression testing for the release.
+
+==============  RELEASE 0.4.4  ==============
+
+20070224	Minor update to the initialization of the ns16550 in
+		machine_walnut.c, to allow that machine type to boot with the
+		new interrupt system (although it is still a dummy machine).
+		Adding a wdc at 0x14000000 to machine_landisk.c, and fixing
+		the SCIF serial interrupts of the SH4 cpu enough to get
+		NetBSD/landisk booting from a disk image :-)  Adding a
+		preliminary install instruction skeleton to guestoses.html.
+20070306	Adding SH-IPL+G PROM emulation, and also passing the "end"
+		symbol in r5 on bootup, for Landisk emulation. This is enough
+		to get OpenBSD/landisk to install :)  Adding a preliminary
+		install instruction skeleton to the documentation. SuperH
+		emulation is still shaky, though :-/
+20070307	Fixed a strangeness in memory_sh.c (read/write was never
+		returned for any page). (Unknown whether this fixes any actual
+		problems, though.)
+20070308	dev_ram.c fix: invalidate code translations on writes to
+		RAM, emulated as separate devices. Linux/dreamcast gets
+		further in the boot process than before, but still bugs out
+		in userland.
+		Fixing bugs in the "stc.l gbr,@-rN" and "ldc.l @rN+,gbr" SuperH 
+		instructions (they should NOT check the MD bit), allowing the
+		Linux/dreamcast Live CD to reach userland correctly :-)
+20070310	Changing the cpu name "Alpha" in src/useremul.c to "21364" to
+		unbreak userland syscall emulation of FreeBSD/Alpha binaries.
+20070314	Applying a patch from Michael Yaroslavtsev which fixes the
+		previous Linux lib64 patch to the configure script.
+20070315	Adding a (dummy) sun4v machine type, and SPARC T1 cpu type.
+20070316	Creating a new directory, src/disk, and moving diskimage.c
+		to it. Separating out bootblock loading stuff from emul.c into
+		new files in src/disk.
+		Adding some more SPARC registers.
+20070318	Preparing/testing for a minirelease, 0.4.4.1.
+
+==============  RELEASE 0.4.4.1  ==============
+
+20070324	Adding a "--debug" option to the configure script, to disable
+		optimizations in unstable development builds.
+		Moving out SCSI-specific stuff from diskimage.c into a new
+		diskimage_scsicmd.c.
+		Applying Håvard Eidnes' patch for SCSICDROM_READ_DISKINFO and
+		SCSICDROM_READ_TRACKINFO. (Not really tested yet.)
+		Implementing disk image "overlays" (to allow simple roll-back
+		to previous disk state). Adding a 'V' disk flag for this, and
+		updating the man page and misc.html.
+20070325	Stability fix to cpu_dyntrans.c, when multiple physical pages
+		share the same initial table entry. (The ppp == NULL check
+		should be physpage_ofs == 0.) Bug found by analysing GXemul
+		against a version patched for Godson.
+		Fixing a second occurance of the same problem (also in
+		cpu_dyntrans.c).
+		Fixing a MAJOR physical page leak in cpu_dyntrans.c; pages
+		weren't _added_ to the set of translated pages, they _replaced_
+		all previous pages. It's amazing that this bug has been able
+		to live for this long. (Triggered when emulating >128MB RAM.)
+20070326	Removing the GDB debugging stub support; it was too hackish
+		and ugly.
+20070328	Moving around some native code generation skeleton code.
+20070329	The -lm check in the configure script now also checks for sin()
+		in addition to sqrt(). (Thanks to Nigel Horne for noticing that
+		sqrt was not enough on Fedora Core 6.) (Not verified yet.)
+20070330	Fixing an indexing bug in dev_sh4.c, found by using gcc version
+		4.3.0 20070323.
+20070331	Some more experimentation with native code generation.
+20070404	Attempting to fix some more SH4 SCIF interrupt bugs; rewriting
+		the SH interrupt assertion/deassertion code somewhat.
+20070410	Splitting src/file.c into separate files in src/file/.
+		Cleanup: Removing the dummy TS7200, Walnut, PB1000, and
+		Meshcube emulation modes, and dev_epcom and dev_au1x00.
+		Removing the experimental CHIP8/RCA180x code; it wasn't really
+		working much lately, anyway. It was fun while it lasted.
+		Also removing the experimental Transputer CPU support.
+20070412	Moving the section about how the dynamic translation system
+		works from intro.html to a separate translation.html file.
+		Minor SH fixes; attempting to get OpenBSD/landisk to run
+		without randomly bugging out, but no success yet.
+20070413	SH SCI (serial bit interface) should now work together with a
+		(new) RS5C313 clock device (for Landisk emulation).
+20070414	Moving Redhat/MIPS down from supported to experimental, in
+		guestoses.html.
+		Preparing for a new release; doing some regression testing etc.
+
+==============  RELEASE 0.4.5  ==============
+
+20070415	Landisk PCLOCK should be 33.33 MHz, not 50 MHz. (This makes
+		the clock run at correct speed.)
+		FINALLY found and fixed the bug which caused OpenBSD/landisk
+		to randomly bug out: an &-sign was missing in the special case
+		handling of FPSCR in the 'LDS.L @Rm+,FPSCR' instruction.
+		Adding similar special case handling for 'LDC.L @Rm+,SR'
+		(calling sh_update_sr() instead of just loading).
+		Implementing the 'FCNVSD FPUL,DRn' and 'FCNVDS DRm,FPUL'
+		SuperH instructions.
+		The 'LDC Rm,SR' instruction now immediately breaks out of the
+		dyntrans loop if an interrupt is to be triggered.
+20070416	In memory_rw.c, if mapping a page as writable, make sure to
+		invalidate code translations even if the data access was a
+		read.
+		Minor SuperH updates.
+20070418	Removing the dummy M68K emulation mode.
+		Minor SH update (turning unnecessary sts_mach_rn, sts_macl_rn,
+		and sts_pr_rn instruction handlers into mov_rm_rn).
+20070419	Beginning to add a skeleton for an M88K mode: Adding a hack to
+		allow OpenBSD/m88k a.out binaries to be loaded, and disassembly
+		of a few simple 88K instructions.
+		Commenting out the 'LDC Rm,SR' fix from a few days ago, because
+		it made Linux/dreamcast bug out.
+		Adding a hack to dev_sh4.c (an extra translation cache
+		invalidation), which allows OpenBSD/landisk to boot ok after
+		an install. Upgrading the Landisk machine mode to stable,
+		updating documentation, etc.
+20070420	Experimenting with adding a PCI controller (pcic) to dev_sh4.
+		Adding a dummy Realtek 8139C+ skeleton device (dev_rtl8139c).
+		Implementing the first M88K instructions (br, or[.u] imm), and
+		adding disassembly of some more instructions.
+20070421	Continuing a little on dev_rtl8139c.
+20070422	Implementing the 9346 EEPROM "read" command for dev_rtl8139c.
+		Finally found and fixed an old bug in the log n symbol search
+		(it sometimes missed symbols). Debug trace (-i, -t etc) should
+		now show more symbols. :-)
+20070423	Continuing a little on M88K disassembly.
+20070428	Fixing a memset arg order bug in src/net/net.c (thanks to
+		Nigel Horne for noticing the bug).
+		Applying parts of a patch from Carl van Schaik to clear out
+		bottom bits of MIPS addresses more correctly, when using large
+		page sizes, and doing some other minor cleanup/refactoring.
+		Fixing a couple of warnings given by gcc with the -W option (a
+		few more warnings than just plain -Wall).
+		Reducing SuperH dyntrans physical address space from 64-bit to
+		32-bit (since SH5/SH64 isn't imlemented yet anyway).
+		Adding address-to-symbol annotation to a few more instructions
+		in the SuperH instruction trace output.
+		Beginning regression testing for the next release.
+		Reverting the value of SCIF_DELAYED_TX_VALUE from 1 to 2,
+		because OpenBSD/landisk may otherwise hang randomly.
+20070429	The ugly hack/workaround to get OpenBSD/landisk booting without
+		crashing does NOT work anymore (with the April 21 snapshot
+		of OpenBSD/landisk). Strangely enough, removing the hack
+		completely causes OpenBSD/landisk to work (!).
+		More regression testing (re-testing everything SuperH-related,
+		and some other things).
+		Cobalt interrupts were actually broken; fixing by commenting
+		out the DEC21143s in the Cobalt machine.
+20070430	More regression testing.
+20070501	Updating the OpenBSD/landisk install instructions to use
+		4.1 instead of the current snapshot.
+		GAAAH! OpenBSD/landisk 4.1 _needs_ the ugly hack/workaround;
+		reintroducing it again. (The 4.1 kernel is actually from
+		2007-03-11.)
+		Simplifying the NetBSD/evbarm install instructions a bit.
+		More regression testing.
+
+==============  RELEASE 0.4.5.1  ==============
+
+20070501	Continuing a little on m88k disassembly (control registers,
+		more instructions).
+		Adding a dummy mvme88k machine mode.
+20070502	Re-adding MIPS load/store alignment exceptions.
+20070503	Implementing more of the M88K disassembly code.
+20070504	Adding disassembly of some more M88K load/store instructions.
+		Implementing some relatively simple M88K instructions (br.n,
+		xor[.u] imm, and[.u] imm).
+20070505	Implementing M88K three-register and, or, xor, and jmp[.n],
+		bsr[.n] including function call trace stuff.
+		Applying a patch from Bruce M. Simpson which implements the
+		SYSCON_BOARD_CPU_CLOCK_FREQ_ID object of the syscon call in
+		the yamon PROM emulation.
+20070506	Implementing M88K bb0[.n] and bb1[.n], and skeletons for
+		ldcr and stcr (although no control regs are implemented yet).
+20070509	Found and fixed the bug which caused Linux for QEMU_MIPS to
+		stop working in 0.4.5.1: It was a faulty change to the MIPS
+		'sc' and 'scd' instructions I made while going through gcc -W
+		warnings on 20070428.
+20070510	Updating the Linux/QEMU_MIPS section in guestoses.html to
+		use mips-test-0.2.tar.gz instead of 0.1.
+		A big thank you to Miod Vallat for sending me M88K manuals.
+		Implementing more M88K instructions (addu, subu, div[u], mulu,
+		ext[u], clr, set, cmp).
+20070511	Fixing bugs in the M88K "and" and "and.u" instructions (found
+		by comparing against the manual).
+		Implementing more M88K instructions (mask[.u], mak, bcnd (auto-
+		generated)) and some more control register details.
+		Cleanup: Removing the experimental AVR emulation mode and
+		corresponding devices; AVR emulation wasn't really meaningful.
+		Implementing autogeneration of most M88K loads/stores. The
+		rectangle drawing demo (with -O0) for M88K runs :-)
+		Beginning on M88K exception handling.
+		More M88K instructions: tb0, tb1, rte, sub, jsr[.n].
+		Adding some skeleton MVME PROM ("BUG") emulation.
+20070512	Fixing a bug in the M88K cmp instruction.
+		Adding the M88K lda (scaled register) instruction.
+		Fixing bugs in 64-bit (32-bit pairs) M88K loads/stores.
+		Removing the unused tick_hz stuff from the machine struct.
+		Implementing the M88K xmem instruction. OpenBSD/mvme88k gets
+		far enough to display the Copyright banner :-)
+		Implementing subu.co (guess), addu.co, addu.ci, ff0, and ff1.
+		Adding a dev_mvme187, for MVME187-specific devices/registers.
+		OpenBSD/mvme88k prints more boot messages. :)
+20070515	Continuing on MVME187 emulation (adding more devices, beginning
+		on the CMMUs, etc).
+		Adding the M88K and.c, xor.c, and or.c instructions, and making
+		sure that mul, div, etc cause exceptions if executed when SFD1
+		is disabled.
+20070517	Continuing on M88K and MVME187 emulation in general; moving
+		the CMMU registers to the CPU struct, separating dev_pcc2 from
+		dev_mvme187, and beginning on memory_m88k.c (BATC and PATC).
+		Fixing a bug in 64-bit (32-bit pairs) M88K fast stores.
+		Implementing the clock part of dev_mk48txx.
+		Implementing the M88K fstcr and xcr instructions.
+		Implementing m88k_cpu_tlbdump().
+		Beginning on the implementation of a separate address space
+		for M88K .usr loads/stores.
+20070520	Removing the non-working (skeleton) Sandpoint, SonyNEWS, SHARK
+		Dnard, and Zaurus machine modes.
+		Experimenting with dyntrans to_be_translated read-ahead. It
+		seems to give a very small performance increase for MIPS
+		emulation, but a large performance degradation for SuperH. Hm.
+20070522	Disabling correct SuperH ITLB emulation; it does not seem to be
+		necessary in order to let SH4 guest OSes run, and it slows down
+		userspace code.
+		Implementing "samepage" branches for SuperH emulation, and some
+		other minor speed hacks.
+20070525	Continuing on M88K memory-related stuff: exceptions, memory
+		transaction register contents, etc.
+		Implementing the M88K subu.ci instruction.
+		Removing the non-working (skeleton) Iyonix machine mode.
+		OpenBSD/mvme88k reaches userland :-), starts executing
+		/sbin/init's instructions, and issues a few syscalls, before
+		crashing.
+20070526	Fixing bugs in dev_mk48txx, so that OpenBSD/mvme88k detects
+		the correct time-of-day.
+		Implementing a generic IRQ controller for the test machines
+		(dev_irqc), similar to a proposed patch from Petr Stepan.
+		Experimenting some more with translation read-ahead.
+		Adding an "expect" script for automated OpenBSD/landisk
+		install regression/performance tests.
+20070527	Adding a dummy mmEye (SH3) machine mode skeleton.
+		FINALLY found the strange M88K bug I have been hunting: I had
+		not emulated the SNIP value for exceptions occurring in
+		branch delay slots correctly.
+		Implementing correct exceptions for 64-bit M88K loads/stores.
+		Address to symbol lookups are now disabled when M88K is
+		running in usermode (because usermode addresses don't have
+		anything to do with supervisor addresses).
+20070531	Removing the mmEye machine mode skeleton.
+20070604	Some minor code cleanup.
+20070605	Moving src/useremul.c into a subdir (src/useremul/), and
+		cleaning up some more legacy constructs.
+		Adding -Wstrict-aliasing and -fstrict-aliasing detection to
+		the configure script.
+20070606	Adding a check for broken GCC on Solaris to the configure
+		script. (GCC 3.4.3 on Solaris cannot handle static variables
+		which are initialized to 0 or NULL. :-/)
+		Removing the old (non-working) ARC emulation modes: NEC RD94,
+		R94, R96, and R98, and the last traces of Olivetti M700 and
+		Deskstation Tyne.
+		Removing the non-working skeleton WDSC device (dev_wdsc).
+20070607	Thinking about how to use the host's cc + ld at runtime to
+		generate native code. (See experiments/native_cc_ld_test.i
+		for an example.)
+20070608	Adding a program counter sampling timer, which could be useful
+		for native code generation experiments.
+		The KN02_CSR_NRMMOD bit in the DECstation 5000/200 (KN02) CSR
+		should always be set, to allow a 5000/200 PROM to boot.
+20070609	Moving out breakpoint details from the machine struct into
+		a helper struct, and removing the limit on max nr of
+		breakpoints.
+20070610	Moving out tick functions into a helper struct as well (which
+		also gets rid of the max limit).
+20070612	FINALLY figured out why Debian/DECstation stopped working when
+		translation read-ahead was enabled: in src/memory_rw.c, the
+		call to invalidate_code_translation was made also if the
+		memory access was an instruction load (if the page was mapped
+		as writable); it shouldn't be called in that case.
+20070613	Implementing some more MIPS32/64 revision 2 instructions: di,
+		ei, ext, dext, dextm, dextu, and ins.
+20070614	Implementing an instruction combination for the NetBSD/arm
+		idle loop (making the host not use any cpu if NetBSD/arm
+		inside the emulator is not using any cpu).
+		Increasing the nr of ARM VPH entries from 128 to 384.
+20070615	Removing the ENABLE_arch stuff from the configure script, so
+		that all included architectures are included in both release
+		and development builds.
+		Moving memory related helper functions from misc.c to memory.c.
+		Adding preliminary instructions for netbooting NetBSD/pmppc to
+		guestoses.html; it doesn't work yet, there are weird timeouts.
+		Beginning a total rewrite of the userland emulation modes
+		(removing all emulation modes, beginning from scratch with
+		NetBSD/MIPS and FreeBSD/Alpha only).
+20070616	After fixing a bug in the DEC21143 NIC (the TDSTAT_OWN bit was
+		only cleared for the last segment when transmitting, not all
+		segments), NetBSD/pmppc boots with root-on-nfs without the
+		timeouts. Updating guestoses.html.
+		Removing the skeleton PSP (Playstation Portable) mode.
+		Moving X11-related stuff in the machine struct into a helper
+		struct.
+		Cleanup of out-of-memory checks, to use a new CHECK_ALLOCATION
+		macro (which prints a meaningful error message).
+		Adding a COMMENT to each machine and device (for automagic
+		.index comment generation).
+		Doing regression testing for the next release.
+
+==============  RELEASE 0.4.6  ==============
+
+20070616	Implementing the MIPS32/64 revision 2 "ror" instruction.
+20070617	Adding a struct for each physpage which keeps track of which
+		ranges within that page (base offset, length) that are
+		continuously translatable. When running with native code
+		generation enabled (-b), a range is added after each read-
+		ahead loop.
+		Experimenting with using the physical program counter sample
+		data (implemented 20070608) together with the "translatable
+		range" information, to figure out which physical address ranges
+		would be worth translating to native code (if the number of
+		samples falling within a range is above a certain threshold).
+20070618	Adding automagic building of .index comment files for
+		src/file/, src/promemul/, src src/useremul/ as well.
+		Adding a "has been translated" bit to the ranges, so that only
+		not-yet-translated ranges will be sampled.
+20070619	Moving src/cpu.c and src/memory_rw.c into src/cpus/,
+		src/device.c into src/devices/, and src/machine.c into
+		src/machines/.
+		Creating a skeleton cc/ld native backend module; beginning on
+		the function which will detect cc command line, etc.
+20070620	Continuing on the native code generation infrastructure.
+20070621	Moving src/x11.c and src/console.c into a new src/console/
+		subdir (for everything that is console or framebuffer related).
+		Moving src/symbol*.c into a new src/symbol/, which should
+		contain anything that is symbol handling related.
+20070624	Making the program counter sampling threshold a "settings
+		variable" (sampling_threshold), i.e. it can now be changed
+		during runtime.
+		Switching the RELEASE notes format from plain text to HTML.
+		If the TMPDIR environment variable is set, it is used instead
+		of "/tmp" for temporary files.
+		Continuing on the cc/ld backend: simple .c code is generated,
+		the compiler and linker are called, etc.
+		Adding detection of host architecture to the configure script
+		(again), and adding icache invalidation support (only
+		implemented for Alpha hosts so far).
+20070625	Simplifying the program counter sampling mechanism.
+20070626	Removing the cc/ld native code generation stuff, program
+		counter sampling, etc; it would not have worked well in the
+		general case.
+20070627	Removing everything related to native code generation.
+20070629	Removing the (practically unusable) support for multiple
+		emulations. (The single emulation allowed now still supports
+		multiple simultaneous machines, as before.)
+		Beginning on PCCTWO and M88K interrupts.
+20070723	Adding a dummy skeleton for emulation of M32R processors.
+20070901	Fixing a warning found by "gcc version 4.3.0 20070817
+		(experimental)" on amd64.
+20070905	Removing some more traces of the old "multiple emulations"
+		code.
+		Also looking in /usr/local/include and /usr/local/lib for
+		X11 libs, when running configure.
+20070909	Minor updates to the guest OS install instructions, in
+		preparation for the NetBSD 4.0 release.
+20070918	More testing of NetBSD 4.0 RC1.
+20070920	Adding a section about HelenOS (for testarm and testmips) to
+		the guestoses.html page.
+20071014	src/console/console.c now includes <sys/select.h> (thanks to
+		Juli Mallett for noticing that this was required on Cygwin).
+20071017	Updating Sprite URL in guestoses.html.
+20071102	Updating the OpenBSD/landisk install instructions in
+		guestoses.html from OpenBSD 4.1 to 4.2.
+20071112	Branching in CVS to a 0.4.6.1 version, separate from the main
+		development.
+		(This is the 0.4.6.1 branch.)
+20071219	NetBSD 4.0 has been released. Doing regression testing of
+		some systems listed on guestoses.html.
+		Fixing an alignment bug in dev_vga, when allocating 1 byte.
+
+==============  RELEASE 0.4.6.1  ==============
+
+20080118	Applying a WDC patch from Oleksandr Tymoshenko (dev_wdc.c and
+		bus_pci.c), fixing the order of 16-bit words within 32-bit
+		words in the identify struct, and not clearing the error on
+		reads from the error register anymore.
+
+==============  RELEASE 0.4.6.2  ==============
+
+20080120	Some minor OpenFirmware fixes: Adding a "memory" property to
+		"/chosen", adding a dummy claim() service.
+20080205	Switching order of DINCLUDE and XINCLUDE in
+		src/devices/Makefile (thanks to Ning Zhao for the tip).
+20080222	Adding a DEV_DISK_OFFSET_HIGH32 register, for reading/writing
+		the top 32 bits of the offset register (useful for emulated
+		32-bit archs), as suggested by Julian Elischer.
+
+==============  RELEASE 0.4.6.3  ==============
 

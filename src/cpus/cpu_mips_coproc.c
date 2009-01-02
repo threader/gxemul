@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_mips_coproc.c,v 1.60 2006/10/14 23:47:37 debug Exp $
+ *  $Id: cpu_mips_coproc.c,v 1.69.2.1 2008/01/18 19:12:25 debug Exp $
  *
  *  Emulation of MIPS coprocessors.
  */
@@ -46,21 +46,6 @@
 #include "misc.h"
 #include "opcodes_mips.h"
 #include "timer.h"
-
-
-#ifndef ENABLE_MIPS
-
-
-struct mips_coproc *mips_coproc_new(struct cpu *cpu, int coproc_nr)
-{ return NULL; }
-
-void mips_coproc_tlb_set_entry(struct cpu *cpu, int entrynr, int size,
-	uint64_t vaddr, uint64_t paddr0, uint64_t paddr1,
-	int valid0, int valid1, int dirty0, int dirty1, int global, int asid,
-	int cachealgo0, int cachealgo1) { }
-
-
-#else	/*  ENABLE_MIPS  */
 
 
 extern volatile int single_step;
@@ -99,14 +84,14 @@ static void initialize_cop0_config(struct cpu *cpu, struct mips_coproc *c)
 		    ;
 		/*  Config select 1: caches etc. TODO: Don't use
 			cpu->machine for this stuff!  */
-		IB = cpu->machine->cache_picache_linesize - 1;
+		IB = cpu->cd.mips.cache_picache_linesize - 1;
 		IB = IB < 0? 0 : (IB > 7? 7 : IB);
-		DB = cpu->machine->cache_pdcache_linesize - 1;
+		DB = cpu->cd.mips.cache_pdcache_linesize - 1;
 		DB = DB < 0? 0 : (DB > 7? 7 : DB);
-		IC = cpu->machine->cache_picache -
-		    cpu->machine->cache_picache_linesize - 7;
-		DC = cpu->machine->cache_pdcache -
-		    cpu->machine->cache_pdcache_linesize - 7;
+		IC = cpu->cd.mips.cache_picache -
+		    cpu->cd.mips.cache_picache_linesize - 7;
+		DC = cpu->cd.mips.cache_pdcache -
+		    cpu->cd.mips.cache_pdcache_linesize - 7;
 		IA = cpu->cd.mips.cpu_type.piways - 1;
 		DA = cpu->cd.mips.cpu_type.pdways - 1;
 		cpu->cd.mips.cop0_config_select1 =
@@ -134,17 +119,17 @@ static void initialize_cop0_config(struct cpu *cpu, struct mips_coproc *c)
 		break;
 	case MIPS_R4000:	/*  according to the R4000 manual  */
 	case MIPS_R4600:
-		IB = cpu->machine->cache_picache_linesize - 4;
+		IB = cpu->cd.mips.cache_picache_linesize - 4;
 		IB = IB < 0? 0 : (IB > 1? 1 : IB);
-		DB = cpu->machine->cache_pdcache_linesize - 4;
+		DB = cpu->cd.mips.cache_pdcache_linesize - 4;
 		DB = DB < 0? 0 : (DB > 1? 1 : DB);
-		SB = cpu->machine->cache_secondary_linesize - 4;
+		SB = cpu->cd.mips.cache_secondary_linesize - 4;
 		SB = SB < 0? 0 : (SB > 3? 3 : SB);
-		IC = cpu->machine->cache_picache - 12;
+		IC = cpu->cd.mips.cache_picache - 12;
 		IC = IC < 0? 0 : (IC > 7? 7 : IC);
-		DC = cpu->machine->cache_pdcache - 12;
+		DC = cpu->cd.mips.cache_pdcache - 12;
 		DC = DC < 0? 0 : (DC > 7? 7 : DC);
-		SC = cpu->machine->cache_secondary? 0 : 1;
+		SC = cpu->cd.mips.cache_secondary? 0 : 1;
 		c->reg[COP0_CONFIG] =
 		      (   0 << 31)	/*  Master/Checker present bit  */
 		    | (0x00 << 28)	/*  EC: system clock divisor,
@@ -176,13 +161,13 @@ static void initialize_cop0_config(struct cpu *cpu, struct mips_coproc *c)
 		    ;
 		break;
 	case MIPS_R4100:	/*  According to the VR4131 manual:  */
-		IB = cpu->machine->cache_picache_linesize - 4;
+		IB = cpu->cd.mips.cache_picache_linesize - 4;
 		IB = IB < 0? 0 : (IB > 1? 1 : IB);
-		DB = cpu->machine->cache_pdcache_linesize - 4;
+		DB = cpu->cd.mips.cache_pdcache_linesize - 4;
 		DB = DB < 0? 0 : (DB > 1? 1 : DB);
-		IC = cpu->machine->cache_picache - 10;
+		IC = cpu->cd.mips.cache_picache - 10;
 		IC = IC < 0? 0 : (IC > 7? 7 : IC);
-		DC = cpu->machine->cache_pdcache - 10;
+		DC = cpu->cd.mips.cache_pdcache - 10;
 		DC = DC < 0? 0 : (DC > 7? 7 : DC);
 		c->reg[COP0_CONFIG] =
 		      (   0 << 31)	/*  IS: Instruction Streaming bit  */
@@ -247,11 +232,11 @@ static void initialize_cop0_config(struct cpu *cpu, struct mips_coproc *c)
 	case MIPS_R10000:
 	case MIPS_R12000:
 	case MIPS_R14000:
-		IC = cpu->machine->cache_picache - 12;
+		IC = cpu->cd.mips.cache_picache - 12;
 		IC = IC < 0? 0 : (IC > 7? 7 : IC);
-		DC = cpu->machine->cache_pdcache - 12;
+		DC = cpu->cd.mips.cache_pdcache - 12;
 		DC = DC < 0? 0 : (DC > 7? 7 : DC);
-		SC = cpu->machine->cache_secondary - 19;
+		SC = cpu->cd.mips.cache_secondary - 19;
 		SC = SC < 0? 0 : (SC > 7? 7 : SC);
 		/*  According to the R10000 User's Manual:  */
 		c->reg[COP0_CONFIG] =
@@ -374,13 +359,9 @@ struct mips_coproc *mips_coproc_new(struct cpu *cpu, int coproc_nr)
 {
 	struct mips_coproc *c;
 
-	c = malloc(sizeof(struct mips_coproc));
-	if (c == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-
+	CHECK_ALLOCATION(c = malloc(sizeof(struct mips_coproc)));
 	memset(c, 0, sizeof(struct mips_coproc));
+
 	c->coproc_nr = coproc_nr;
 
 	if (coproc_nr == 0) {
@@ -535,10 +516,10 @@ void mips_coproc_tlb_set_entry(struct cpu *cpu, int entrynr, int size,
  *
  *  Note: In the R3000 case, the asid argument is shifted 6 bits.
  */
-static void invalidate_asid(struct cpu *cpu, int asid)
+static void invalidate_asid(struct cpu *cpu, unsigned int asid)
 {
 	struct mips_coproc *cp = cpu->cd.mips.coproc[0];
-	int i, ntlbs = cp->nr_of_tlbs;
+	unsigned int i, ntlbs = cp->nr_of_tlbs;
 	struct mips_tlb *tlb = cp->tlbs;
 
 	if (cpu->cd.mips.cpu_type.mmu_model == MMU3K) {
@@ -683,7 +664,9 @@ void coproc_register_write(struct cpu *cpu,
 	int readonly = 0;
 	uint64_t tmp = *ptr;
 	uint64_t tmp2 = 0, old;
-	int inval = 0, old_asid, oldmode;
+	int inval = 0;
+	unsigned int old_asid;
+	uint64_t oldmode;
 
 	switch (cp->coproc_nr) {
 	case 0:
@@ -810,7 +793,7 @@ hz = 100.0;
 				cpu->cd.mips.compare_interrupts_pending --;
 
 			/*  Clear the timer interrupt assertion (bit 7):  */
-			mips_cpu_interrupt_ack(cpu, 7);
+			cp->reg[COP0_CAUSE] &= ~0x8000;
 
 			if (tmp != (uint64_t)(int64_t)(int32_t)tmp)
 				fatal("WARNING: trying to write a 64-bit value"
@@ -977,9 +960,9 @@ hz = 100.0;
 		    cp->coproc_nr, reg_nr, cp->coproc_nr==0?
 		    cop0_names[reg_nr] : "?", (long long)tmp);
 
-		mips_cpu_exception(cpu, EXCEPTION_CPU, 0, 0,
+		/*  mips_cpu_exception(cpu, EXCEPTION_CPU, 0, 0,
 		    cp->coproc_nr, 0, 0, 0);
-		return;
+		return;  */
 	}
 
 	if (readonly) {
@@ -1800,6 +1783,7 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 		int pfn_shift = 12, vpn_shift = 12;
 		int wf0, wf1, mask;
 		uint64_t vaddr0, vaddr1, paddr0, paddr1, ptmp;
+		uint64_t psize;
 
 		cp->tlbs[index].mask = cp->reg[COP0_PAGEMASK];
 		cp->tlbs[index].hi   = cp->reg[COP0_ENTRYHI];
@@ -1838,9 +1822,11 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 		}
 
 		paddr0 = ((cp->tlbs[index].lo0 & ENTRYLO_PFN_MASK)
-		    >> ENTRYLO_PFN_SHIFT) << pfn_shift;
+		    >> ENTRYLO_PFN_SHIFT) << pfn_shift
+		    >> vpn_shift << vpn_shift;
 		paddr1 = ((cp->tlbs[index].lo1 & ENTRYLO_PFN_MASK)
-		    >> ENTRYLO_PFN_SHIFT) << pfn_shift;
+		    >> ENTRYLO_PFN_SHIFT) << pfn_shift
+		    >> vpn_shift << vpn_shift;
 
 		if (cpu->cd.mips.cpu_type.mmu_model == MMU10K) {
 			vaddr0 = cp->tlbs[index].hi &
@@ -1883,7 +1869,8 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 		 *  Invalidate any code translations, if we are writing Dirty
 		 *  pages to the TLB:  (TODO: 4KB hardcoded... ugly)
 		 */
-		for (ptmp = 0; ptmp < (1 << pfn_shift); ptmp += 0x1000) {
+		psize = 1 << pfn_shift;
+		for (ptmp = 0; ptmp < psize; ptmp += 0x1000) {
 			if (wf0)
 				cpu->invalidate_code_translation(cpu,
 				    paddr0 + ptmp, INVALIDATE_PADDR);
@@ -2141,9 +2128,18 @@ void coproc_function(struct cpu *cpu, struct mips_coproc *cp, int cpnr,
 			exit(1);
 		}
 
-		op = (function) & 0xff;
 		switch (co_bit) {
+		case 0:
+			if ((function & 0x03e0ffdf) == 0x01606000) {
+				debug("%ci", function & 0x20? 'e' : 'd');
+				if (rt != MIPS_GPR_ZERO)
+					debug("\t%s", regnames[rt]);
+				debug("\n");
+				return;
+			}
+			break;
 		case 1:
+			op = (function) & 0xff;
 			switch (op) {
 			case COP0_TLBR:		/*  Read indexed TLB entry  */
 				debug("tlbr\n");
@@ -2206,8 +2202,7 @@ void coproc_function(struct cpu *cpu, struct mips_coproc *cp, int cpnr,
 			default:
 				;
 			}
-		default:
-			;
+			break;
 		}
 	}
 
@@ -2233,4 +2228,3 @@ void coproc_function(struct cpu *cpu, struct mips_coproc *cp, int cpnr,
 	mips_cpu_exception(cpu, EXCEPTION_CPU, 0, 0, cp->coproc_nr, 0, 0, 0);
 }
 
-#endif	/*  ENABLE_MIPS  */

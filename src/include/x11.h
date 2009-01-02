@@ -2,7 +2,7 @@
 #define	X11_H
 
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: x11.h,v 1.5 2006/07/08 12:30:03 debug Exp $
+ *  $Id: x11.h,v 1.7.2.1 2008/01/18 19:12:32 debug Exp $
  *
  *  Headerfile for src/x11.c.
  */
@@ -98,7 +98,7 @@ void x11_fb_resize(struct fb_window *win, int new_xsize, int new_ysize);
 void x11_set_standard_properties(struct fb_window *fb_window, char *name);
 struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *);
-void x11_check_event(struct emul **emuls, int n_emuls);
+void x11_check_event(struct emul *emul);
 
 
 #endif	/*  X11_H  */

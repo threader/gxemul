@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_pmax.c,v 1.13 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_pmax.c,v 1.29.2.1 2008/01/18 19:12:33 debug Exp $
  *
- *  DECstation ("PMAX") machine description.
+ *  COMMENT: Digital DECstation ("PMAX") machines
  */
 
 #include <stdio.h>
@@ -39,7 +39,7 @@
 #include "devices.h"
 #include "diskimage.h"
 #include "machine.h"
-#include "machine_interrupts.h"
+#include "machine_pmax.h"
 #include "memory.h"
 #include "misc.h"
 
@@ -74,7 +74,9 @@ MACHINE_SETUP(pmax)
 
 	cpu->byte_order = EMUL_LITTLE_ENDIAN;
 
-	/*  An R2020 or R3220 memory thingy:  */
+	/*
+	 *  Add an R2020 or R3220 writeback memory thing:
+	 */
 	cpu->cd.mips.coproc[3] = mips_coproc_new(cpu, 3);
 
 	/*  There aren't really any good standard values...  */
@@ -120,16 +122,29 @@ MACHINE_SETUP(pmax)
 		    &fb->color_plane_mask);
 		dev_vdac_init(mem, KN01_SYS_VDAC, fb->rgb_palette,
 		    color_fb_flag);
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%i",
+		    machine->path, machine->bootstrap_cpu, KN01_INT_LANCE);
 		dev_le_init(machine, mem, KN01_SYS_LANCE,
 		    KN01_SYS_LANCE_B_START, KN01_SYS_LANCE_B_END,
-		    KN01_INT_LANCE, 4*1048576);
+		    tmpstr, 4*1048576);
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%i",
+		    machine->path, machine->bootstrap_cpu, KN01_INT_SII);
 		dev_sii_init(machine, mem, KN01_SYS_SII, KN01_SYS_SII_B_START,
-		    KN01_SYS_SII_B_END, KN01_INT_SII);
-		dev_dc7085_init(machine, mem, KN01_SYS_DZ, KN01_INT_DZ,
-		    machine->use_x11);
-		dev_mc146818_init(machine, mem, KN01_SYS_CLOCK, KN01_INT_CLOCK,
+		    KN01_SYS_SII_B_END, tmpstr);
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%i",
+		    machine->path, machine->bootstrap_cpu, KN01_INT_DZ);
+		dev_dc7085_init(machine, mem, KN01_SYS_DZ, tmpstr,
+		    machine->x11_md.in_use);
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%i",
+		    machine->path, machine->bootstrap_cpu, KN01_INT_CLOCK);
+		dev_mc146818_init(machine, mem, KN01_SYS_CLOCK, tmpstr,
 		    MC146818_DEC, 1);
-		dev_kn01_csr_init(mem, KN01_SYS_CSR, color_fb_flag);
+
+		dev_kn01_init(mem, KN01_SYS_CSR, color_fb_flag);
 
 		framebuffer_console_name = "osconsole=0,3";	/*  fb,keyb  */
 		serial_console_name      = "osconsole=3";	/*  3  */
@@ -139,7 +154,6 @@ MACHINE_SETUP(pmax)
 		/*  Supposed to have 25MHz R3000 CPU, R3010 FPC,  */
 		/*  and a R3220 Memory coprocessor  */
 		machine->machine_name = "DECstation 5000/200 (3MAX, KN02)";
-		machine->stable = 1;
 
 		if (machine->emulated_hz == 0)
 			machine->emulated_hz = 25000000;
@@ -161,62 +175,73 @@ MACHINE_SETUP(pmax)
 		 *  ibus0 at tc0 slot 7 offset 0x0
 		 *  dc0 at ibus0 addr 0x1fe00000
 		 *  mcclock0 at ibus0 addr 0x1fe80000: mc146818
-		 *
-		 *  kn02 shared irq numbers (IP) are offset by +8
-		 *  in the emulator
 		 */
 
-		/*  KN02 interrupts:  */
-		machine->md_interrupt = kn02_interrupt;
+		/*  KN02 mainbus (TurboChannel interrupt controller):  */
+		snprintf(tmpstr, sizeof(tmpstr), "kn02 addr=0x%x "
+		    "irq=%s.cpu[%i].2", (int) KN02_SYS_CSR,
+		    machine->path, machine->bootstrap_cpu);
+		device_add(machine, tmpstr);
 
 		/*
-		 *  TURBOchannel slots 0, 1, and 2 are free for
-		 *  option cards.  Let's put in zero or more graphics
-		 *  boards:
+		 *  TURBOchannel slots 0, 1, and 2 are free for option cards.
+		 *  Let's put in zero or more graphics boards:
 		 *
-		 *  TODO: It's also possible to have larger graphics
-		 *  cards that occupy several slots. How to solve
-		 *  this nicely?
+		 *  TODO: It's also possible to have larger graphics cards that
+		 *  occupy several slots. How should this be solved nicely?
 		 */
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.kn02.%i",
+		    machine->path, machine->bootstrap_cpu, 0);
 		dev_turbochannel_init(machine, mem, 0,
 		    KN02_PHYS_TC_0_START, KN02_PHYS_TC_0_END,
 		    machine->n_gfx_cards >= 1?
 			turbochannel_default_gfx_card : "",
-		    KN02_IP_SLOT0 +8);
+		    tmpstr);
 
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.kn02.%i",
+		    machine->path, machine->bootstrap_cpu, 1);
 		dev_turbochannel_init(machine, mem, 1,
 		    KN02_PHYS_TC_1_START, KN02_PHYS_TC_1_END,
 		    machine->n_gfx_cards >= 2?
 			turbochannel_default_gfx_card : "",
-		    KN02_IP_SLOT1 +8);
+		    tmpstr);
 
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.kn02.%i",
+		    machine->path, machine->bootstrap_cpu, 2);
 		dev_turbochannel_init(machine, mem, 2,
 		    KN02_PHYS_TC_2_START, KN02_PHYS_TC_2_END,
 		    machine->n_gfx_cards >= 3?
 			turbochannel_default_gfx_card : "",
-		    KN02_IP_SLOT2 +8);
+		    tmpstr);
 
 		/*  TURBOchannel slots 3 and 4 are reserved.  */
 
 		/*  TURBOchannel slot 5 is PMAZ-AA ("asc" SCSI).  */
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.kn02.%i",
+		    machine->path, machine->bootstrap_cpu, 5);
 		dev_turbochannel_init(machine, mem, 5,
 		    KN02_PHYS_TC_5_START, KN02_PHYS_TC_5_END,
-		    "PMAZ-AA", KN02_IP_SCSI +8);
+		    "PMAZ-AA", tmpstr);
 
 		/*  TURBOchannel slot 6 is PMAD-AA ("le" ethernet).  */
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.kn02.%i",
+		    machine->path, machine->bootstrap_cpu, 6);
 		dev_turbochannel_init(machine, mem, 6,
 		    KN02_PHYS_TC_6_START, KN02_PHYS_TC_6_END,
-		    "PMAD-AA", KN02_IP_LANCE +8);
+		    "PMAD-AA", tmpstr);
 
 		/*  TURBOchannel slot 7 is system stuff.  */
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2.kn02.%i",
+		    machine->path, machine->bootstrap_cpu, 7);
 		machine->main_console_handle =
 		    dev_dc7085_init(machine, mem,
-		    KN02_SYS_DZ, KN02_IP_DZ +8, machine->use_x11);
-		dev_mc146818_init(machine, mem,
-		    KN02_SYS_CLOCK, KN02_INT_CLOCK, MC146818_DEC, 1);
+		    KN02_SYS_DZ, tmpstr, machine->x11_md.in_use);
 
-		machine->md_int.kn02_csr =
-		    dev_kn02_init(cpu, mem, KN02_SYS_CSR);
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%i",
+		    machine->path, machine->bootstrap_cpu, KN02_INT_CLOCK);
+		dev_mc146818_init(machine, mem,
+		    KN02_SYS_CLOCK, tmpstr, MC146818_DEC, 1);
 
 		framebuffer_console_name = "osconsole=0,7";
 								/*  fb,keyb  */
@@ -235,7 +260,9 @@ MACHINE_SETUP(pmax)
 			    "have more than 128MB RAM. Continuing anyway.\n");
 
 		/*  KMIN interrupts:  */
-		machine->md_interrupt = kmin_interrupt;
+fatal("TODO: Legacy rewrite\n");
+abort();
+//		machine->md_interrupt = kmin_interrupt;
 
 		/*
 		 *  tc0 at mainbus0: 12.5 MHz clock  (0x10000000,slotsize=64MB)
@@ -254,18 +281,27 @@ MACHINE_SETUP(pmax)
 		 *	SCSI ID 7			(0x1c300000) slot 12
 		 *  dma for asc0			(0x1c380000) slot 14
 		 */
-		machine->md_int.dec_ioasic_data = dev_dec_ioasic_init(cpu,
-		    mem, 0x1c000000, 0);
-		dev_le_init(machine, mem, 0x1c0c0000, 0, 0, KMIN_INTR_LANCE + 8,
-		    4 * 65536);
+fatal("TODO: dec_ioasic legacy rewrite\n");
+abort();
+//		machine->md_int.dec_ioasic_data = dev_dec_ioasic_init(cpu,
+//		    mem, 0x1c000000, 0);
+fatal("TODO: kmin dev_le_init.\n");
+abort();
+//		dev_le_init(machine, mem, 0x1c0c0000, 0, 0,
+//		    KMIN_INTR_LANCE + 8, 4 * 65536);
 		dev_scc_init(machine, mem, 0x1c100000, KMIN_INTR_SCC_0 + 8,
-		    machine->use_x11, 0, 1);
+		    machine->x11_md.in_use, 0, 1);
 		dev_scc_init(machine, mem, 0x1c180000, KMIN_INTR_SCC_1 + 8,
-		    machine->use_x11, 1, 1);
-		dev_mc146818_init(machine, mem, 0x1c200000, KMIN_INTR_CLOCK + 8,
-		    MC146818_DEC, 1);
-		dev_asc_init(machine, mem, 0x1c300000, KMIN_INTR_SCSI +8,
-		    NULL, DEV_ASC_DEC, NULL, NULL);
+		    machine->x11_md.in_use, 1, 1);
+fatal("TODO: mc146818 irq\n");
+abort();
+//		dev_mc146818_init(machine, mem, 0x1c200000, 
+//KMIN_INTR_CLOCK + 8,
+//		    MC146818_DEC, 1);
+fatal("TODO: kmin asc init\n");
+abort();
+//		dev_asc_init(machine, mem, 0x1c300000, KMIN_INTR_SCSI +8,
+//		    NULL, DEV_ASC_DEC, NULL, NULL);
 
 		/*
 		 *  TURBOchannel slots 0, 1, and 2 are free for
@@ -274,6 +310,9 @@ MACHINE_SETUP(pmax)
 		 *
 		 *  TODO: irqs 
 		 */
+fatal("TODO: turbochannel init rewrite!\n");
+abort();
+#if 0
 		dev_turbochannel_init(machine, mem, 0, 0x10000000, 0x103fffff,
 		    machine->n_gfx_cards >= 1?
 			turbochannel_default_gfx_card : "", KMIN_INT_TC0);
@@ -285,7 +324,7 @@ MACHINE_SETUP(pmax)
 		dev_turbochannel_init(machine, mem, 2, 0x18000000, 0x183fffff,
 		    machine->n_gfx_cards >= 3?
 			turbochannel_default_gfx_card : "", KMIN_INT_TC2);
-
+#endif
 		/*  (kmin shared irq numbers (IP) are offset by +8 in the
 		    emulator)  */
 		/*  kmin_csr = dev_kmin_init(cpu, mem, KMIN_REG_INTR);  */
@@ -307,7 +346,9 @@ MACHINE_SETUP(pmax)
 			    "have more than 480MB RAM. Continuing anyway.\n");
 
 		/*  KN03 interrupts:  */
-		machine->md_interrupt = kn03_interrupt;
+fatal("TODO: Legacy rewrite\n");
+abort();
+//		machine->md_interrupt = kn03_interrupt;
 
 		/*
 		 *  tc0 at mainbus0: 25 MHz clock (slot 0)	(0x1e000000)
@@ -323,27 +364,37 @@ MACHINE_SETUP(pmax)
 		 *  asc0 at ioasic0 offset 0x300000: NCR53C94, 25MHz,
 		 *	SCSI ID 7				(0x1fb00000)
 		 */
-		machine->md_int.dec_ioasic_data = dev_dec_ioasic_init(cpu,
-		    mem, 0x1f800000, 0);
+fatal("TODO: dec_ioasic legacy rewrite\n");
+abort();
+//		machine->md_int.dec_ioasic_data = dev_dec_ioasic_init(cpu,
+//		    mem, 0x1f800000, 0);
 
-		dev_le_init(machine, mem, KN03_SYS_LANCE, 0, 0,
-		    KN03_INTR_LANCE +8, 4 * 65536);
+fatal("TODO: kn03 dev_le_init rewrite\n");
+abort();
+//		dev_le_init(machine, mem, KN03_SYS_LANCE, 0, 0,
+//		    KN03_INTR_LANCE +8, 4 * 65536);
 
-		machine->md_int.dec_ioasic_data->dma_func[3] =
-		    dev_scc_dma_func;
-		machine->md_int.dec_ioasic_data->dma_func_extra[2] =
-		    dev_scc_init(machine, mem, KN03_SYS_SCC_0,
-		    KN03_INTR_SCC_0 +8, machine->use_x11, 0, 1);
-		machine->md_int.dec_ioasic_data->dma_func[2] =
-		    dev_scc_dma_func;
-		machine->md_int.dec_ioasic_data->dma_func_extra[3] =
-		    dev_scc_init(machine, mem, KN03_SYS_SCC_1,
-		    KN03_INTR_SCC_1 +8, machine->use_x11, 1, 1);
+fatal("TODO: dec_ioasic legacy rewrite\n");
+abort();
+//		machine->md_int.dec_ioasic_data->dma_func[3] =
+//		    dev_scc_dma_func;
+//		machine->md_int.dec_ioasic_data->dma_func_extra[2] =
+//		    dev_scc_init(machine, mem, KN03_SYS_SCC_0,
+//		    KN03_INTR_SCC_0 +8, machine->x11_md.in_use, 0, 1);
+//		machine->md_int.dec_ioasic_data->dma_func[2] =
+//		    dev_scc_dma_func;
+//		machine->md_int.dec_ioasic_data->dma_func_extra[3] =
+//		    dev_scc_init(machine, mem, KN03_SYS_SCC_1,
+//		    KN03_INTR_SCC_1 +8, machine->x11_md.in_use, 1, 1);
 
-		dev_mc146818_init(machine, mem, KN03_SYS_CLOCK, KN03_INT_RTC,
-		    MC146818_DEC, 1);
-		dev_asc_init(machine, mem, KN03_SYS_SCSI,
-		    KN03_INTR_SCSI +8, NULL, DEV_ASC_DEC, NULL, NULL);
+fatal("TODO: mc146818 irq\n");
+abort();
+//		dev_mc146818_init(machine, mem, KN03_SYS_CLOCK, KN03_INT_RTC,
+//		    MC146818_DEC, 1);
+fatal("TODO: asc init rewrite\n");
+abort();
+//		dev_asc_init(machine, mem, KN03_SYS_SCSI,
+//		    KN03_INTR_SCSI +8, NULL, DEV_ASC_DEC, NULL, NULL);
 
 		/*
 		 *  TURBOchannel slots 0, 1, and 2 are free for
@@ -352,6 +403,9 @@ MACHINE_SETUP(pmax)
 		 *
 		 *  TODO: irqs 
 		 */
+fatal("TODO: turbochannel rewrite init\n");
+abort();
+#if 0
 		dev_turbochannel_init(machine, mem, 0,
 		    KN03_PHYS_TC_0_START, KN03_PHYS_TC_0_END,
 		    machine->n_gfx_cards >= 1?
@@ -369,6 +423,7 @@ MACHINE_SETUP(pmax)
 		    machine->n_gfx_cards >= 3?
 			turbochannel_default_gfx_card : "",
 		    KN03_INTR_TC_2 +8);
+#endif
 
 		/*  TODO: interrupts  */
 		/*  shared (turbochannel) interrupts are +8  */
@@ -387,7 +442,7 @@ MACHINE_SETUP(pmax)
 
 		/*
 		 *  According to
-		 *  http://www2.no.netbsd.org/Ports/pmax/models.html,
+		 *  http://www2.no.netbsd.org/ports/pmax/models.html,
 		 *  the 5800-series is based on VAX 6000/300.
 		 */
 
@@ -401,11 +456,14 @@ MACHINE_SETUP(pmax)
 		 *  Clock uses interrupt 3 (shared with XMI?).
 		 */
 
-		machine->md_int.dec5800_csr = dev_dec5800_init(machine,
-		    mem, 0x10000000);
-		dev_decbi_init(mem, 0x10000000);
-		dev_ssc_init(machine, mem, 0x10140000, 2, machine->use_x11,
-		    &machine->md_int.dec5800_csr->csr);
+		device_add(machine, "dec5800 addr=0x10000000");
+		device_add(machine, "decbi addr=0x10000000");
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].dec5800.28",
+		    machine->path, machine->bootstrap_cpu);
+		dev_ssc_init(machine, mem, 0x10140000,
+		    tmpstr, machine->x11_md.in_use);
+
 		dev_decxmi_init(mem, 0x11800000);
 		dev_deccca_init(mem, DEC_DECCCA_BASEADDR);
 
@@ -440,9 +498,9 @@ MACHINE_SETUP(pmax)
 		 */
 		/*  ln (ethernet) at 0x10084x00 ? and 0x10120000 ?  */
 		/*  error registers (?) at 0x17000000 and 0x10080000  */
-		device_add(machine, "kn210 addr=0x10080000");
-		dev_ssc_init(machine, mem, 0x10140000, 0,
-		    machine->use_x11, NULL);	/*  TODO:  not irq 0  */
+		/*  device_add(machine, "kn210 addr=0x10080000");  */
+		dev_ssc_init(machine, mem, 0x10140000, "irq? TODO",
+		    machine->x11_md.in_use);
 		break;
 
 	case MACHINE_DEC_MAXINE_5000:	/*  type 7, KN02CA  */
@@ -459,7 +517,10 @@ MACHINE_SETUP(pmax)
 			    "have more than 40MB RAM. Continuing anyway.\n");
 
 		/*  Maxine interrupts:  */
-		machine->md_interrupt = maxine_interrupt;
+fatal("TODO: Legacy rewrite\n");
+abort();
+
+//		machine->md_interrupt = maxine_interrupt;
 
 		/*
 		 *  Something at address 0xca00000. (?)
@@ -484,9 +545,14 @@ MACHINE_SETUP(pmax)
 		 *  xcfb0 at tc0 slot 2 offset 0x0: 1024x768x8
 		 *	built-in framebuffer			(0xa000000)
 		 */
-		machine->md_int.dec_ioasic_data =
-		    dev_dec_ioasic_init(cpu, mem, 0x1c000000, 0);
+fatal("TODO: dec_ioasic legacy rewrite\n");
+abort();
+//		machine->md_int.dec_ioasic_data =
+//		    dev_dec_ioasic_init(cpu, mem, 0x1c000000, 0);
 
+fatal("TODO: turbochannel rewrite!\n");
+abort();
+#if 0
 		/*  TURBOchannel slots (0 and 1):  */
 		dev_turbochannel_init(machine, mem, 0,
 		    0x10000000, 0x103fffff,
@@ -505,19 +571,25 @@ MACHINE_SETUP(pmax)
 		 */
 		dev_turbochannel_init(machine, mem, 2,
 		    0x8000000, 0xbffffff, "PMAG-DV", 0);
-
+#endif
 		/*
 		 *  TURBOchannel slot 3: fixed, ioasic
 		 *  (the system stuff), 0x1c000000
 		 */
-		dev_le_init(machine, mem, 0x1c0c0000, 0, 0,
-		    XINE_INTR_LANCE +8, 4*65536);
+fatal("TODO: xine dev_le_init rewrite\n");
+abort();
+//		dev_le_init(machine, mem, 0x1c0c0000, 0, 0,
+//		    XINE_INTR_LANCE +8, 4*65536);
 		dev_scc_init(machine, mem, 0x1c100000,
-		    XINE_INTR_SCC_0 +8, machine->use_x11, 0, 1);
-		dev_mc146818_init(machine, mem, 0x1c200000,
-		    XINE_INT_TOY, MC146818_DEC, 1);
-		dev_asc_init(machine, mem, 0x1c300000,
-		    XINE_INTR_SCSI +8, NULL, DEV_ASC_DEC, NULL, NULL);
+		    XINE_INTR_SCC_0 +8, machine->x11_md.in_use, 0, 1);
+fatal("TODO: mc146818 irq\n");
+abort();
+//		dev_mc146818_init(machine, mem, 0x1c200000,
+//		    XINE_INT_TOY, MC146818_DEC, 1);
+fatal("TODO: xine asc init rewrite\n");
+abort();
+//		dev_asc_init(machine, mem, 0x1c300000,
+//		    XINE_INTR_SCSI +8, NULL, DEV_ASC_DEC, NULL, NULL);
 
 		framebuffer_console_name = "osconsole=3,2";	/*  keyb,fb?  */
 		serial_console_name      = "osconsole=3";
@@ -549,8 +621,8 @@ MACHINE_SETUP(pmax)
 		 *  asc (scsi) at 0x17100000.
 		 */
 
-		dev_ssc_init(machine, mem, 0x10140000, 0,
-		    machine->use_x11, NULL);		/*  TODO:  not irq 0  */
+		dev_ssc_init(machine, mem, 0x10140000, "TODO: irq",
+		    machine->x11_md.in_use);
 
 		/*  something at 0x17000000, ultrix says "cpu 0 panic: "
 		    "DS5500 I/O Board is missing" if this is not here  */
@@ -582,13 +654,15 @@ MACHINE_SETUP(pmax)
 			    "cannot have more than 128MB RAM. Continuing"
 			    " anyway.\n");
 
-		if (machine->use_x11)
+		if (machine->x11_md.in_use)
 			fprintf(stderr, "WARNING! Real MIPSMATE 5100 machines "
 			    "cannot have a graphical framebuffer. "
 			    "Continuing anyway.\n");
 
-		/*  KN230 interrupts:  */
-		machine->md_interrupt = kn230_interrupt;
+		/*  KN230 mainbus / interrupt controller:  */
+		snprintf(tmpstr, sizeof(tmpstr),
+		    "kn230 addr=0x%"PRIx64, (uint64_t) KN230_SYS_ICSR);
+		device_add(machine, tmpstr);
 
 		/*
 		 *  According to NetBSD/pmax:
@@ -596,26 +670,33 @@ MACHINE_SETUP(pmax)
 		 *  le0 at ibus0 addr 0x18000000: address 00:00:00:00:00:00
 		 *  sii0 at ibus0 addr 0x1a000000
 		 */
-		dev_mc146818_init(machine, mem, KN230_SYS_CLOCK, 4,
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].%i",
+		    machine->path, machine->bootstrap_cpu, 4);
+		dev_mc146818_init(machine, mem, KN230_SYS_CLOCK, tmpstr,
 		    MC146818_DEC, 1);
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].kn230.0x%x",
+		    machine->path, machine->bootstrap_cpu, KN230_CSR_INTR_DZ0);
 		dev_dc7085_init(machine, mem, KN230_SYS_DZ0,
-		    KN230_CSR_INTR_DZ0, machine->use_x11);/*  NOTE: CSR_INTR  */
+		    tmpstr, machine->x11_md.in_use);
+
 		/* dev_dc7085_init(machine, mem, KN230_SYS_DZ1,
-		    KN230_CSR_INTR_OPT0, machine->use_x11);
-			NOTE: CSR_INTR  */
+		    KN230_CSR_INTR_OPT0, machine->x11_md.in_use);  */
 		/* dev_dc7085_init(machine, mem, KN230_SYS_DZ2,
-		    KN230_CSR_INTR_OPT1, machine->use_x11);
-			NOTE: CSR_INTR  */
+		    KN230_CSR_INTR_OPT1, machine->x11_md.in_use);  */
+
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].kn230.0x%x",
+		    machine->path, machine->bootstrap_cpu,
+		    KN230_CSR_INTR_LANCE);
 		dev_le_init(machine, mem, KN230_SYS_LANCE,
 		    KN230_SYS_LANCE_B_START, KN230_SYS_LANCE_B_END,
-		    KN230_CSR_INTR_LANCE, 4*1048576);
-		dev_sii_init(machine, mem, KN230_SYS_SII,
-		    KN230_SYS_SII_B_START, KN230_SYS_SII_B_END,
-		    KN230_CSR_INTR_SII);
+		    tmpstr, 4*1048576);
 
-		snprintf(tmpstr, sizeof(tmpstr),
-		    "kn230 addr=0x%"PRIx64, (uint64_t) KN230_SYS_ICSR);
-		machine->md_int.kn230_csr = device_add(machine, tmpstr);
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].kn230.0x%x",
+		    machine->path, machine->bootstrap_cpu, KN230_CSR_INTR_SII);
+		dev_sii_init(machine, mem, KN230_SYS_SII,
+		    KN230_SYS_SII_B_START, KN230_SYS_SII_B_END, tmpstr);
 
 		serial_console_name = "osconsole=0";
 		break;
@@ -727,11 +808,7 @@ MACHINE_SETUP(pmax)
 		init_bootpath = bootpath;
 	}
 
-	machine->bootarg = malloc(BOOTARG_BUFLEN);
-	if (machine->bootarg == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(machine->bootarg = malloc(BOOTARG_BUFLEN));
 	strlcpy(machine->bootarg, init_bootpath, BOOTARG_BUFLEN);
 	if (strlcat(machine->bootarg, machine->boot_kernel_filename,
 	    BOOTARG_BUFLEN) > BOOTARG_BUFLEN) {
@@ -776,27 +853,28 @@ MACHINE_SETUP(pmax)
 
 	store_buf(cpu, BOOTINFO_ADDR, (char *)&xx, sizeof(xx));
 
+	CHECK_ALLOCATION(machine->md.pmax =
+	    malloc(sizeof(struct machine_pmax)));
+	memset(machine->md.pmax, 0, sizeof(struct machine_pmax));
+
 	/*  The system's memmap:  */
-	machine->md.pmax.memmap = malloc(sizeof(struct dec_memmap));
-	if (machine->md.pmax.memmap == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(machine->md.pmax->memmap =
+	    malloc(sizeof(struct dec_memmap)));
 	store_32bit_word_in_host(cpu,
-	    (unsigned char *)&machine->md.pmax.memmap->pagesize, 4096);
+	    (unsigned char *)&machine->md.pmax->memmap->pagesize, 4096);
 	{
 		unsigned int i;
-		for (i=0; i<sizeof(machine->md.pmax.memmap->bitmap); i++)
-			machine->md.pmax.memmap->bitmap[i] = ((int)i * 4096*8 <
+		for (i=0; i<sizeof(machine->md.pmax->memmap->bitmap); i++)
+			machine->md.pmax->memmap->bitmap[i] = ((int)i * 4096*8 <
 			    1048576*machine->physical_ram_in_mb)? 0xff : 0x00;
 	}
 	store_buf(cpu, DEC_MEMMAP_ADDR,
-	    (char *)machine->md.pmax.memmap, sizeof(struct dec_memmap));
+	    (char *)machine->md.pmax->memmap, sizeof(struct dec_memmap));
 
 	/*  Environment variables:  */
 	addr = DEC_PROM_STRINGS;
 
-	if (machine->use_x11 && machine->n_gfx_cards > 0)
+	if (machine->x11_md.in_use && machine->n_gfx_cards > 0)
 		/*  (0,3)  Keyboard and Framebuffer  */
 		add_environment_string(cpu, framebuffer_console_name, &addr);
 	else
@@ -857,13 +935,13 @@ MACHINE_SETUP(pmax)
 MACHINE_DEFAULT_CPU(pmax)
 {
 	if (machine->machine_subtype > 2)
-		machine->cpu_name = strdup("R3000A");
+		CHECK_ALLOCATION(machine->cpu_name = strdup("R3000A"));
 
 	if (machine->machine_subtype > 1 && machine->cpu_name == NULL)
-		machine->cpu_name = strdup("R3000");
+		CHECK_ALLOCATION(machine->cpu_name = strdup("R3000"));
 
 	if (machine->cpu_name == NULL)
-		machine->cpu_name = strdup("R2000");
+		CHECK_ALLOCATION(machine->cpu_name = strdup("R2000"));
 }
 
 

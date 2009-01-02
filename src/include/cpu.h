@@ -2,7 +2,7 @@
 #define	CPU_H
 
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu.h,v 1.100 2006/10/25 09:24:06 debug Exp $
+ *  $Id: cpu.h,v 1.143.2.1 2008/01/18 19:12:31 debug Exp $
  *
  *  CPU-related definitions.
  */
@@ -41,27 +41,35 @@
 /*  This is needed for undefining 'mips', 'ppc' etc. on weird systems:  */
 #include "../../config.h"
 
+#include "timer.h"
+
+
 /*
  *  Dyntrans misc declarations, used throughout the dyntrans code.
  *
- *  Note that there is place for all instruction calls within a page,
- *  and then 2 more. The first one of these "extra" instruction slots is
- *  the end-of-page slot. It transfers control to the first instruction
- *  slot on the next (virtual) page.
+ *  Note that there is space for all instruction calls within a page, and then
+ *  two more. The first one of these "extra" instruction slots is the end-of-
+ *  page slot. It transfers control to the first instruction slot on the next
+ *  (virtual) page.
  *
- *  The second of these extra instruction slots is an additional 
- *  end-of-page slot for delay-slot architectures. On e.g. MIPS, a branch
- *  instruction can "nullify" (skip) the delay-slot. If the end-of-page
- *  slot is skipped, then we end up one step after that. That's where the
- *  end_of_page2 slot is. :)
+ *  The second of these extra instruction slots is an additional end-of-page
+ *  slot for delay-slot architectures. On e.g. MIPS, a branch instruction can
+ *  "nullify" (skip) the delay-slot. If the end-of-page slot is skipped, then
+ *  we end up one step after that. That's where the end_of_page2 slot is. :)
  *
- *  next_ofs points to the next page in a chain of possible pages.
- *  (several pages can be in the same chain, but only one matches the
- *  specific physaddr.)
+ *  next_ofs points to the next page in a chain of possible pages. (Several
+ *  pages can be in the same chain, but only one matches the specific physaddr.)
  *
- *  translations is a tiny bitmap indicating which parts of the page have
- *  actual translations. Bit 0 corresponds to the lowest 1/32th of the page,
- *  bit 1 to the second-lowest 1/32th, and so on.
+ *  translations_bitmap is a tiny bitmap indicating which parts of the page have
+ *  actual translations. Bit 0 corresponds to the lowest 1/32th of the page, bit
+ *  1 to the second-lowest 1/32th, and so on. This speeds up page invalidations,
+ *  since only part of the page need to be reset.
+ *
+ *  translation_ranges_ofs is an offset within the translation cache to a short
+ *  list of ranges for this physpage which contain code. The list is of fixed
+ *  length; to extend the list, the list should be made to point to another
+ *  list, and so forth. (Bad, O(n) find/insert complexity. Should be fixed some
+ *  day. TODO)  See definition of physpage_ranges below.
  */
 #define DYNTRANS_MISC_DECLARATIONS(arch,ARCH,addrtype)  struct \
 	arch ## _instr_call {					\
@@ -73,7 +81,8 @@
 	struct arch ## _tc_physpage {					\
 		struct arch ## _instr_call ics[ARCH ## _IC_ENTRIES_PER_PAGE+2];\
 		uint32_t	next_ofs;	/*  (0 for end of chain)  */ \
-		uint32_t	translations;				\
+		uint32_t	translations_bitmap;			\
+		uint32_t	translation_ranges_ofs;			\
 		addrtype	physaddr;				\
 	};								\
 									\
@@ -100,6 +109,21 @@
 		struct arch ## _l2_64_table	*next;			\
 		int				refcount;		\
 	};
+
+
+/*
+ *  This structure contains a list of ranges within an emulated
+ *  physical page that contain translatable code.
+ */
+#define	PHYSPAGE_RANGES_ENTRIES_PER_LIST		20
+struct physpage_ranges {
+	uint32_t	next_ofs;	/*  0 for end of chain  */
+	uint32_t	n_entries_used;
+	uint16_t	base[PHYSPAGE_RANGES_ENTRIES_PER_LIST];
+	uint16_t	length[PHYSPAGE_RANGES_ENTRIES_PER_LIST];
+	uint16_t	count[PHYSPAGE_RANGES_ENTRIES_PER_LIST];
+};
+
 
 /*
  *  Dyntrans "Instruction Translation Cache":
@@ -145,13 +169,13 @@
  *  full-size tables can fit in virtual memory on modern hosts (both 32-bit
  *  and 64-bit hosts). :-)
  *
- *  Usage: e.g. VPH32(arm,ARM,uint32_t,uint8_t)
- *           or VPH32(sparc,SPARC,uint64_t,uint16_t)
+ *  Usage: e.g. VPH32(arm,ARM)
+ *           or VPH32(sparc,SPARC)
  *
  *  The vph_tlb_entry entries are cpu dependent tlb entries.
  *
  *  The host_load and host_store entries point to host pages; the phys_addr
- *  entries are uint32_t or uint64_t (emulated physical addresses).
+ *  entries are uint32_t (emulated physical addresses).
  *
  *  phys_page points to translation cache physpages.
  *
@@ -159,21 +183,37 @@
  *  The values in this array are the tlb index plus 1, so a value of, say,
  *  3 means tlb index 2. A value of 0 would mean a tlb index of -1, which
  *  is not a valid index. (I.e. no hit.)
+ *
+ *  The VPH32EXTENDED variant adds an additional postfix to the array
+ *  names. Used so far only for usermode addresses in M88K emulation.
  */
 #define	N_VPH32_ENTRIES		1048576
-#define	VPH32(arch,ARCH,paddrtype,tlbindextype)				\
+#define	VPH32(arch,ARCH)						\
 	unsigned char		*host_load[N_VPH32_ENTRIES];		\
 	unsigned char		*host_store[N_VPH32_ENTRIES];		\
-	paddrtype		phys_addr[N_VPH32_ENTRIES];		\
+	uint32_t		phys_addr[N_VPH32_ENTRIES];		\
 	struct arch ## _tc_physpage  *phys_page[N_VPH32_ENTRIES];	\
-	tlbindextype		vaddr_to_tlbindex[N_VPH32_ENTRIES];
+	uint8_t			vaddr_to_tlbindex[N_VPH32_ENTRIES];
+#define	VPH32_16BITVPHENTRIES(arch,ARCH)				\
+	unsigned char		*host_load[N_VPH32_ENTRIES];		\
+	unsigned char		*host_store[N_VPH32_ENTRIES];		\
+	uint32_t		phys_addr[N_VPH32_ENTRIES];		\
+	struct arch ## _tc_physpage  *phys_page[N_VPH32_ENTRIES];	\
+	uint16_t		vaddr_to_tlbindex[N_VPH32_ENTRIES];
+#define	VPH32EXTENDED(arch,ARCH,ex)					\
+	unsigned char		*host_load_ ## ex[N_VPH32_ENTRIES];	\
+	unsigned char		*host_store_ ## ex[N_VPH32_ENTRIES];	\
+	uint32_t		phys_addr_ ## ex[N_VPH32_ENTRIES];	\
+	struct arch ## _tc_physpage  *phys_page_ ## ex[N_VPH32_ENTRIES];\
+	uint8_t			vaddr_to_tlbindex_ ## ex[N_VPH32_ENTRIES];
+
 
 /*
  *  64-bit dyntrans emulated Virtual -> physical -> host address translation:
  *  -------------------------------------------------------------------------
  *
- *  Usage: e.g. VPH64(alpha,ALPHA,uint8_t)
- *           or VPH64(sparc,SPARC,uint16_t)
+ *  Usage: e.g. VPH64(alpha,ALPHA)
+ *           or VPH64(sparc,SPARC)
  *
  *  l1_64 is an array containing poiners to l2 tables.
  *
@@ -182,7 +222,7 @@
  *  used.
  */
 #define	DYNTRANS_L1N		17
-#define	VPH64(arch,ARCH,tlbindextype)					\
+#define	VPH64(arch,ARCH)						\
 	struct arch ## _l3_64_table	*l3_64_dummy;			\
 	struct arch ## _l3_64_table	*next_free_l3;			\
 	struct arch ## _l2_64_table	*l2_64_dummy;			\
@@ -193,19 +233,12 @@
 /*  Include all CPUs' header files here:  */
 #include "cpu_alpha.h"
 #include "cpu_arm.h"
-#include "cpu_avr.h"
-#include "cpu_avr32.h"
-#include "cpu_hppa.h"
-#include "cpu_i960.h"
-#include "cpu_ia64.h"
-#include "cpu_m68k.h"
+#include "cpu_m32r.h"
+#include "cpu_m88k.h"
 #include "cpu_mips.h"
 #include "cpu_ppc.h"
-#include "cpu_rca180x.h"
 #include "cpu_sh.h"
 #include "cpu_sparc.h"
-#include "cpu_transputer.h"
-#include "cpu_x86.h"
 
 struct cpu;
 struct emul;
@@ -258,20 +291,10 @@ struct cpu_family {
 	void			(*tlbdump)(struct machine *m, int x,
 				    int rawflag);
 
-	/*  Assert an interrupt.  */
-	int			(*interrupt)(struct cpu *cpu, uint64_t irq_nr);
-
-	/*  De-assert an interrupt.  */
-	int			(*interrupt_ack)(struct cpu *cpu,
-				    uint64_t irq_nr);
-
 	/*  Print architecture-specific function call arguments.
 	    (This is called for each function call, if running with -t.)  */
 	void			(*functioncall_trace)(struct cpu *,
 				    uint64_t f, int n_args);
-
-	/*  GDB command handler.  */
-	char			*(*gdb_stub)(struct cpu *, char *cmd);
 };
 
 
@@ -291,10 +314,12 @@ struct cpu_family {
 #define	N_SAFE_DYNTRANS_LIMIT_SHIFT	14
 #define	N_SAFE_DYNTRANS_LIMIT	((1 << (N_SAFE_DYNTRANS_LIMIT_SHIFT - 1)) - 1)
 
-#define	DYNTRANS_CACHE_SIZE		(32*1048576)
+#define	MAX_DYNTRANS_READAHEAD		128
+
+#define	DEFAULT_DYNTRANS_CACHE_SIZE	(48*1048576)
 #define	DYNTRANS_CACHE_MARGIN		200000
 
-#define	N_BASE_TABLE_ENTRIES		32768
+#define	N_BASE_TABLE_ENTRIES		65536
 #define	PAGENR_TO_TABLE_INDEX(a)	((a) & (N_BASE_TABLE_ENTRIES-1))
 
 
@@ -312,17 +337,30 @@ struct cpu {
 	/*  CPU-specific name, e.g. "R2000", "21164PC", etc.  */
 	char		*name;
 
+	/*  Full "path" to the CPU, e.g. "machine[0].cpu[0]":  */
+	char		*path;
+
+	/*  Nr of instructions executed, etc.:  */
+	int64_t		ninstrs;
+	int64_t		ninstrs_show;
+	int64_t		ninstrs_flush;
+	int64_t		ninstrs_since_gettimeofday;
+	struct timeval	starttime;
+
 	/*  EMUL_LITTLE_ENDIAN or EMUL_BIG_ENDIAN.  */
-	int		byte_order;
+	uint8_t		byte_order;
+
+	/*  0 for emulated 64-bit CPUs, 1 for 32-bit.  */
+	uint8_t		is_32bit;
+
+	/*  1 while running, 0 when paused/stopped.  */
+	uint8_t		running;
+
+	/*  See comment further up.  */
+	uint8_t		delay_slot;
 
 	/*  0-based CPU id, in an emulated SMP system.  */
 	int		cpu_id;
-
-	/*  0 for emulated 64-bit CPUs, 1 for 32-bit.  */
-	int		is_32bit;
-
-	/*  1 while running, 0 when paused/stopped.  */
-	int		running;
 
 	/*  A pointer to the main memory connected to this CPU.  */
 	struct memory	*mem;
@@ -348,9 +386,6 @@ struct cpu {
 	/*  The program counter. (For 32-bit modes, not all bits are used.)  */
 	uint64_t	pc;
 
-	/*  See comment further up.  */
-	int		delay_slot;
-
 	/*  The current depth of function call tracing.  */
 	int		trace_tree_depth;
 
@@ -363,8 +398,8 @@ struct cpu {
 	 *  instructions per second, "idling" is printed instead. (The number
 	 *  of instrs per second when idling is meaningless anyway.)
 	 */
-	int		is_halted;
-	int		has_been_idling;
+	char		is_halted;
+	char		has_been_idling;
 
 	/*
 	 *  Dynamic translation:
@@ -378,36 +413,42 @@ struct cpu {
 	 *  Note that it can also be adjusted negatively, that is, the way
 	 *  to "get out" of a dyntrans loop is to set the current instruction
 	 *  call pointer to the "nothing" instruction. This instruction
-	 *  _decreases_ n_translated_instrs. That way, once the dyntrans loop
-	 *  exits, only real instructions will be counted, and not the
+	 *  _decreases_ n_translated_instrs by 1. That way, once the dyntrans
+	 *  loop exits, only real instructions will be counted, and not the
 	 *  "nothing" instructions.
+	 *
+	 *  The translation cache is a relative large chunk of memory (say,
+	 *  32 MB) which is used for translations. When it has been used up,
+	 *  everything restarts from scratch.
+	 *
+	 *  translation_readahead is non-zero when translating instructions
+	 *  ahead of the current (emulated) instruction pointer.
 	 */
+
+	int		translation_readahead;
+
+	/*  Instruction translation cache:  */
 	int		n_translated_instrs;
 	unsigned char	*translation_cache;
 	size_t		translation_cache_cur_ofs;
 
+
 	/*
 	 *  CPU-family dependent:
 	 *
-	 *  These contain everything ranging from registers, memory management,
-	 *  status words, etc.
+	 *  These contain everything ranging from general purpose registers,
+	 *  control registers, memory management, status words, interrupt
+	 *  specifics, etc.
 	 */
 	union {
 		struct alpha_cpu      alpha;
 		struct arm_cpu        arm;
-		struct avr_cpu        avr;
-		struct avr32_cpu      avr32;
-		struct hppa_cpu       hppa;
-		struct i960_cpu       i960;
-		struct ia64_cpu       ia64;
-		struct m68k_cpu       m68k;
+		struct m32r_cpu       m32r;
+		struct m88k_cpu       m88k;
 		struct mips_cpu       mips;
 		struct ppc_cpu        ppc;
-		struct rca180x_cpu    rca180x;
 		struct sh_cpu         sh;
 		struct sparc_cpu      sparc;
-		struct transputer_cpu transputer;
-		struct x86_cpu        x86;
 	} cd;
 };
 
@@ -422,10 +463,7 @@ void cpu_register_dump(struct machine *m, struct cpu *cpu,
 	int gprs, int coprocs);
 int cpu_disassemble_instr(struct machine *m, struct cpu *cpu,
 	unsigned char *instr, int running, uint64_t addr);
-char *cpu_gdb_stub(struct cpu *cpu, char *cmd);
 
-int cpu_interrupt(struct cpu *cpu, uint64_t irq_nr);
-int cpu_interrupt_ack(struct cpu *cpu, uint64_t irq_nr);
 void cpu_functioncall_trace(struct cpu *cpu, uint64_t f);
 void cpu_functioncall_trace_return(struct cpu *cpu);
 
@@ -475,10 +513,7 @@ void cpu_init(void);
 	fp->disassemble_instr = n ## _cpu_disassemble_instr;		\
 	fp->register_dump = n ## _cpu_register_dump;			\
 	fp->dumpinfo = n ## _cpu_dumpinfo;				\
-	fp->interrupt = n ## _cpu_interrupt; 				\
-	fp->interrupt_ack = n ## _cpu_interrupt_ack;			\
 	fp->functioncall_trace = n ## _cpu_functioncall_trace;		\
-	fp->gdb_stub = n ## _cpu_gdb_stub;				\
 	fp->tlbdump = n ## _cpu_tlbdump;				\
 	fp->init_tables = n ## _cpu_init_tables;			\
 	return 1;							\

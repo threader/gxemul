@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_bt459.c,v 1.65 2006/07/23 14:37:34 debug Exp $
+ *  $Id: dev_bt459.c,v 1.70.2.1 2008/01/18 19:12:28 debug Exp $
  *  
- *  Brooktree 459 vdac, used by TURBOchannel graphics cards.
+ *  COMMENT: Brooktree BT459, used by TURBOchannel graphics cards
  */
 
 #include <stdio.h>
@@ -65,7 +65,7 @@ struct bt459_data {
 	int		planes;
 	int		type;
 
-	int		irq_nr;
+	struct interrupt irq;
 	int		interrupts_enable;
 	int		interrupt_time;
 	int		interrupt_time_reset_value;
@@ -145,7 +145,7 @@ static void bt459_update_X_cursor(struct cpu *cpu, struct bt459_data *d)
 	 */
 
 #ifdef WITH_X11
-	if (cpu->machine->use_x11 && d->vfb_data->fb_window != NULL) {
+	if (cpu->machine->x11_md.in_use && d->vfb_data->fb_window != NULL) {
 		for (y=0; y<=ymax; y++) {
 			for (x=0; x<=xmax; x+=4) {
 				struct fb_window *win = d->vfb_data->fb_window;
@@ -271,23 +271,20 @@ DEVICE_TICK(bt459)
 	 *  or after another tick has passed.  (This is to prevent
 	 *  lockups from unhandled interrupts.)
 	 */
-	if (d->type != BT459_PX && d->interrupts_enable && d->irq_nr > 0) {
+	if (d->type != BT459_PX && d->interrupts_enable) {
 		d->interrupt_time --;
 		if (d->interrupt_time < 0) {
 			d->interrupt_time = d->interrupt_time_reset_value;
-			cpu_interrupt(cpu, d->irq_nr);
+			INTERRUPT_ASSERT(d->irq);
 		} else
-			cpu_interrupt_ack(cpu, d->irq_nr);
+			INTERRUPT_DEASSERT(d->irq);
 	}
 }
 
 
-/*
- *  dev_bt459_irq_access():
- */
 DEVICE_ACCESS(bt459_irq)
 {
-	struct bt459_data *d = (struct bt459_data *) extra;
+	struct bt459_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 
 	if (writeflag == MEM_WRITE)
@@ -298,8 +295,8 @@ DEVICE_ACCESS(bt459_irq)
 #endif
 
 	d->interrupts_enable = 1;
-	if (d->irq_nr > 0)
-		cpu_interrupt_ack(cpu, d->irq_nr);
+
+	INTERRUPT_DEASSERT(d->irq);
 
 	if (writeflag == MEM_READ)
 		memory_writemax64(cpu, data, len, odata);
@@ -308,12 +305,9 @@ DEVICE_ACCESS(bt459_irq)
 }
 
 
-/*
- *  dev_bt459_access():
- */
 DEVICE_ACCESS(bt459)
 {
-	struct bt459_data *d = (struct bt459_data *) extra;
+	struct bt459_data *d = extra;
 	uint64_t idata = 0, odata = 0;
 	int btaddr, old_cursor_on = d->cursor_on, modified;
 
@@ -330,8 +324,7 @@ DEVICE_ACCESS(bt459)
 	 *  accessing a normal BT459 register, or the irq register,
 	 *  or by simply "missing" it.
 	 */
-	if (d->irq_nr > 0)
-		cpu_interrupt_ack(cpu, d->irq_nr);
+	INTERRUPT_DEASSERT(d->irq);
 
 	/*  ID register is read-only, should always be 0x4a or 0x4a4a4a:  */
 	if (d->planes == 24)
@@ -530,20 +523,18 @@ DEVICE_ACCESS(bt459)
  */
 void dev_bt459_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr, uint64_t baseaddr_irq, struct vfb_data *vfb_data,
-	int planes, int irq_nr, int type)
+	int planes, char *irq_path, int type)
 {
-	struct bt459_data *d = malloc(sizeof(struct bt459_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	struct bt459_data *d;
 
+	CHECK_ALLOCATION(d = malloc(sizeof(struct bt459_data)));
 	memset(d, 0, sizeof(struct bt459_data));
+
+	INTERRUPT_CONNECT(irq_path, d->irq);
 
 	d->vfb_data     = vfb_data;
 	d->rgb_palette  = vfb_data->rgb_palette;
 	d->planes       = planes;
-	d->irq_nr	= irq_nr;
 	d->type		= type;
 	d->cursor_x     = -1;
 	d->cursor_y     = -1;
@@ -587,6 +578,6 @@ void dev_bt459_init(struct machine *machine, struct memory *mem,
 		    dev_bt459_irq_access, (void *)d, DM_DEFAULT, NULL);
 
 	machine_add_tickfunction(machine, dev_bt459_tick, d,
-	    BT459_TICK_SHIFT, 0.0);
+	    BT459_TICK_SHIFT);
 }
 

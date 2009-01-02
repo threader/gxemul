@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_alpha.c,v 1.11 2006/09/01 11:39:50 debug Exp $
+ *  $Id: machine_alpha.c,v 1.14.2.1 2008/01/18 19:12:32 debug Exp $
+ *
+ *  COMMENT: DEC Alpha machines
  */
 
 #include <stdio.h>
@@ -131,7 +133,7 @@ MACHINE_SETUP(alpha)
 	/*  CTB: Console Terminal Block  */
 	memset(&ctb, 0, sizeof(struct ctb));
 	store_64bit_word_in_host(cpu, (unsigned char *)
-	    &(ctb.ctb_term_type), machine->use_x11?
+	    &(ctb.ctb_term_type), machine->x11_md.in_use?
 	    CTB_GRAPHICS : CTB_PRINTERPORT);
 
 	/*  CRB: Console Routine Block  */

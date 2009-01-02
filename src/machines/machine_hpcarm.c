@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_hpcarm.c,v 1.3 2006/06/24 10:19:19 debug Exp $
+ *  $Id: machine_hpcarm.c,v 1.6.2.1 2008/01/18 19:12:33 debug Exp $
+ *
+ *  COMMENT: Handheld ARM-based machines
  */
 
 #include <stdio.h>
@@ -177,7 +179,7 @@ MACHINE_SETUP(hpcarm)
 	store_16bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.fb_type,
 	    hpc_fb_encoding);
 	store_16bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.bi_cnuse,
-	    machine->use_x11? BI_CNUSE_BUILTIN : BI_CNUSE_SERIAL);
+	    machine->x11_md.in_use? BI_CNUSE_BUILTIN : BI_CNUSE_SERIAL);
 
 	store_32bit_word_in_host(cpu,(unsigned char *)&hpc_bootinfo.timezone,0);
 	store_buf(cpu, machine->physical_ram_in_mb * 1048576 - 256,

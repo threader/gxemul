@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_le.c,v 1.51 2006/07/14 16:33:28 debug Exp $
+ *  $Id: dev_le.c,v 1.56.2.1 2008/01/18 19:12:29 debug Exp $
  *  
- *  LANCE ethernet, as used in DECstations.
+ *  COMMENT: LANCE ethernet, as used in DECstations
  *
  *  This is based on "PMAD-AA TURBOchannel Ethernet Module Functional
  *  Specification". I've tried to keep symbol names in this file to what
@@ -85,7 +85,8 @@ extern int quiet_mode;
 
 
 struct le_data {
-	int		irq_nr;
+	struct interrupt irq;
+	int		irq_asserted;
 
 	uint64_t	buf_start;
 	uint64_t	buf_end;
@@ -289,20 +290,11 @@ static void le_tx(struct net *net, struct le_data *d)
 		/*  Start of a new packet:  */
 		if (stp) {
 			d->tx_packet_len = buflen;
-			d->tx_packet = malloc(buflen);
-			if (d->tx_packet == NULL) {
-				fprintf(stderr, "out of memory (1) in "
-				    "le_tx()\n");
-				exit(1);
-			}
+			CHECK_ALLOCATION(d->tx_packet = malloc(buflen));
 		} else {
 			d->tx_packet_len += buflen;
-			d->tx_packet = realloc(d->tx_packet, d->tx_packet_len);
-			if (d->tx_packet == NULL) {
-				fprintf(stderr, "out of memory (2) in"
-				    " le_tx()\n");
-				exit(1);
-			}
+			CHECK_ALLOCATION(d->tx_packet =
+			    realloc(d->tx_packet, d->tx_packet_len));
 		}
 
 		/*  Copy data from SRAM into the tx packet:  */
@@ -531,19 +523,21 @@ static void le_register_fix(struct net *net, struct le_data *d)
 }
 
 
-/*
- *  dev_le_tick():
- */
-void dev_le_tick(struct cpu *cpu, void *extra)
+DEVICE_TICK(le)
 {
-	struct le_data *d = (struct le_data *) extra;
+	struct le_data *d = extra;
+	int new_assert;
 
 	le_register_fix(cpu->machine->emul->net, d);
 
-	if (d->reg[0] & LE_INTR && d->reg[0] & LE_INEA)
-		cpu_interrupt(cpu, d->irq_nr);
-	else
-		cpu_interrupt_ack(cpu, d->irq_nr);
+	new_assert = (d->reg[0] & LE_INTR) && (d->reg[0] & LE_INEA);
+
+	if (new_assert && !d->irq_asserted)
+		INTERRUPT_ASSERT(d->irq);
+	if (d->irq_asserted && !new_assert)
+		INTERRUPT_DEASSERT(d->irq);
+
+	d->irq_asserted = new_assert;
 }
 
 
@@ -606,9 +600,9 @@ void le_register_write(struct le_data *d, int r, uint32_t x)
 
 DEVICE_ACCESS(le_sram)
 {
+	struct le_data *d = extra;
 	size_t i;
 	int retval;
-	struct le_data *d = extra;
 
 #ifdef LE_DEBUG
 	if (writeflag == MEM_WRITE) {
@@ -651,10 +645,10 @@ DEVICE_ACCESS(le_sram)
 
 DEVICE_ACCESS(le)
 {
-	uint64_t idata = 0, odata = 0;
-	size_t i;
-	int retval = 1;
 	struct le_data *d = extra;
+	uint64_t idata = 0, odata = 0;
+	int retval = 1;
+	size_t i;
 
 	if (writeflag == MEM_WRITE)
 		idata = memory_readmax64(cpu, data, len);
@@ -765,25 +759,18 @@ do_return:
  *  dev_le_init():
  */
 void dev_le_init(struct machine *machine, struct memory *mem, uint64_t baseaddr,
-	uint64_t buf_start, uint64_t buf_end, int irq_nr, int len)
+	uint64_t buf_start, uint64_t buf_end, char *irq_path, int len)
 {
 	char *name2;
 	size_t nlen = 55;
-	struct le_data *d = malloc(sizeof(struct le_data));
+	struct le_data *d;
 
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-
+	CHECK_ALLOCATION(d = malloc(sizeof(struct le_data)));
 	memset(d, 0, sizeof(struct le_data));
-	d->irq_nr    = irq_nr;
 
-	d->sram = malloc(SRAM_SIZE);
-	if (d->sram == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	INTERRUPT_CONNECT(irq_path, d->irq);
+
+	CHECK_ALLOCATION(d->sram = malloc(SRAM_SIZE));
 	memset(d->sram, 0, SRAM_SIZE);
 
 	/*  TODO:  Are these actually used yet?  */
@@ -819,18 +806,14 @@ void dev_le_init(struct machine *machine, struct memory *mem, uint64_t baseaddr,
 	    DM_DYNTRANS_OK | DM_DYNTRANS_WRITE_OK
 	    | DM_READS_HAVE_NO_SIDE_EFFECTS, d->sram);
 
-	name2 = malloc(nlen);
-	if (name2 == NULL) {
-		fprintf(stderr, "out of memory in dev_le_init()\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(name2 = malloc(nlen));
 	snprintf(name2, nlen, "le [%02x:%02x:%02x:%02x:%02x:%02x]",
 	    d->rom[0], d->rom[1], d->rom[2], d->rom[3], d->rom[4], d->rom[5]);
 
 	memory_device_register(mem, name2, baseaddr + 0x100000,
 	    len - 0x100000, dev_le_access, (void *)d, DM_DEFAULT, NULL);
 
-	machine_add_tickfunction(machine, dev_le_tick, d, LE_TICK_SHIFT, 0.0);
+	machine_add_tickfunction(machine, dev_le_tick, d, LE_TICK_SHIFT);
 
 	net_add_nic(machine->emul->net, d, &d->rom[0]);
 }

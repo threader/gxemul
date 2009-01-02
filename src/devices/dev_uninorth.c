@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,9 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_uninorth.c,v 1.4 2006/01/01 13:17:18 debug Exp $
+ *  $Id: dev_uninorth.c,v 1.9.2.1 2008/01/18 19:12:30 debug Exp $
  *  
- *  Uni-North PCI controller (as used by MacPPC).
+ *  COMMENT: Uni-North PCI controller (used by MacPPC machines)
  */
 
 #include <stdio.h>
@@ -50,9 +50,6 @@ struct uninorth_data {
 };
 
 
-/*
- *  dev_uninorth_addr_access():
- */
 DEVICE_ACCESS(uninorth_addr)
 {
 	struct uninorth_data *d = extra;
@@ -95,9 +92,6 @@ DEVICE_ACCESS(uninorth_addr)
 }
 
 
-/*
- *  dev_uninorth_data_access():
- */
 DEVICE_ACCESS(uninorth_data)
 {
 	struct uninorth_data *d = extra;
@@ -116,24 +110,17 @@ DEVICE_ACCESS(uninorth_data)
 }
 
 
-/*
- *  dev_uninorth_init():
- */
 struct pci_data *dev_uninorth_init(struct machine *machine, struct memory *mem,
 	uint64_t addr, int isa_irqbase, int pciirq)
 {
 	struct uninorth_data *d;
-	int pci_irqbase = 0;	/*  TODO  */
 	uint64_t pci_io_offset, pci_mem_offset;
 	uint64_t isa_portbase = 0, isa_membase = 0;
 	uint64_t pci_portbase = 0, pci_membase = 0;
 
-	d = malloc(sizeof(struct uninorth_data));
-	if (d == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
+	CHECK_ALLOCATION(d = malloc(sizeof(struct uninorth_data)));
 	memset(d, 0, sizeof(struct uninorth_data));
+
 	d->pciirq = pciirq;
 
 	pci_io_offset  = 0x00000000ULL;
@@ -144,10 +131,10 @@ struct pci_data *dev_uninorth_init(struct machine *machine, struct memory *mem,
 	isa_membase    = 0xd3000000ULL;
 
 	/*  Create a PCI bus:  */
-	d->pci_data = bus_pci_init(machine, pciirq,
+	d->pci_data = bus_pci_init(machine, "ZZZ_irq_stuff",
 	    pci_io_offset, pci_mem_offset,
-	    pci_portbase, pci_membase, pci_irqbase,
-	    isa_portbase, isa_membase, isa_irqbase);
+	    pci_portbase, pci_membase, "XXX_pci_irqbase",
+	    isa_portbase, isa_membase, "YYY_isa_irqbase");
 
 	/*  Add the PCI glue for the controller itself:  */
 	bus_pci_add(machine, d->pci_data, mem, 0, 11, 0, "uninorth");

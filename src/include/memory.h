@@ -2,7 +2,7 @@
 #define	MEMORY_H
 
 /*
- *  Copyright (C) 2004-2006  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: memory.h,v 1.52 2006/09/01 15:42:59 debug Exp $
+ *  $Id: memory.h,v 1.57.2.1 2008/01/18 19:12:32 debug Exp $
  *
  *  Memory related functions.
  */
@@ -126,8 +126,7 @@ unsigned char *memory_paddr_to_hostaddr(struct memory *mem,
 #define	CACHE_FLAGS_MASK		0x3
 #define	NO_EXCEPTIONS			16
 #define	PHYSICAL			32
-#define	NO_SEGMENTATION			64	/*  for X86  */
-#define	MEMORY_USER_ACCESS		128	/*  for ARM, at least  */
+#define	MEMORY_USER_ACCESS		64	/*  for ARM and M88K  */
 
 /*  Dyntrans Memory flags:  */
 #define	DM_DEFAULT				0
@@ -164,6 +163,31 @@ void memory_device_register(struct memory *mem, const char *,
 void memory_device_remove(struct memory *mem, int i);
 
 uint64_t memory_checksum(struct memory *mem);
+
+void dump_mem_string(struct cpu *cpu, uint64_t addr);
+void store_string(struct cpu *cpu, uint64_t addr, char *s);
+int store_64bit_word(struct cpu *cpu, uint64_t addr, uint64_t data64);
+int store_32bit_word(struct cpu *cpu, uint64_t addr, uint64_t data32);
+int store_16bit_word(struct cpu *cpu, uint64_t addr, uint64_t data16);
+void store_byte(struct cpu *cpu, uint64_t addr, uint8_t data);
+void store_64bit_word_in_host(struct cpu *cpu, unsigned char *data,
+        uint64_t data32);
+void store_32bit_word_in_host(struct cpu *cpu, unsigned char *data,
+        uint64_t data32);
+void store_16bit_word_in_host(struct cpu *cpu, unsigned char *data,
+        uint16_t data16);
+uint64_t load_64bit_word(struct cpu *cpu, uint64_t addr);
+uint32_t load_32bit_word(struct cpu *cpu, uint64_t addr);
+uint16_t load_16bit_word(struct cpu *cpu, uint64_t addr);
+void store_buf(struct cpu *cpu, uint64_t addr, char *s, size_t len);
+void add_environment_string(struct cpu *cpu, char *s, uint64_t *addr);
+void add_environment_string_dual(struct cpu *cpu,
+        uint64_t *ptrp, uint64_t *addrp, char *s1, char *s2);
+void store_pointer_and_advance(struct cpu *cpu, uint64_t *addrp,
+        uint64_t data, int flag64);
+
+void memory_warn_about_unimplemented_addr(struct cpu *cpu, struct memory *mem,
+	int writeflag, uint64_t paddr, uint8_t *data, size_t len);
 
 
 #endif	/*  MEMORY_H  */
