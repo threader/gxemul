@@ -1,0 +1,555 @@
+<html><head><title>Gavare's eXperimental Emulator:&nbsp;&nbsp;&nbsp;Introduction</title>
+<meta name="robots" content="noarchive,nofollow,noindex"></head>
+<body bgcolor="#f8f8f8" text="#000000" link="#4040f0" vlink="#404040" alink="#ff0000">
+<table border=0 width=100% bgcolor="#d0d0d0"><tr>
+<td width=100% align=center valign=center><table border=0 width=100%><tr>
+<td align="left" valign=center bgcolor="#d0efff"><font color="#6060e0" size="6">
+<b>Gavare's eXperimental Emulator:</b></font><br>
+<font color="#000000" size="6"><b>Introduction</b>
+</font></td></tr></table></td></tr></table><p>
+
+<!--
+
+$Id: intro.html,v 1.100 2006/11/04 06:40:20 debug Exp $
+
+Copyright (C) 2003-2006  Anders Gavare.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. The name of the author may not be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+-->
+
+<a href="./">Back to the index</a>
+
+<p><br>
+<h2>Introduction</h2>
+
+<p>
+<table border="0" width="99%"><tr><td valign="top" align="left">
+<ul>
+  <li><a href="#overview">Overview</a>
+  <li><a href="#free">Is GXemul Free software?</a>
+  <li><a href="#build">How to compile/build the emulator</a>
+  <li><a href="#run">How to run the emulator</a>
+  <li><a href="#cpus">Which processor architectures does GXemul emulate?</a>
+  <li><a href="#hosts">Which host architectures are supported?</a>
+  <li><a href="#translation">What kind of translation does GXemul use?</a>
+  <li><a href="#accuracy">Emulation accuracy</a>
+  <li><a href="#emulmodes">Which machines does GXemul emulate?</a>
+</ul>
+</td><td valign="center" align="center">
+<a href="20050317-example.png"><img src="20050317-example_small.png"></a>
+<p>NetBSD/pmax 1.6.2 with X11<br>running in GXemul</td></tr></table>
+
+
+
+
+<p><br>
+<a name="overview"></a>
+<h3>Overview:</h3>
+
+GXemul is an experimental instruction-level machine emulator. Several
+emulation modes are available. In some modes, processors and surrounding
+hardware components are emulated well enough to let unmodified operating
+systems (e.g. NetBSD) run as if they were running on a real machine.
+
+<p>Devices and processors are not simulated with 100% accuracy. They are 
+only ``faked'' well enough to allow guest operating systems to run without 
+complaining too much. Still, the emulator could be of interest for 
+academic research and experiments, such as when learning how to write 
+operating system code.
+
+<p>The emulator is written in C, does not depend on third-party libraries,
+and should compile and run on most 64-bit and 32-bit Unix-like systems.
+
+<p>The emulator contains code which tries to emulate the workings of CPUs
+and surrounding hardware found in real machines, but it does not contain
+any ROM code. You will need some form of program (in binary form) to run
+in the emulator. For many emulation modes, PROM calls are handled by the
+emulator itself, so you do not need to use any ROM image at all.
+
+<p>You can use pre-compiled kernels (for example NetBSD kernels, or
+Linux), or other programs that are in binary format, and in some cases
+even actual ROM images. A couple of different file formats are supported
+(ELF, a.out, ECOFF, SREC, and raw binaries).
+
+<p>If you do not have a kernel as a separate file, but you have a bootable
+disk image, then it is sometimes possible to boot directly from that
+image. (This works for example with DECstation emulation, or when booting
+from ISO9660 CDROM images.)
+
+<p>Thanks to (in no specific order) Joachim Buss, Olivier Houchard, Juli 
+Mallett, Juan Romero Pardines, Alec Voropay, Göran Weinholt, Alexander 
+Yurchenko, and everyone else who has provided me with feedback.
+
+
+
+
+
+
+
+<p><br>
+<a name="free"></a>
+<h3>Is GXemul Free software?</h3>
+
+Yes. I have released GXemul under a Free license. The code in GXemul is
+Copyrighted software, it is <i>not</i> public domain. (If this is
+confusing to you, you might want to read up on the definitions of the
+four freedoms associated with Free software, <a
+href="http://www.gnu.org/philosophy/free-sw.html">http://www.gnu.org/philosophy/free-sw.html</a>.)
+
+<p>The code I have written is released under a 3-clause BSD-style license
+(or "revised BSD-style" if one wants to use <a
+href="http://www.gnu.org/philosophy/bsd.html">GNU jargon</a>). Apart from
+the code I have written, some files are copied from other sources such as
+NetBSD, for example header files containing symbolic names of bitfields in
+device registers. They are also covered by similar licenses, but with some
+additional clauses. The main point, however, is that the licenses require
+that the original Copyright and license terms are included when you make a
+copy or modification.
+
+<p>If you plan to redistribute GXemul <i>without</i> supplying the source
+code, then you need to comply with each individual source file some other
+way, for example by writing additional documentation containing copyright
+notes. I have not done this, since I do not plan on making distributions
+without source code. You need to check all individual files for details.
+The "easiest way out" if you plan to redistribute code from GXemul is, of
+course, to let it remain open source and simply supply the source code.
+
+<p>In case you want to reuse parts of GXemul, but you need to do that 
+under a different license (e.g. the GPL), then contact me and I might 
+re-license/dual-license files on a case-by-case basis.
+
+
+
+
+
+<p><br>
+<a name="build"></a>
+<h3>How to compile/build the emulator:</h3>
+
+Uncompress the .tar.gz distribution file, and run
+<pre>
+	$ <b>./configure</b>
+	$ <b>make</b>
+</pre>
+
+<p>This should work on most Unix-like systems. GXemul does not require any 
+specific libraries to build, however, if you build on a system which does 
+not have X11 libraries installed, some functionality will be lost.
+
+<p>The emulator's performance is highly dependent on both runtime settings
+and on compiler settings, so you might want to experiment with different
+CC and CFLAGS environment variable values. For example, on an AMD Athlon
+host, you might want to try setting <tt>CFLAGS</tt> to <tt>-march=athlon</tt>
+before running <tt>configure</tt>.
+
+
+
+
+
+
+
+<p><br>
+<a name="run"></a>
+<h3>How to run the emulator:</h3>
+
+Once you have built GXemul, running it should be rather straight-forward.
+Running <tt><b>gxemul</b></tt> without arguments (or with the
+<b><tt>-h</tt></b> or <b><tt>-H</tt></b> command line options) will
+display a help message.
+
+<p>
+To get some ideas about what is possible to run in the emulator, please 
+read the section about <a href="guestoses.html">installing "guest" 
+operating systems</a>. If you are interested in using the emulator to 
+develop code on your own, then you should also read the section about
+<a href="experiments.html#hello">Hello World</a>.
+
+<p>
+To exit the emulator, type CTRL-C to enter the 
+single-step debugger, and then type <tt><b>quit</b></tt>.
+
+<p>
+If you are starting an emulation by entering settings directly on the 
+command line, and you are not using the <tt><b>-x</b></tt> option, then all 
+terminal input and output will go to the main controlling terminal.
+CTRL-C is used to break into the debugger, so in order to send CTRL-C to 
+the running (emulated) program, you may use CTRL-B.
+(This should be a reasonable compromise to allow the emulator to be usable
+even on systems without X Windows.)
+
+<p>
+There is no way to send an actual CTRL-B to the emulated program, when
+typing in the main controlling terminal window. The solution is to either
+use <a href="configfiles.html">configuration files</a>, or use
+<tt><b>-x</b></tt>. Both these solutions cause new xterms to be opened for 
+each emulated serial port that is written to. CTRL-B and CTRL-C both have 
+their original meaning in those xterm windows.
+
+
+
+
+
+<p><br>
+<a name="cpus"></a>
+<h3>Which processor architectures does GXemul emulate?</h3>
+
+The architectures that are emulated well enough to let at least one 
+guest operating system run (per architecture) are ARM, MIPS, PowerPC,
+and SuperH.
+
+
+
+
+
+
+<p><br>
+<a name="hosts"></a>
+<h3>Which host architectures are supported?</h3>
+
+GXemul should compile and run on any modern host architecture (64-bit or 
+32-bit word-length).
+
+<p>(The dynamic translation engine translates into an intermediate 
+representation, but not currently into native code. This means that there 
+is no need for per-host architecture backend code.)
+
+
+
+
+
+<p><br>
+<a name="translation"></a>
+<h3>What kind of translation does GXemul use?</h3>
+
+<b>Static vs. dynamic:</b>
+
+<p>In order to support guest operating systems, which can overwrite old 
+code pages in memory with new code, it is necessary to translate code 
+dynamically. It is not possible to do a "one-pass" (static) translation.
+Self-modifying code and Just-in-Time compilers running inside 
+the emulator are other things that would not work with a static 
+translator. GXemul is a dynamic translator. However, it does not 
+necessarily translate into native code, like many other emulators.
+
+<p><b>"Runnable" Intermediate Representation:</b>
+
+<p>Dynamic translators usually translate from the emulated architecture
+(e.g. MIPS) into a kind of <i>intermediate representation</i> (IR), and then
+to native code (e.g. AMD64 or x86 code). Since one of my main goals for
+GXemul is to keep everything as portable as possible, I have tried to make
+sure that the IR is something which can be executed regardless of whether 
+the final step (translation from IR to native code) has been implemented
+or not.
+
+<p>The IR in GXemul consists of arrays of pointers to functions, and a few 
+arguments which are passed along to those functions. The functions are 
+implemented in either manually hand-coded C, or automatically generated C.
+In any case, this is all statically linked into the GXemul binary at link 
+time.
+
+<p>Here is a simplified diagram of how these arrays work.
+
+<p><center><img src="simplified_dyntrans.png"></center>
+
+<p>There is one instruction call slot for every possible program counter
+location. In the MIPS case, instruction words are 32 bits in length,
+and pages are (usually) 4 KB large, resulting in 1024 instruction call
+slots. After the last of these instruction calls, there is an additional
+call to a special "end of page" function (which doesn't count as an executed
+instruction). This function switches to the first instruction
+on the next virtual page (which might cause exceptions, etc).
+
+<p>The complexity of individual instructions vary. A simple example of
+what an instruction can look like is the MIPS <tt>addiu</tt> instruction:
+<pre>
+	X(addiu)
+	{
+	        reg(ic->arg[1]) = (int32_t)
+	            ((int32_t)reg(ic->arg[0]) + (int32_t)ic->arg[2]);
+	}
+</pre>
+
+<p>It stores the result of a 32-bit addition of the register at arg[0]
+with the immediate value arg[2] (treating both as signed 32-bit
+integers) into register arg[1]. If the emulated CPU is a 64-bit CPU,
+then this will store a correctly sign-extended value into arg[1].
+If it is a 32-bit CPU, then only the lowest 32 bits will be stored,
+and the high part ignored. <tt>X(addiu)</tt> is expanded to
+<tt>mips_instr_addiu</tt> in the 64-bit case, and <tt>mips32_instr_addiu</tt>
+in the 32-bit case. Both are compiled into the GXemul executable; no code 
+is created during run-time.
+
+<p>Here are examples of what the <tt>addiu</tt> instruction actually
+looks like when it is compiled, on various host architectures:
+
+<p><center><table border="0">
+    <tr><td><b>GCC 4.0.1 on Alpha:</b></td>
+	<td width="35"></td><td></td>
+    <tr>
+	<td valign="top">
+<pre>mips_instr_addiu:
+     ldq     t1,8(a1)
+     ldq     t2,24(a1)
+     ldq     t3,16(a1)
+     ldq     t0,0(t1)
+     addl    t0,t2,t0
+     stq     t0,0(t3)
+     ret</pre>
+	</td>
+	<td></td>
+	<td valign="top">
+<pre>mips32_instr_addiu:
+     ldq     t2,8(a1)
+     ldq     t0,24(a1)
+     ldq     t3,16(a1)
+     ldl     t1,0(t2)
+     addq    t0,t1,t0
+     stl     t0,0(t3)
+     ret</pre>
+	</td>
+    </tr>
+
+    <tr><td><b><br>GCC 3.4.4 on AMD64:</b></td>
+    <tr>
+	<td valign="top">
+<pre>mips_instr_addiu:
+     mov    0x8(%rsi),%rdx
+     mov    0x18(%rsi),%rax
+     mov    0x10(%rsi),%rcx
+     add    (%rdx),%eax
+     cltq
+     mov    %rax,(%rcx)
+     retq</pre>
+	</td>
+	<td></td>
+	<td valign="top">
+<pre>mips32_instr_addiu:
+     mov    0x8(%rsi),%rcx
+     mov    0x10(%rsi),%rdx
+     mov    (%rcx),%eax
+     add    0x18(%rsi),%eax
+     mov    %eax,(%rdx)
+     retq</pre>
+	</td>
+    </tr>
+
+    <tr><td><b><br>GCC 4.0.1 on i386:</b></td>
+    <tr>
+	<td valign="top">
+<pre>mips_instr_addiu:
+     mov    0x8(%esp),%eax
+     mov    0x8(%eax),%ecx
+     mov    0x4(%eax),%edx
+     mov    0xc(%eax),%eax
+     add    (%edx),%eax
+     mov    %eax,(%ecx)
+     cltd
+     mov    %edx,0x4(%ecx)
+     ret</pre>
+	</td>
+	<td></td>
+	<td valign="top">
+<pre>mips32_instr_addiu:
+     mov    0x8(%esp),%eax
+     mov    0x8(%eax),%ecx
+     mov    0x4(%eax),%edx
+     mov    0xc(%eax),%eax
+     add    (%edx),%eax
+     mov    %eax,(%ecx)
+     ret</pre>
+	</td>
+    </tr>
+</table></center>
+
+<p>On 64-bit hosts, there is not much difference, but on 32-bit hosts (and
+to some extent on AMD64), the difference is enough to make it worthwhile.
+
+
+<p><b>Performance:</b>
+
+<p>The performance of using this kind of runnable IR is obviously lower
+than what can be achieved by emulators using native code generation, but
+can be significantly higher than using a naive fetch-decode-execute
+interpretation loop. In my opinion, using a runnable IR is an interesting
+compromise.
+
+<p>The overhead per emulated instruction is usually around or below
+approximately 10 host instructions. This is very much dependent on your
+host architecture and what compiler and compiler switches you are using.
+Added to this instruction count is (of course) also the C code used to
+implement each specific instruction.
+
+<p><b>Instruction Combinations:</b>
+
+<p>Short, common instruction sequences can sometimes be replaced by a 
+"compound" instruction. An example could be a compare instruction followed 
+by a conditional branch instruction. The advantages of instruction 
+combinations are that
+<ul>
+  <li>the amortized overhead per instruction is slightly reduced, and
+  <p>
+  <li>the host's compiler can make a good job at optimizing the common
+	instruction sequence.
+</ul>
+
+<p>The special cases where instruction combinations give the most gain
+are in the cores of string/memory manipulation functions such as 
+<tt>memset()</tt> or <tt>strlen()</tt>. The core loop can then (at least
+to some extent) be replaced by a native call to the equivalent function.
+
+<p>The implementations of compound instructions still keep track of the
+number of executed instructions, etc. When single-stepping, these
+translations are invalidated, and replaced by normal instruction calls
+(one per emulated instruction).
+
+<p><b>Native Code Back-ends: (not in this release)</b>
+
+<p>In theory, it will be possible to implement native code generation
+(similar to what is used in high-performance emulators such as QEMU),
+as long as that generated code abides to the C ABI on the host, but
+for now I wanted to make sure that GXemul works without such native
+code back-ends. For this reason, since release 0.4.0, GXemul is
+completely free of native code back-ends.
+
+
+
+
+
+
+<p><br>
+<a name="accuracy"></a>
+<h3>Emulation accuracy:</h3>
+
+GXemul is an instruction-level emulator; things that would happen in
+several steps within a real CPU are not taken into account (e.g. pipe-line
+stalls or out-of-order execution). Still, instruction-level accuracy seems
+to be enough to be able to run complete guest operating systems inside the
+emulator.
+
+<p>The existance of instruction and data caches is "faked" to let
+operating systems think that they are there, but for all practical
+purposes, these caches are non-working.
+
+<p>The emulator is in general <i>not</i> timing-accurate, neither at the
+instruction level nor on any higher level. An attempt is made to let
+emulated clocks run at the same speed as the host (i.e. an emulated timer
+running at 100 Hz will interrupt around 100 times per real second), but
+since the host speed may vary, e.g. because of other running processes,
+there is no guarantee as to how many instructions will be executed in
+each of these 100 Hz cycles.
+
+<p>If the host is very slow, the emulated clocks might even lag behind
+the real-world clock.
+
+
+
+
+
+
+<p><br>
+<a name="emulmodes"></a>
+<h3>Which machines does GXemul emulate?</h3>
+
+A few different machine types are emulated. The following machine types 
+are emulated well enough to run at least one "guest OS":
+
+<p>
+<ul>
+  <li><b><u>ARM</u></b>
+  <ul>
+    <li><b>CATS</b> (<a href="guestoses.html#netbsdcatsinstall">NetBSD/cats</a>,
+	<a href="guestoses.html#openbsdcatsinstall">OpenBSD/cats</a>)
+    <li><b>IQ80321</b> (<a href="guestoses.html#netbsdevbarminstall">NetBSD/evbarm</a>)
+    <li><b>NetWinder</b> (<a href="guestoses.html#netbsdnetwinderinstall">NetBSD/netwinder</a>)
+  </ul>
+  <p>
+  <li><b><u>MIPS</u></b>
+  <ul>
+    <li><b>DECstation 5000/200</b> (<a href="guestoses.html#netbsdpmaxinstall">NetBSD/pmax</a>,
+	<a href="guestoses.html#openbsdpmaxinstall">OpenBSD/pmax</a>,
+	<a href="guestoses.html#ultrixinstall">Ultrix</a>,
+	<a href="guestoses.html#declinux">Linux/DECstation</a>,
+	<a href="guestoses.html#sprite">Sprite</a>)
+    <li><b>Acer Pica-61</b> (<a href="guestoses.html#netbsdarcinstall">NetBSD/arc</a>)
+    <li><b>NEC MobilePro 770, 780, 800, 880</b> (<a href="guestoses.html#netbsdhpcmipsinstall">NetBSD/hpcmips</a>)
+    <li><b>Cobalt</b> (<a href="guestoses.html#netbsdcobaltinstall">NetBSD/cobalt</a>)
+    <li><b>Malta</b> (<a href="guestoses.html#netbsdevbmipsinstall">NetBSD/evbmips</a>)
+    <li><b>Algorithmics P5064</b> (<a href="guestoses.html#netbsdalgorinstall">NetBSD/algor</a>)
+    <li><b>SGI O2 (aka IP32)</b> <font color="#0000e0">(<super>*1</super>)</font>
+	(<a href="guestoses.html#netbsdsgimips">NetBSD/sgi</a>)
+  </ul>
+  <p>
+  <li><b><u>PowerPC</u></b>
+  <ul>
+    <li><b>IBM 6050/6070 (PReP, PowerPC Reference Platform)</b> (<a href="guestoses.html#netbsdprepinstall">NetBSD/prep</a>)
+  </ul>
+  <p>
+  <li><b><u>SuperH</u></b>
+  <ul>
+    <li><b>Sega Dreamcast</b>
+	<font color="#0000e0">(<super>*2</super>)</font>
+	(<a href="guestoses.html#netbsddreamcast">NetBSD/dreamcast</a>)
+  </ul>
+</ul>
+
+<p>
+<small><font color="#0000e0">(<super>*1</super>)</font> =
+Enough for root-on-nfs, but not for disk boot.</small>
+<br><small><font color="#0000e0">(<super>*2</super>)</font> =
+Only enough to reach ramdisk userland; no root-on-nfs yet.</small>
+
+<p>There is code in GXemul for emulation of many other machine types; the
+degree to which these work range from almost being able to run a complete
+OS, to almost completely unsupported (perhaps just enough support to
+output a few boot messages via serial console).
+
+<p>In addition to emulating real machines, there is also a "test-machine".
+A test-machine consists of one or more CPUs and a few experimental devices
+such as:
+
+<p>
+<ul>
+  <li>a console I/O device (putchar() and getchar()...)
+  <li>an inter-processor communication device, for SMP experiments
+  <li>a very simple linear framebuffer device (for graphics output)
+  <li>a simple disk controller
+  <li>a simple ethernet controller
+  <li>a real-time clock device
+</ul>
+
+<p>This mode is useful if you wish to run experimental code, but do not
+wish to target any specific real-world machine type, for example for
+educational purposes.
+
+<p>You can read more about these experimental devices <a
+href="experiments.html#expdevices">here</a>.
+
+
+
+
+
+
+</body>
+</html>
