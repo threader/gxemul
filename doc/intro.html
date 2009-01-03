@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html><head><title>Gavare's eXperimental Emulator:&nbsp;&nbsp;&nbsp;Introduction</title>
 <meta name="robots" content="noarchive,nofollow,noindex"></head>
-<body bgcolor="#f8f8f8" text="#000000" link="#4040f0" vlink="#404040" alink="#ff0000">
+<body>
 <table border=0 width=100% bgcolor="#d0d0d0"><tr>
 <td width=100% align=center valign=center><table border=0 width=100%><tr>
 <td align="left" valign=center bgcolor="#d0efff"><font color="#6060e0" size="6">
@@ -10,9 +10,7 @@
 
 <!--
 
-$Id: intro.html,v 1.126.2.2 2008-06-09 14:23:03 debug Exp $
-
-Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -74,10 +72,11 @@ It is working well enough to allow <a href="#emulmodes">unmodified
 running on real hardware.
 
 <p>The emulator emulates (networks of) real machines. The machines may 
-consist of <a 
-href="http://en.wikipedia.org/wiki/ARM_architecture">ARM</a>, <a 
-href="http://en.wikipedia.org/wiki/MIPS_architecture">MIPS</a>, <a 
-href="http://en.wikipedia.org/wiki/Powerpc">PowerPC</a>, and <a 
+consist of
+<a href="http://en.wikipedia.org/wiki/ARM_architecture">ARM</a>,
+<a href="http://en.wikipedia.org/wiki/MIPS_architecture">MIPS</a>,
+<a href="http://en.wikipedia.org/wiki/Motorola_88000">Motorola 88K</a>,
+<a href="http://en.wikipedia.org/wiki/Powerpc">PowerPC</a>, and <a 
 href="http://en.wikipedia.org/wiki/SuperH">SuperH</a> processors, and 
 various surrounding hardware components such as framebuffers, busses, 
 interrupt controllers, ethernet controllers, disk controllers, and serial 
@@ -358,6 +357,11 @@ are emulated well enough to run at least one "guest OS":
     <li><b>Algorithmics P5064</b> (<a href="guestoses.html#netbsdalgorinstall">NetBSD/algor</a>)
     <li><b>SGI O2 (aka IP32)</b> <font color="#0000e0">(<super>*2</super>)</font>
 	(<a href="guestoses.html#netbsdsgimips">NetBSD/sgi</a>)
+  </ul>
+  <p>
+  <li><b><u>Motorola 88K</u></b>
+  <ul>
+    <li><b>Motorola MVME187</b> (<a href="guestoses.html#openbsdmvme88kinstall">OpenBSD/mvme88k</a>)
   </ul>
   <p>
   <li><b><u>PowerPC</u></b>

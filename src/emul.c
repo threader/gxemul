@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: emul.c,v 1.302.2.1 2008-01-18 19:12:23 debug Exp $
  *
  *  Emulation startup and misc. routines.
  */
@@ -528,9 +526,13 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 		tmp_f = fopen(name_to_load, "r");
 		if (tmp_f != NULL) {
 			unsigned char buf[2];		/*  gzip header  */
+			size_t res;
+
 			memset(buf, 0, sizeof(buf));
-			fread(buf, 1, sizeof(buf), tmp_f);
-			if (buf[0]==0x1f && buf[1]==0x8b) {
+			res = fread(buf, 1, sizeof(buf), tmp_f);
+
+			if (res == sizeof(buf) &&
+			    buf[0] == 0x1f && buf[1] == 0x8b) {
 				size_t zzlen = strlen(name_to_load)*2 + 100;
 				char *zz;
 
@@ -546,10 +548,12 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 				if (remove_after_load) {
 					snprintf(zz, zzlen, "mv %s %s.gz",
 					    name_to_load, name_to_load);
-					system(zz);
+					if (system(zz) != 0)
+						perror(zz);
 					snprintf(zz, zzlen, "gunzip %s.gz",
 					    name_to_load);
-					system(zz);
+					if (system(zz) != 0)
+						perror(zz);
 				} else {
 					/*  gunzip into new temp file:  */
 					int tmpfile_handle;
@@ -568,7 +572,8 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 					close(tmpfile_handle);
 					snprintf(zz, zzlen, "gunzip -c '%s' > "
 					    "%s", name_to_load, new_temp_name);
-					system(zz);
+					if (system(zz) != 0)
+						perror(zz);
 					name_to_load = new_temp_name;
 					remove_after_load = 1;
 				}
@@ -855,6 +860,16 @@ void emul_run(struct emul *emul)
 	int i = 0, j, go = 1, n, anything;
 
 	atexit(fix_console);
+
+	if (emul == NULL) {
+		printf("No emulation defined. Aborting.\n");
+		return;
+	}
+
+	if (emul->n_machines == 0) {
+		printf("No machine(s) defined. Aborting.\n");
+		return;
+	}
 
 	/*  Initialize the interactive debugger:  */
 	debugger_init(emul);

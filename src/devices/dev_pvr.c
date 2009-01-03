@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,8 +25,6 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: dev_pvr.c,v 1.24.2.1 2008-01-18 19:12:29 debug Exp $
- *  
  *  COMMENT: PowerVR CLX2 (graphics controller used in the Dreamcast)
  *
  *  Implemented by reading http://www.ludd.luth.se/~jlo/dc/powervr-reg.txt and
@@ -68,10 +66,24 @@
 #include "dreamcast_sysasicvar.h"
 
 
+#define	TA_DEBUG
 #define debug fatal
 
 #define	INTERNAL_FB_ADDR	0x300000000ULL
 #define	PVR_FB_TICK_SHIFT	19
+
+#define	VRAM_SIZE		(8*1048576)
+
+/*  DMA:  */
+#define	PVR_DMA_MEMLENGTH	0x100
+#define	N_PVR_DMA_REGS		(PVR_DMA_MEMLENGTH / sizeof(uint32_t))
+
+#define	PVR_ADDR		0x00
+#define	PVR_COUNT		0x04
+#define	PVR_MODE		0x08
+#define	PVR_LMMODE0		0x84  
+#define	PVR_LMMODE1		0x88
+
 
 #define	PVR_VBLANK_HZ		60.0
 #define	PVR_MARGIN		16
@@ -119,7 +131,9 @@ struct pvr_data {
 	uint32_t		ta[64 / sizeof(uint32_t)];
 
 	uint8_t			*vram;
-	uint8_t			*vram_alt;
+
+	/*  DMA registers:  */
+	uint32_t		dma_reg[N_PVR_DMA_REGS];
 };
 
 struct pvr_data_alt {
@@ -131,10 +145,254 @@ struct pvr_data_alt {
 #define	DEFAULT_WRITE	REG(relative_addr) = idata;
 
 
+/*  Forward declaration.  */
+DEVICE_ACCESS(pvr_ta);
+
+
+void pvr_dma_transfer(struct cpu *cpu, struct pvr_data *d)
+{
+	const int channel = 3;
+	uint32_t sar = cpu->cd.sh.dmac_sar[channel] & 0x1fffffff;
+	uint32_t dar = cpu->cd.sh.dmac_dar[channel] & 0x1fffffff;
+	uint32_t count = cpu->cd.sh.dmac_tcr[channel] & 0x1fffffff;
+	uint32_t chcr = cpu->cd.sh.dmac_chcr[channel];
+	int transmit_size = 1;
+	int src_delta = 0, dst_delta = 0;
+	int cause_interrupt = chcr & CHCR_IE;
+        
+	/*  DMAC not enabled?  */
+	if (!(chcr & CHCR_TD)) {
+		fatal("pvr_dma_transfer: SH4 dma not enabled?\n");
+		exit(1);
+	}
+
+	/*  Transfer End already set? Then don't transfer again.  */
+	if (chcr & CHCR_TE)
+		return;
+
+	/*  Special case: 0 means 16777216:  */
+	if (count == 0)
+		count = 16777216;
+
+	switch (chcr & CHCR_TS) {
+	case CHCR_TS_8BYTE: transmit_size = 8; break;
+	case CHCR_TS_1BYTE: transmit_size = 1; break;
+	case CHCR_TS_2BYTE: transmit_size = 2; break;
+	case CHCR_TS_4BYTE: transmit_size = 4; break;
+	case CHCR_TS_32BYTE: transmit_size = 32; break;
+	default: fatal("Unimplemented transmit size?! CHCR[%i] = 0x%08x\n",
+	    channel, chcr);
+	exit(1);
+	}
+
+	switch (chcr & CHCR_DM) {
+	case CHCR_DM_FIXED:       dst_delta = 0; break;
+	case CHCR_DM_INCREMENTED: dst_delta = 1; break;
+	case CHCR_DM_DECREMENTED: dst_delta = -1; break;
+	default: fatal("Unimplemented destination delta?! CHCR[%i] = 0x%08x\n",
+	    channel, chcr);
+	exit(1);
+	}
+
+	switch (chcr & CHCR_SM) {
+	case CHCR_SM_FIXED:       src_delta = 0; break;
+	case CHCR_SM_INCREMENTED: src_delta = 1; break;
+	case CHCR_SM_DECREMENTED: src_delta = -1; break;
+	default: fatal("Unimplemented source delta?! CHCR[%i] = 0x%08x\n",
+	    channel, chcr);
+	exit(1);
+	}
+
+	src_delta *= transmit_size;
+	dst_delta *= transmit_size;
+
+	switch (chcr & CHCR_RS) {
+	case 0x200:
+		dar = d->dma_reg[PVR_ADDR / sizeof(uint32_t)];
+
+		if (dar != 0x10000000) {
+			fatal("[TODO: DMA to non-TA? dar=%08x\n", (int)dar);
+			cpu->cd.sh.dmac_chcr[channel] |= CHCR_TE;
+			break;
+		}
+
+		while (count > 0) {
+			unsigned char buf[32];
+			int ofs;
+			int chunksize = transmit_size;
+			if (chunksize > sizeof(uint32_t))
+				chunksize = sizeof(uint32_t);
+
+			for (ofs = 0; ofs < transmit_size; ofs += chunksize) {
+				cpu->memory_rw(cpu, cpu->mem, sar + ofs, buf,
+				    chunksize, MEM_READ, NO_EXCEPTIONS | PHYSICAL);
+
+				dev_pvr_ta_access(cpu, cpu->mem, ofs, buf, chunksize,
+				    MEM_WRITE, d);
+
+				/*  cpu->memory_rw(cpu, cpu->mem, dar + ofs, buf,
+				    chunksize, MEM_WRITE, NO_EXCEPTIONS | PHYSICAL);  */
+			}
+
+			count --;
+			sar += src_delta;
+		}
+
+		/*  Transfer End:  */
+		cpu->cd.sh.dmac_chcr[channel] |= CHCR_TE;
+
+		break;
+	default:
+		fatal("Unimplemented SH4 RS DMAC: 0x%08x (PVR)\n",
+		    (int) (chcr & CHCR_RS));
+		exit(1);
+	}
+
+	if (cause_interrupt) {
+		fatal("TODO: pvr sh4 dmac interrupt!\n");
+		exit(1);
+	}
+}
+
+
+DEVICE_ACCESS(pvr_dma)
+{
+	struct pvr_data *d = extra;
+	uint64_t idata = 0, odata = 0;
+
+	if (writeflag == MEM_WRITE)
+		idata = memory_readmax64(cpu, data, len);
+
+	/*  Default read:  */
+	if (writeflag == MEM_READ)
+		odata = d->dma_reg[relative_addr / sizeof(uint32_t)];
+
+	switch (relative_addr) {
+
+	case PVR_ADDR:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr_dma: ADDR set to 0x%08x ]\n",
+			    (int) idata);
+		}
+		break;
+
+	case PVR_COUNT:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr_dma: LEN set to 0x%08x ]\n",
+			    (int) idata);
+		}
+		break;
+
+	case PVR_MODE:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr_dma: MODE set to 0x%08x ]\n",
+			    (int) idata);
+			if (idata != 0) {
+				pvr_dma_transfer(cpu, d);
+				idata = 0;
+			}
+		}
+		break;
+
+	/*  These are written to by the Dreamcast ROM, but I have not
+	    found them documented anywhere.  */
+	case 0x10:
+	case 0x14:
+		if (writeflag == MEM_WRITE && idata != 0x0cff0000) {
+			fatal("[ pvr_dma: TODO: unknown_0x%02x set to "
+			    "0x%08x ]\n", (int) relative_addr, (int) idata);
+			exit(1);
+		}
+		break;
+
+	case 0x18:
+	case 0x1c:
+	case 0x20:
+	case 0x40:
+	case 0x44:
+	case 0x48:
+	case 0x4c:
+		if (writeflag == MEM_WRITE && idata != 0) {
+			fatal("[ pvr_dma: TODO: unknown_0x%02x set to "
+			    "0x%08x ]\n", (int) relative_addr, (int) idata);
+			exit(1);
+		}
+		break;
+
+	case PVR_LMMODE0:	/*  0x84  */
+		if (writeflag == MEM_WRITE && idata != 0) {
+			fatal("[ pvr_dma: TODO: LMMODE0 set to "
+			    "0x%08x ]\n", (int) idata);
+			exit(1);
+		}
+		break;
+
+	case PVR_LMMODE1:	/*  0x84  */
+		if (writeflag == MEM_WRITE && idata != 0) {
+			fatal("[ pvr_dma: TODO: LMMODE1 set to "
+			    "0x%08x ]\n", (int) idata);
+			exit(1);
+		}
+		break;
+
+	case 0x8c:
+		if (writeflag == MEM_WRITE) {
+			fatal("[ pvr_dma: write to 0x8c: TODO ]\n");
+			exit(1);
+		} else {
+			/*  0x20 means G2 DMA in progress?  */
+			/*  0x11 = mask which has to do with AICA  */
+			odata = 0x11 * (random() & 1);
+		}
+		break;
+
+	case 0x9c:
+		/*  TODO  */
+		break;
+
+	case 0xa0:
+		if (writeflag == MEM_WRITE && idata != 0x80000000) {
+			fatal("[ pvr_dma: TODO: unknown_0x%02x set to "
+			    "0x%08x ]\n", (int) relative_addr, (int) idata);
+			exit(1);
+		}
+		break;
+
+	case 0xa4:
+	case 0xac:
+		if (writeflag == MEM_WRITE && idata != 0) {
+			fatal("[ pvr_dma: TODO: unknown_0x%02x set to "
+			    "0x%08x ]\n", (int) relative_addr, (int) idata);
+			exit(1);
+		}
+		break;
+
+	default:if (writeflag == MEM_READ) {
+			fatal("[ pvr_dma: read from addr 0x%x ]\n",
+			    (int)relative_addr);
+		} else {
+			fatal("[ pvr_dma: write to addr 0x%x: 0x%x ]\n",
+			    (int)relative_addr, (int)idata);
+		}
+
+		exit(1);
+	}
+
+	/*  Default write:  */
+	if (writeflag == MEM_WRITE)
+		d->dma_reg[relative_addr / sizeof(uint32_t)] = idata;
+
+	if (writeflag == MEM_READ)
+		memory_writemax64(cpu, data, len, odata);
+
+	return 1;
+}
+
+
 /*
  *  pvr_fb_invalidate():
  */
-static void pvr_fb_invalidate(struct pvr_data *d, int start, int stop)
+void pvr_fb_invalidate(struct pvr_data *d, int start, int stop)
 {
 	d->fb_update_x1 = d->fb_update_y1 = 0;
 	d->fb_update_x2 = d->xsize - 1;
@@ -161,7 +419,7 @@ static void pvr_vblank_timer_tick(struct timer *t, void *extra)
  *  This function should be called every time a register is written to which
  *  affects the framebuffer geometry (size, bit-depth, starting position, etc).
  */
-static void pvr_geometry_updated(struct pvr_data *d)
+void pvr_geometry_updated(struct pvr_data *d)
 {
 	/*  Make sure to redraw border on geometry changes.  */
 	d->border_updated = 1;
@@ -214,10 +472,10 @@ static void line(struct pvr_data *d, int x1, int y1, int x2, int y2)
 		int px = (i * x2 + (256-i) * x1) >> 8;
 		int py = (i * y2 + (256-i) * y1) >> 8;
 		if (px > 0 && py > 0 && px < d->xsize && py < d->ysize) {
-			d->vram[fb_base + (px + py * d->xsize)*
-			    d->bytes_per_pixel] = 255;
-			d->vram[fb_base + (px + py * d->xsize)*
-			    d->bytes_per_pixel + 1] = 255;
+			int ofs = fb_base + (px + py * d->xsize) *
+                            d->bytes_per_pixel;
+			d->vram[(ofs+0) % VRAM_SIZE] = 255;
+			d->vram[(ofs+1) % VRAM_SIZE] = 255;
 		}
 	}
 }
@@ -231,7 +489,7 @@ static void line(struct pvr_data *d, int x1, int y1, int x2, int y2)
  *  TODO: This function is totally bogus so far, the format of the Object
  *        Buffer is just a quick made-up hack to see if it works at all.
  */
-static void pvr_render(struct cpu *cpu, struct pvr_data *d)
+void pvr_render(struct cpu *cpu, struct pvr_data *d)
 {
 	int ob_ofs = REG(PVRREG_OB_ADDR);
 	int fb_base = REG(PVRREG_FB_RENDER_ADDR1);
@@ -247,13 +505,18 @@ static void pvr_render(struct cpu *cpu, struct pvr_data *d)
 	wf_point_nr = 0;
 
 	for (;;) {
-		uint8_t cmd = d->vram[ob_ofs];
+		uint8_t cmd = d->vram[ob_ofs % VRAM_SIZE];
+
+		if (ob_ofs >= VRAM_SIZE)
+			fatal("[ pvr_render: WARNING: ob_ofs > VRAM_SIZE! ]\n");
 
 		if (cmd == 0)
 			break;
 		else if (cmd == 1) {
-			int16_t px = d->vram[ob_ofs+2] + d->vram[ob_ofs+3]*256;
-			int16_t py = d->vram[ob_ofs+4] + d->vram[ob_ofs+5]*256;
+			int16_t px = d->vram[(ob_ofs+2)%VRAM_SIZE] +
+			    d->vram[(ob_ofs+3)%VRAM_SIZE]*256;
+			int16_t py = d->vram[(ob_ofs+4)%VRAM_SIZE] +
+			    d->vram[(ob_ofs+5)%VRAM_SIZE]*256;
 
 			wf_x[wf_point_nr] = px;
 			wf_y[wf_point_nr] = py;
@@ -278,9 +541,10 @@ static void pvr_render(struct cpu *cpu, struct pvr_data *d)
 
 		} else if (cmd == 2) {
 			wf_point_nr = 0;
-			texture = d->vram[ob_ofs+4] + (d->vram[ob_ofs+5]
-			    << 8) + (d->vram[ob_ofs+6] << 16) +
-			    (d->vram[ob_ofs+7] << 24);
+			texture = d->vram[(ob_ofs+4)%VRAM_SIZE] +
+			    (d->vram[(ob_ofs+5)%VRAM_SIZE]
+			    << 8) + (d->vram[(ob_ofs+6)%VRAM_SIZE] << 16) +
+			    (d->vram[(ob_ofs+7)%VRAM_SIZE] << 24);
 			texture <<= 3;
 			texture &= 0x7fffff;
 			printf("TEXTURE = %x\n", texture);
@@ -323,7 +587,7 @@ static void pvr_reset(struct pvr_data *d)
  *  Initialize the Tile Accelerator. This makes the TA ready to receive
  *  commands (via address 0x10000000).
  */
-static void pvr_ta_init(struct cpu *cpu, struct pvr_data *d)
+void pvr_ta_init(struct cpu *cpu, struct pvr_data *d)
 {
 	REG(PVRREG_TA_OPB_POS) = REG(PVRREG_TA_OPB_START);
 	REG(PVRREG_TA_OB_POS) = REG(PVRREG_TA_OB_START);
@@ -342,7 +606,7 @@ static void pvr_ta_command(struct cpu *cpu, struct pvr_data *d, int list_ofs)
 	int16_t x, y;
 	uint32_t *ta = &d->ta[list_ofs];
 
-#if 0
+#ifdef TA_DEBUG
 	/*  Dump the Tile Accelerator command for debugging:  */
 	{
 		int i;
@@ -356,7 +620,7 @@ static void pvr_ta_command(struct cpu *cpu, struct pvr_data *d, int list_ofs)
 	/*
 	 *  TODO: REWRITE!!!
 	 *
-	 *  THis is just a quick hack to see if I can get out at least
+	 *  This is just a quick hack to see if I can get out at least
 	 *  the pixel coordinates.
 	 */
 
@@ -368,6 +632,9 @@ static void pvr_ta_command(struct cpu *cpu, struct pvr_data *d, int list_ofs)
 	}
 
 	ob_ofs = REG(PVRREG_TA_OB_POS);
+
+	if (ob_ofs >= VRAM_SIZE - 8)
+		fatal("[ WARNING: ob_ofs >= VRAM_SIZE - 8 ]\n");
 
 	switch (ta[0] >> 28) {
 	case 0x8:
@@ -422,6 +689,20 @@ DEVICE_ACCESS(pvr_ta)
 {
 	struct pvr_data *d = extra;
 	uint64_t idata = 0, odata = 0;
+
+#if 0
+	if (writeflag == MEM_WRITE)
+		fatal("[ pvr_ta: WRITE addr=%08x value=%08x\n ]\n",
+		    (int)relative_addr, (int)idata);
+	else
+		fatal("[ pvr_ta: READ addr=%08x ]\n",
+		    (int)relative_addr);
+#endif
+
+	if (len != sizeof(uint32_t)) {
+		fatal("pvr_ta access len = %i: TODO\n", (int) len);
+		exit(1);
+	}
 
 	if (writeflag == MEM_WRITE) {
 		idata = memory_readmax64(cpu, data, len);
@@ -620,6 +901,91 @@ DEVICE_ACCESS(pvr)
 		}
 		break;
 
+	case PVRREG_FB_CLIP_X:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: FB_CLIP_X set to min=%i, "
+			    "max=%i ]\n", (int) (idata & FB_CLIP_XY_MIN_MASK),
+			    (int) ((idata & FB_CLIP_XY_MAX_MASK)
+			    >> FB_CLIP_XY_MAX_SHIFT));
+			DEFAULT_WRITE;
+			pvr_geometry_updated(d);
+			pvr_fb_invalidate(d, -1, -1);
+		}
+		break;
+
+	case PVRREG_FB_CLIP_Y:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: FB_CLIP_Y set to min=%i, "
+			    "max=%i ]\n", (int) (idata & FB_CLIP_XY_MIN_MASK),
+			    (int) ((idata & FB_CLIP_XY_MAX_MASK)
+			    >> FB_CLIP_XY_MAX_SHIFT));
+			DEFAULT_WRITE;
+			pvr_geometry_updated(d);
+			pvr_fb_invalidate(d, -1, -1);
+		}
+		break;
+
+	case PVRREG_SHADOW:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: SHADOW set to enable=%i, "
+			    "intensity=%i ]\n",
+			    (int) (idata & SHADOW_ENABLE? 1 : 0),
+			    (int) (idata & SHADOW_INTENSITY_MASK));
+			DEFAULT_WRITE;
+			pvr_geometry_updated(d);
+			pvr_fb_invalidate(d, -1, -1);
+		}
+		break;
+
+	case PVRREG_OBJECT_CLIP:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: OBJECT_CLIP 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_OB_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: OB_CFG 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_UNKNOWN_80:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: UNKNOWN_80 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_UNKNOWN_84:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: UNKNOWN_84 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_BGPLANE_Z:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: BGPLANE_Z 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_BGPLANE_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: BGPLANE_CFG 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_ISP_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: ISP_CFG 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
 	case PVRREG_VRAM_CFG1:
 		if (writeflag == MEM_WRITE) {
 			debug("[ pvr: VRAM_CFG1 set to 0x%08"PRIx32,
@@ -658,7 +1024,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_FOG_TABLE_COL:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FOG_TABLE_COL set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: FOG_TABLE_COL set to 0x%06"PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
@@ -666,8 +1032,41 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_FOG_VERTEX_COL:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FOG_VERTEX_COL set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: FOG_VERTEX_COL set to 0x%06"PRIx32" ]\n",
 			    (int) idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_FOG_DENSITY:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: FOG_DENSITY set to 0x%08"PRIx32" ]\n",
+			    (int) idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_CLAMP_MAX:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: CLAMP_MAX set to 0x%06"PRIx32" ]\n",
+			    (int) idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_CLAMP_MIN:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: CLAMP_MIN set to 0x%06"PRIx32" ]\n",
+			    (int) idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_FB_RENDER_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: PVRREG_FB_RENDER_CFG set to 0x%08x ]\n",
+			    (int) idata);
+			/*  TODO  */
 			DEFAULT_WRITE;
 		}
 		break;
@@ -697,6 +1096,10 @@ DEVICE_ACCESS(pvr)
 			pvr_fb_invalidate(d, -1, -1);
 			DEFAULT_WRITE;
 		}
+		break;
+
+	case PVRREG_HPOS_IRQ:
+		DEFAULT_WRITE;
 		break;
 
 	case PVRREG_RASEVTPOS:
@@ -766,6 +1169,20 @@ DEVICE_ACCESS(pvr)
 		}
 		break;
 
+	case PVRREG_SYNCH_WIDTH:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: SYNCH_WIDTH 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_TSP_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: TSP_CFG 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
 	case PVRREG_DIWCONF:
 		if (writeflag == MEM_WRITE) {
 			if ((idata & DIWCONF_MAGIC_MASK) !=
@@ -785,8 +1202,11 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_DIWHSTRT:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: DIWHSTRT hpos=%i ]\n",
-			    (int)(idata & DIWVSTRT_HPOS_MASK));
+			int v = idata & DIWVSTRT_HPOS_MASK;
+			debug("[ pvr: DIWHSTRT hpos=%i (%s) ]\n",
+			    v, v == 174? "PAL" :
+			    (v == 164? "NTSC" :
+			    (v == 144? "VGA" : "unknown!")));
 			DEFAULT_WRITE;
 		}
 		break;
@@ -801,9 +1221,36 @@ DEVICE_ACCESS(pvr)
 		}
 		break;
 
+	case PVRREG_SCALER_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: SCALER_CFG 0x%08x ]\n", (int)idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
 	case PVRREG_SYNC_STAT:
 		/*  TODO. Ugly hack, but it works:  */
 		odata = random();
+		break;
+
+	case PVRREG_MAGIC_110:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: MAGIC_110 set to 0x%08"PRIx32,
+			    (int) idata);
+			if (idata != MAGIC_110_VALUE)
+				fatal("{ MAGIC_110 = 0x%08"PRIx32" is not "
+				    "yet implemented! }", (int) idata);
+			debug(" ]\n");
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_TA_LUMINANCE:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: TA_LUMINANCE set to 0x%08"PRIx32" ]\n",
+			    (int) idata);
+			DEFAULT_WRITE;
+		}
 		break;
 
 	case PVRREG_TA_OPB_START:
@@ -870,6 +1317,15 @@ DEVICE_ACCESS(pvr)
 		}
 		break;
 
+	case PVRREG_TA_OPL_INIT:
+		if (writeflag == MEM_WRITE) {
+			idata &= PVR_TA_OPL_INIT_MASK;
+			debug("[ pvr: TA_OPL_INIT set to 0x%x ]\n",
+			    (int) idata);
+			DEFAULT_WRITE;
+		}
+		break;
+
 	case PVRREG_TILEBUF_SIZE:
 		if (writeflag == MEM_WRITE) {
 			d->tilebuf_ysize = (idata & TILEBUF_SIZE_HEIGHT_MASK)
@@ -878,6 +1334,14 @@ DEVICE_ACCESS(pvr)
 			d->tilebuf_xsize ++; d->tilebuf_ysize ++;
 			debug("[ pvr: TILEBUF_SIZE set to %i x %i ]\n",
 			    d->tilebuf_xsize, d->tilebuf_ysize);
+			DEFAULT_WRITE;
+		}
+		break;
+
+	case PVRREG_TA_OPB_CFG:
+		if (writeflag == MEM_WRITE) {
+			debug("[ pvr: TA_OPB_CFG set to 0x%x ]\n",
+			    (int) idata);
 			DEFAULT_WRITE;
 		}
 		break;
@@ -907,6 +1371,8 @@ DEVICE_ACCESS(pvr)
 			    " ]\n", (int)relative_addr, (int)idata);
 			DEFAULT_WRITE;
 		}
+
+		exit(1);
 	}
 
 return_ok:
@@ -917,7 +1383,7 @@ return_ok:
 }
 
 
-static void extend_update_region(struct pvr_data *d, uint64_t low, 
+void pvr_extend_update_region(struct pvr_data *d, uint64_t low, 
 	uint64_t high)
 {
 	int vram_ofs = REG(PVRREG_DIWADDRL);
@@ -944,6 +1410,8 @@ static void extend_update_region(struct pvr_data *d, uint64_t low,
 		if (d->fb_update_y2 < 0 || new_y2 > d->fb_update_y2)
 			d->fb_update_y2 = new_y2;
 
+		if (d->fb_update_y1 < 0)
+			d->fb_update_y1 = 0;
 		if (d->fb_update_y2 >= d->ysize)
 			d->fb_update_y2 = d->ysize - 1;
 	}
@@ -1016,7 +1484,7 @@ DEVICE_TICK(pvr_fb)
 
 	memory_device_dyntrans_access(cpu, cpu->mem, extra, &low, &high);
 	if ((int64_t)low != -1)
-		extend_update_region(d, low, high);
+		pvr_extend_update_region(d, low, high);
 
 	if (d->fb_update_x1 == -1)
 		return;
@@ -1041,10 +1509,10 @@ DEVICE_TICK(pvr_fb)
 			int fo = fb_ofs, vo = vram_ofs;
 			for (p=0; p<pixels_to_copy; p++) {
 				/*  0rrrrrgg(high) gggbbbbb(low)  */
-				fb[fo] = (vram[vo+1] << 1) & 0xf8;
-				fb[fo+1] = ((vram[vo] >> 2) & 0x38) +
-				    (vram[vo+1] << 6);
-				fb[fo+2] = (vram[vo] & 0x1f) << 3;
+				fb[fo] = (vram[(vo+1)%VRAM_SIZE] << 1) & 0xf8;
+				fb[fo+1] = ((vram[vo%VRAM_SIZE] >> 2) & 0x38) +
+				    (vram[(vo+1)%VRAM_SIZE] << 6);
+				fb[fo+2] = (vram[vo%VRAM_SIZE] & 0x1f) << 3;
 				fo += 3; vo += 2;
 			}
 			vram_ofs += bytes_per_line;
@@ -1057,10 +1525,10 @@ DEVICE_TICK(pvr_fb)
 			int fo = fb_ofs, vo = vram_ofs;
 			for (p=0; p<pixels_to_copy; p++) {
 				/*  rrrrrggg(high) gggbbbbb(low)  */
-				fb[fo] = vram[vo+1] & 0xf8;
-				fb[fo+1] = ((vram[vo] >> 3) & 0x1c) +
-				    (vram[vo+1] << 5);
-				fb[fo+2] = (vram[vo] & 0x1f) << 3;
+				fb[fo] = vram[(vo+1)%VRAM_SIZE] & 0xf8;
+				fb[fo+1] = ((vram[vo%VRAM_SIZE] >> 3) & 0x1c) +
+				    (vram[(vo+1)%VRAM_SIZE] << 5);
+				fb[fo+2] = (vram[vo%VRAM_SIZE] & 0x1f) << 3;
 				fo += 3; vo += 2;
 			}
 			vram_ofs += bytes_per_line;
@@ -1071,7 +1539,7 @@ DEVICE_TICK(pvr_fb)
 	case 2: /*  RGB888 (24-bit)  */
 		for (y=d->fb_update_y1; y<=d->fb_update_y2; y++) {
 			/*  TODO: Reverse colors, like in the 32-bit case?  */
-			memcpy(fb+fb_ofs, vram+vram_ofs, 3*pixels_to_copy);
+			memcpy(fb+fb_ofs, vram+(vram_ofs%VRAM_SIZE), 3*pixels_to_copy);
 			vram_ofs += bytes_per_line;
 			fb_ofs += d->fb->bytes_per_line;
 		}
@@ -1081,9 +1549,9 @@ DEVICE_TICK(pvr_fb)
 		for (y=d->fb_update_y1; y<=d->fb_update_y2; y++) {
 			int fo = fb_ofs, vo = vram_ofs;
 			for (p=0; p<pixels_to_copy; p++) {
-				fb[fo] = vram[vo+2];
-				fb[fo+1] = vram[vo+1];
-				fb[fo+2] = vram[vo+0];
+				fb[fo] = vram[(vo+2)%VRAM_SIZE];
+				fb[fo+1] = vram[(vo+1)%VRAM_SIZE];
+				fb[fo+2] = vram[(vo+0)%VRAM_SIZE];
 				fo += 3; vo += 4;
 			}
 			vram_ofs += bytes_per_line;
@@ -1128,7 +1596,7 @@ DEVICE_ACCESS(pvr_vram_alt)
 			int addr = relative_addr + i;
 			addr = ((addr & 4) << 20) | (addr & 3)
 			    | ((addr & 0x7ffff8) >> 1);
-			data[i] = d->vram[addr];
+			data[i] = d->vram[addr % VRAM_SIZE];
 		}
 		return 1;
 	}
@@ -1141,7 +1609,7 @@ DEVICE_ACCESS(pvr_vram_alt)
 		int addr = relative_addr + i;
 		addr = ((addr & 4) << 20) | (addr & 3)
 		    | ((addr & 0x7ffff8) >> 1);
-		d->vram[addr] = data[i];
+		d->vram[addr % VRAM_SIZE] = data[i];
 	}
 
 	return 1;
@@ -1166,7 +1634,7 @@ DEVICE_ACCESS(pvr_vram)
 	 */
 
 	memcpy(d->vram + relative_addr, data, len);
-	extend_update_region(d, relative_addr, relative_addr + len - 1);
+	pvr_extend_update_region(d, relative_addr, relative_addr + len - 1);
 
 	return 1;
 }
@@ -1191,20 +1659,24 @@ DEVINIT(pvr)
 	    DM_DEFAULT, NULL);
 
 	/*  8 MB video RAM:  */
-	d->vram = zeroed_alloc(8 * 1048576);
+	d->vram = zeroed_alloc(VRAM_SIZE);
 	memory_device_register(machine->memory, "pvr_vram", 0x05000000,
-	    8 * 1048576, dev_pvr_vram_access, (void *)d,
+	    VRAM_SIZE, dev_pvr_vram_access, (void *)d,
 	    DM_DYNTRANS_OK | DM_DYNTRANS_WRITE_OK
 	    | DM_READS_HAVE_NO_SIDE_EFFECTS, d->vram);
 
 	/*  8 MB video RAM, when accessed at 0xa4000000:  */
-	d->vram_alt = zeroed_alloc(8 * 1048576);
 	memory_device_register(machine->memory, "pvr_alt_vram", 0x04000000,
-	    8 * 1048576, dev_pvr_vram_alt_access, (void *)d_alt,
+	    VRAM_SIZE, dev_pvr_vram_alt_access, (void *)d_alt,
 	    DM_DEFAULT, NULL);
 
+	/*  Tile Accelerator command area at 0x10000000:  */
 	memory_device_register(machine->memory, "pvr_ta",
 	    0x10000000, sizeof(d->ta), dev_pvr_ta_access, d, DM_DEFAULT, NULL);
+
+	/*  PVR2 DMA registers at 0x5f6800:  */
+	memory_device_register(machine->memory, "pvr_dma", 0x005f6800,
+	    PVR_DMA_MEMLENGTH, dev_pvr_dma_access, d, DM_DEFAULT, NULL);
 
 	d->xsize = 640;
 	d->ysize = 480;

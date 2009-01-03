@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: cpu_sh.c,v 1.76.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  Hitachi SuperH ("SH") CPU emulation.
  *
@@ -1363,6 +1361,8 @@ int sh_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 		else if (lo8 == 0x6d)
 			debug("fsqrt\t%sr%i\n",
 			    cpu->cd.sh.fpscr & SH_FPSCR_PR? "d" : "f", r8);
+		else if (lo8 == 0x7d)
+			debug("fsrra\tfr%i\n", r8);
 		else if (lo8 == 0x8d)
 			debug("fldi0\tfr%i\n", r8);
 		else if (lo8 == 0x9d)
@@ -1371,6 +1371,8 @@ int sh_cpu_disassemble_instr(struct cpu *cpu, unsigned char *instr,
 			debug("fcnvsd\tfpul,dr%i\n", r8);
 		else if (lo8 == 0xbd)
 			debug("fcnvds\tdr%i,fpul\n", r8);
+		else if (lo8 == 0xed)
+			debug("fipr\tfv%i,fv%i\n", (r8 & 3) << 2, r8 & 0xc);
 		else if ((iword & 0x01ff) == 0x00fd)
 			debug("fsca\tfpul,dr%i\n", r8);
 		else if (iword == 0xf3fd)

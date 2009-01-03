@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: cpu.c,v 1.6.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  Common routines for CPU emulation. (Not specific to any CPU type.)
  */
@@ -254,7 +252,7 @@ void cpu_functioncall_trace(struct cpu *cpu, uint64_t f)
 	fatal("(");
 
 	if (cpu->machine->cpu_family->functioncall_trace != NULL)
-		cpu->machine->cpu_family->functioncall_trace(cpu, f, n_args);
+		cpu->machine->cpu_family->functioncall_trace(cpu, n_args);
 
 	fatal(")>\n");
 
@@ -476,6 +474,12 @@ do_return:
 void cpu_run_init(struct machine *machine)
 {
 	int i;
+
+	if (machine->ncpus == 0) {
+		printf("Machine with no CPUs? TODO.\n");
+		exit(1);
+	}
+
 	for (i=0; i<machine->ncpus; i++) {
 		struct cpu *cpu = machine->cpus[i];
 

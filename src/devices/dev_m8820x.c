@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: dev_m8820x.c,v 1.9.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: M88200/M88204 CMMU (Cache/Memory Management Unit)
  */
@@ -66,7 +64,9 @@ static void m8820x_command(struct cpu *cpu, struct m8820x_data *d)
 	switch (cmd) {
 
 	case CMMU_FLUSH_CACHE_CB_LINE:
+	case CMMU_FLUSH_CACHE_CB_PAGE:
 	case CMMU_FLUSH_CACHE_INV_LINE:
+	case CMMU_FLUSH_CACHE_INV_PAGE:
 	case CMMU_FLUSH_CACHE_INV_ALL:
 	case CMMU_FLUSH_CACHE_CBI_LINE:
 	case CMMU_FLUSH_CACHE_CBI_PAGE:
@@ -187,14 +187,13 @@ DEVICE_ACCESS(m8820x)
 	case CMMU_BWP7:
 		if (writeflag == MEM_WRITE) {
 			uint32_t old;
+			int i = (relative_addr / sizeof(uint32_t)) - CMMU_BWP0;
 
 			regs[relative_addr / sizeof(uint32_t)] = idata;
 
 			/*  Also write to the specific batc registers:  */
-			old = batc[(relative_addr / sizeof(uint32_t))
-			    - CMMU_BWP0];
-			batc[(relative_addr / sizeof(uint32_t)) - CMMU_BWP0]
-			    = idata;
+			old = batc[i];
+			batc[i] = idata;
 			if (old != idata) {
 				/*  TODO: Don't invalidate everything?  */
 				cpu->invalidate_translation_caches(

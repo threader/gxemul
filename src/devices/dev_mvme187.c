@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: dev_mvme187.c,v 1.6.2.1 2008-01-18 19:12:29 debug Exp $
  *
  *  COMMENT: MVME187-specific devices and control registers
  */
@@ -66,12 +64,16 @@ DEVICE_ACCESS(mvme187_memc)
 		relative_addr &= ~0x100;
 	}
 
+	odata = ((uint8_t*)&d->memcreg)[relative_addr];
+
 	switch (relative_addr) {
 
+	case 0x00:	/* chipid */
+	case 0x04:	/* chiprev */
+		break;
+
 	case 0x08:	/*  memconf  */
-		if (writeflag == MEM_READ) {
-			odata = ((uint8_t*)&d->memcreg)[relative_addr];
-		} else {
+		if (writeflag == MEM_WRITE) {
 			fatal("mvme187_memc: Write to relative_addr %i not yet"
 			    " implemented!\n");
 			exit(1);

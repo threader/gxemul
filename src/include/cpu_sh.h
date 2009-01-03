@@ -2,7 +2,7 @@
 #define	CPU_SH_H
 
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_sh.h,v 1.50.2.1 2008-01-18 19:12:31 debug Exp $
+ *  SuperH CPU definitions.
  *
  *  Note 1: Many things here are SH4-specific, so it probably doesn't work
  *          for SH3 emulation.
@@ -40,7 +40,9 @@
 
 #include "interrupt.h"
 #include "misc.h"
+
 #include "sh4_cpu.h"
+#include "sh4_dmacreg.h"
 
 
 struct cpu_family;
@@ -158,10 +160,10 @@ struct sh_cpu {
 	int		pclock;
 
 	/*  DMA Controller: (4 channels)  */
-	uint32_t	dmac_sar[4];
-	uint32_t	dmac_dar[4];
-	uint32_t	dmac_tcr[4];
-	uint32_t	dmac_chcr[4];
+	uint32_t	dmac_sar[N_SH4_DMA_CHANNELS];
+	uint32_t	dmac_dar[N_SH4_DMA_CHANNELS];
+	uint32_t	dmac_tcr[N_SH4_DMA_CHANNELS];
+	uint32_t	dmac_chcr[N_SH4_DMA_CHANNELS];
 
 	/*  PCI controller:  */
 	struct pci_data	*pcic_pcibus;

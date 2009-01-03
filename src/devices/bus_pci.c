@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,8 +25,6 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: bus_pci.c,v 1.85.2.1 2008-01-18 19:12:27 debug Exp $
- *  
  *  COMMENT: Generic PCI bus framework
  *
  *  This is not a normal "device", but is used by individual PCI controllers
@@ -775,6 +773,8 @@ int piix_ide_cfg_reg_write(struct pci_device *pd, int reg, uint32_t value)
 	void *wdc0 = ((struct piix_ide_extra *)pd->extra)->wdc0;
 	void *wdc1 = ((struct piix_ide_extra *)pd->extra)->wdc1;
 	int enabled = 0;
+
+	PCI_SET_DATA(reg, value);
 
 	switch (reg) {
 	case PCI_COMMAND_STATUS_REG:

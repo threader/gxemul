@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,13 +25,9 @@
  *  SUCH DAMAGE.
  *   
  *
- *  $Id: machine_mvme88k.c,v 1.11.2.1 2008-01-18 19:12:33 debug Exp $
- *
  *  COMMENT: MVME88K machines (MVME187)
  *
  *  This is for experiments with OpenBSD/mvme88k.
- *
- *  TODO: This is completely bogus so far. No devices exist yet.
  *
  *  MVME187 according to http://mcg.motorola.com/us/products/docs/pdf/187igd.pdf
  *  ("MVME187 RISC Single Board Computer Installation Guide"):
@@ -50,8 +46,16 @@
  *
  *	0xff800000 .. 0xffbfffff = BUG PROM
  *	0xffe00000 .. 0xffe1ffff = BUG SRAM
- *	0xfff40000 .. 0xfffeffff = OBIO (Local IO) space
- *	0xfff43000               = MEMC040 (Memory controller)
+ *	0xfff00000               = PCCTWO
+ *	  0xfff40000             = VME bus
+ *	  0xfff43000             = MEMC040 (Memory controller)
+ *	  0xfff45000             = CD2401 SCC SERIAL IO (cl0)
+ *	  0xfff46000             = 82596 Ethernet (ie0)
+ *	  0xfff47000             = 53C710 SCSI (osiop0)
+ *	  0xfffc0000             = MK48T08 (nvram0)
+ *
+ *  Note: It may turn out to be easier to support Lance ethernet (via VME)
+ *  than to support the 82596 ethernet controller.
  */
 
 #include <stdio.h>
@@ -92,24 +96,42 @@ MACHINE_SETUP(mvme88k)
 		device_add(machine, tmpstr);
 
 		/*  Cirrus Logic serial console at 0xfff45000:  */
-		snprintf(tmpstr, sizeof(tmpstr),
-		    "clmpcc addr=0x%x name2=cl0", 0xfff45000);
+		snprintf(tmpstr, sizeof(tmpstr), "clmpcc irq=%s.cpu[%i].pcc2 "
+		    "addr=0x%08x name2=cl0", machine->path,
+		    machine->bootstrap_cpu, 0xfff45000);
 		machine->main_console_handle =
 		    (size_t) device_add(machine, tmpstr);
+
+		/*  ie0 ethernet: TODO  */
+		device_add(machine, "unreadable addr=0xfff46000 len=0x1000");
+
+		/*  53C710 SCSI at 0xfff47000:  */
+		snprintf(tmpstr, sizeof(tmpstr), "osiop irq=%s.cpu[%i].pcc2.%i "
+		    "addr=0x%08x", machine->path,
+		    machine->bootstrap_cpu, PCC2V_SCSI, 0xfff47000);
+		device_add(machine, tmpstr);
 
 		/*  MK48T08 clock/nvram at 0xfffc0000:  */
 		snprintf(tmpstr, sizeof(tmpstr),
 		    "mk48txx addr=0x%x", 0xfffc0000);
 		device_add(machine, tmpstr);
 
+		/*  VMES (?): TODO  */
+		device_add(machine, "unreadable addr=0xff780000 len=0x80000");
+
+		/*  VME devices: TODO  */
+		device_add(machine, "unreadable addr=0xffff0000 len=0x10000");
+
 		break;
 
 	case MACHINE_MVME88K_188:
 		machine->machine_name = "MVME188";
+		/*  TODO  */
 		break;
 
 	case MACHINE_MVME88K_197:
 		machine->machine_name = "MVME197";
+		/*  TODO  */
 		break;
 
 	default:fatal("Unimplemented MVME88K machine subtype %i\n",

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: file_macho.c,v 1.3.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  COMMENT: Mach-O file support
  */
@@ -220,11 +218,17 @@ static void file_load_macho(struct machine *m, struct memory *mem,
 
 			CHECK_ALLOCATION(symbols = malloc(12 * nsyms));
 			fseek(f, symoff, SEEK_SET);
-			fread(symbols, 1, 12 * nsyms, f);
+			if (fread(symbols, 1, 12 * nsyms, f) != 12*nsyms) {
+				fprintf(stderr, "could not read symbols from %s\n", filename);
+				exit(1);
+			}
 
 			CHECK_ALLOCATION(strings = malloc(strsize));
 			fseek(f, stroff, SEEK_SET);
-			fread(strings, 1, strsize, f);
+			if (fread(strings, 1, strsize, f) != strsize) {
+				fprintf(stderr, "could not read symbol strings from %s\n", filename);
+				exit(1);
+			}
 
 			for (i=0; i<nsyms; i++) {
 				int n_strx, n_type, n_sect, n_desc;

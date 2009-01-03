@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: diskimage.c,v 1.7.2.2 2008-06-09 14:23:43 debug Exp $
  *
  *  Disk image support.
  *
@@ -744,7 +742,8 @@ int diskimage_add(struct machine *machine, char *fname)
 
 	/*  ... but some machines use SCSI by default:  */
 	if (machine->machine_type == MACHINE_PMAX ||
-	    machine->machine_type == MACHINE_ARC)
+	    machine->machine_type == MACHINE_ARC ||
+	    machine->machine_type == MACHINE_MVME88K)
 		d->type = DISKIMAGE_SCSI;
 
 	if (prefix_i + prefix_f + prefix_s > 1) {

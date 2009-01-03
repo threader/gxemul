@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,17 +25,16 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: dev_i80321.c,v 1.23.2.1 2008-01-18 19:12:28 debug Exp $
- *
  *  COMMENT: Intel i80321 (ARM) core functionality
  *
  *	o)  Interrupt controller
  *	o)  Timer
  *	o)  PCI controller
  *	o)  Memory controller
+ *	o)  I2C
  *
  *  TODO:
- *	o)  LOTS of things left to implement.
+ *	o)  More or less everything.
  *	o)  This is hardcoded for little endian emulation.
  */
 
@@ -51,8 +50,9 @@
 #include "misc.h"
 #include "timer.h"
 
-
 #include "i80321reg.h"
+#include "iopi2creg.h"
+
 
 #define	TICK_SHIFT		15
 #define	DEV_I80321_LENGTH	VERDE_PMMR_SIZE
@@ -74,6 +74,9 @@ struct i80321_data {
 
 	/*  Memory Controller:  */
 	uint32_t	mcu_reg[0x100 / sizeof(uint32_t)];
+
+	/*  I2C Controller:  */
+	uint32_t	i2c_reg[VERDE_I2C_SIZE / sizeof(uint32_t)];
 };
 
 
@@ -158,6 +161,16 @@ DEVICE_ACCESS(i80321)
 			d->mcu_reg[regnr] = idata;
 		else
 			odata = d->mcu_reg[regnr];
+	}
+
+	/*  I2C registers:  */
+	if (relative_addr >= VERDE_I2C_BASE &&
+	    relative_addr <  VERDE_I2C_BASE + VERDE_I2C_SIZE) {
+		int regnr = (relative_addr - VERDE_I2C_BASE) / sizeof(uint32_t);
+		if (writeflag == MEM_WRITE)
+			d->i2c_reg[regnr] = idata;
+		else
+			odata = d->i2c_reg[regnr];
 	}
 
 
@@ -246,14 +259,120 @@ DEVICE_ACCESS(i80321)
 		break;
 
 	/*  Memory Controller Unit:  */
+	case VERDE_MCU_BASE + MCU_SDIR:
+		n = "MCU_SDIR (DDR SDRAM Init Register)";
+		break;
+	case VERDE_MCU_BASE + MCU_SDCR:
+		n = "MCU_SDCR (DDR SDRAM Control Register)";
+		break;
 	case VERDE_MCU_BASE + MCU_SDBR:
-		n = "MCU_SDBR";
+		n = "MCU_SDBR (SDRAM Base Register)";
 		break;
 	case VERDE_MCU_BASE + MCU_SBR0:
-		n = "MCU_SBR0";
+		n = "MCU_SBR0 (SDRAM Boundary 0)";
 		break;
 	case VERDE_MCU_BASE + MCU_SBR1:
-		n = "MCU_SBR1";
+		n = "MCU_SBR1 (SDRAM Boundary 1)";
+		break;
+	case VERDE_MCU_BASE + MCU_ECCR:
+		n = "MCU_ECCR (ECC Control Register)";
+		break;
+	case VERDE_MCU_BASE + MCU_RFR:
+		n = "MCU_RFR (Refresh Frequency Register)";
+		break;
+	case VERDE_MCU_BASE + MCU_DBUDSR:
+		n = "MCU_DBUDSR (Data Bus Pull-up Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_DBDDSR:
+		n = "MCU_DBDDSR (Data Bus Pull-down Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_CUDSR:
+		n = "MCU_CUDSR (Clock Pull-up Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_CDDSR:
+		n = "MCU_CDDSR (Clock Pull-down Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_CEUDSR:
+		n = "MCU_CEUDSR (Clock En Pull-up Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_CEDDSR:
+		n = "MCU_CEDDSR (Clock En Pull-down Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_CSUDSR:
+		n = "MCU_CSUDSR (Chip Sel Pull-up Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_CSDDSR:
+		n = "MCU_CSDDSR (Chip Sel Pull-down Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_REUDSR:
+		n = "MCU_REUDSR (Rx En Pull-up Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_REDDSR:
+		n = "MCU_REDDSR (Rx En Pull-down Drive Strength)";
+		break;
+
+	case VERDE_MCU_BASE + MCU_ABUDSR:
+		n = "MCU_ABUDSR (Addr Bus Pull-up Drive Strength)";
+		break;
+	case VERDE_MCU_BASE + MCU_ABDDSR:
+		n = "MCU_ABDDSR (Addr Bus Pull-down Drive Strength)";
+		break;
+
+	/*  Peripheral Bus Interface Unit  */
+	case VERDE_PBIU_BASE + PBIU_PBCR:
+		n = "PBIU_PBCR (PBIU Control Register)";
+		break;
+	case VERDE_PBIU_BASE + PBIU_PBBAR0:
+		n = "PBIU_PBBAR0 (PBIU Base Address Register 0)";
+		break;
+	case VERDE_PBIU_BASE + PBIU_PBLR0:
+		n = "PBIU_PBLR0 (PBIU Limit Register 0)";
+		break;
+	case VERDE_PBIU_BASE + PBIU_PBBAR1:
+		n = "PBIU_PBBAR1 (PBIU Base Address Register 1)";
+		break;
+	case VERDE_PBIU_BASE + PBIU_PBLR1:
+		n = "PBIU_PBLR1 (PBIU Limit Register 1)";
+		break;
+	case VERDE_PBIU_BASE + PBIU_PBBAR2:
+		n = "PBIU_PBBAR2 (PBIU Base Address Register 2)";
+		break;
+	case VERDE_PBIU_BASE + PBIU_PBLR2:
+		n = "PBIU_PBLR2 (PBIU Limit Register 2)";
+		break;
+
+	/*  TODO:  */
+	case 0x7cc:
+		n = "0x7cc_TODO";
+		break;
+
+	case VERDE_I2C_BASE0 + IIC_ICR:
+		n = "I2C 0, IIC_ICR (control register)";
+		break;
+	case VERDE_I2C_BASE0 + IIC_ISR:
+		n = "I2C 0, IIC_ISR (status register)";
+		break;
+	case VERDE_I2C_BASE0 + IIC_ISAR:
+		n = "I2C 0, IIC_ISAR (slave address register)";
+		break;
+	case VERDE_I2C_BASE0 + IIC_IDBR:
+		n = "I2C 0, IIC_IDBR (data buffer register)";
+		break;
+
+	case VERDE_I2C_BASE1 + IIC_ICR:
+		n = "I2C 1, IIC_ICR (control register)";
+		break;
+	case VERDE_I2C_BASE1 + IIC_ISR:
+		n = "I2C 1, IIC_ISR (status register)";
+		odata = IIC_ISR_ITE;	/*  IDBR Tx empty  */
+		odata |= IIC_ISR_IRF;	/*  IDBR Rx full  */
+		break;
+	case VERDE_I2C_BASE1 + IIC_ISAR:
+		n = "I2C 1, IIC_ISAR (slave address register)";
+		break;
+	case VERDE_I2C_BASE1 + IIC_IDBR:
+		n = "I2C 1, IIC_IDBR (data buffer register)";
+		odata = 7;	/*  TODO  */
 		break;
 
 	default:if (writeflag == MEM_READ) {
@@ -263,11 +382,13 @@ DEVICE_ACCESS(i80321)
 			fatal("[ i80321: write to 0x%x: 0x%llx ]\n",
 			    (int)relative_addr, (long long)idata);
 		}
+		exit(1);
 	}
 
 	if (n != NULL) {
 		if (writeflag == MEM_READ) {
-			debug("[ i80321: read from %s ]\n", n);
+			debug("[ i80321: read from %s: 0x%llx ]\n",
+			    n, (long long)idata);
 		} else {
 			debug("[ i80321: write to %s: 0x%llx ]\n",
 			    n, (long long)idata);
@@ -325,6 +446,7 @@ DEVINIT(i80321)
 	d->status = &cpu->cd.arm.i80321_isrc;
 	d->enable = &cpu->cd.arm.i80321_inten;
 
+	/*  TODO: base = 0 on Iyonix?  */
 	d->mcu_reg[MCU_SDBR / sizeof(uint32_t)] = base = 0xa0000000;
 	d->mcu_reg[MCU_SBR0 / sizeof(uint32_t)] = (base + memsize) >> 25;
 	d->mcu_reg[MCU_SBR1 / sizeof(uint32_t)] = (base + memsize) >> 25;

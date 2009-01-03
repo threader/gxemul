@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: file_aout.c,v 1.4.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  COMMENT: a.out executable file support
  */
@@ -81,7 +79,10 @@ static void file_load_aout(struct machine *m, struct memory *mem,
 	}
 
 	if (flags & AOUT_FLAG_DECOSF1) {
-		fread(&buf, 1, 32, f);
+		if (fread(&buf, 1, 32, f) != 32) {
+			perror(filename);
+			exit(1);
+		}
 		vaddr = buf[16] + (buf[17] << 8) +
 		    (buf[18] << 16) + ((uint64_t)buf[19] << 24);
 		entry = buf[20] + (buf[21] << 8) +
@@ -187,7 +188,11 @@ static void file_load_aout(struct machine *m, struct memory *mem,
 		fseek(f, oldpos, SEEK_SET);
 		debug("strings: %i bytes @ 0x%x\n", strings_len,(int)ftello(f));
 		CHECK_ALLOCATION(string_symbols = malloc(strings_len));
-		fread(string_symbols, 1, strings_len, f);
+		if (fread(string_symbols, 1, strings_len, f) != strings_len) {
+			fprintf(stderr, "Could not read symbols from %s?\n", filename);
+			perror("fread");
+			exit(1);
+		}
 
 		aout_symbol_ptr = (struct aout_symbol *) syms;
 		n_symbols = symbsize / sizeof(struct aout_symbol);
