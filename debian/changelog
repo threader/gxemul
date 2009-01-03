@@ -1,3 +1,19 @@
+gxemul (0.4.7-1) unstable; urgency=low
+
+  * New Upstream Version
+    - Motorola 88100 emulation is now complete enough to run a guest 
+      operating system
+  * Patch 05_segfault_params is now integrated upstream
+  * Revised patch 01_manhyphens_patch to fit new upstream
+  * Added Debhelper dependencies to binary packages
+  * Improvements to packaging in debian/rules
+  * Update copyright information
+  * Drop README.Debian (no longer relevant)
+  * Increase compat level to 7
+  * Insert Vcs-* fields in debian/control
+
+ -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Sat, 03 Jan 2009 10:35:29 +0000
+
 gxemul (0.4.6.6-3) unstable; urgency=low
 
   * Patch against segmentation fault if gxemul is started with arbitrary 
