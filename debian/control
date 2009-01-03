@@ -8,7 +8,7 @@ Homepage: http://gavare.se/gxemul/
 
 Package: gxemul
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends} ${misc:Depends}
 Recommends: gxemul-doc
 Description: machine emulator for multiple architectures
  GXemul aims at emulating complete machines with enough hardware
@@ -40,6 +40,7 @@ Description: machine emulator for multiple architectures
 Package: gxemul-doc
 Section: doc
 Architecture: all
+Depends: ${misc:Depends}
 Description: gxemul documentation
  This package contains the documentation for gxemul, the machine
  emulator for multiple architectures. Among other things, instructions
