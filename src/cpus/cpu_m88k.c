@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,17 +25,24 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: cpu_m88k.c,v 1.39.2.1 2008-01-18 19:12:25 debug Exp $
- *
  *  Motorola M881x0 CPU emulation.
+ *
+ *  M88100: Disassembly of (almost?) everything, and execution of most
+ *          instructions. Exception handling and virtual memory has also
+ *          been implemented. Exceptions while in delay slots may not work
+ *          fully yet, though.
+ *
+ *  M88110: Not yet. 
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include "cpu.h"
+#include "float_emul.h"
 #include "interrupt.h"
 #include "machine.h"
 #include "memory.h"
@@ -53,6 +60,7 @@
 
 
 void m88k_pc_to_pointers(struct cpu *);
+void m88k_cpu_functioncall_trace(struct cpu *cpu, int n_args);
 
 static char *memop[4] = { ".d", "", ".h", ".b" };
 
@@ -670,6 +678,11 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 	case M88K_EXCEPTION_SFU1_IMPRECISE:
 		debug("SFU1_IMPRECISE"); break;
 	case 0x80:
+#if 0
+		fatal("[ syscall %i(", cpu->cd.m88k.r[13]);
+		m88k_cpu_functioncall_trace(cpu, 8);
+		fatal(") ]\n");
+#endif
 		debug("syscall, r13=%i", cpu->cd.m88k.r[13]); break;
 	case MVMEPROM_VECTOR:
 		debug("MVMEPROM_VECTOR"); break;
@@ -691,12 +704,8 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 		update_shadow_regs = 0;
 	} else {
 		/*  Freeze shadow registers, and save the PSR:  */
-
-		/*  TODO: Shadow registers!  */
-
 		cpu->cd.m88k.cr[M88K_CR_EPSR] = cpu->cd.m88k.cr[M88K_CR_PSR];
 	}
-
 
 	m88k_stcr(cpu, cpu->cd.m88k.cr[M88K_CR_PSR]
 	    | M88K_PSR_SFRZ	/*  Freeze shadow registers,          */
@@ -708,19 +717,27 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 	if (update_shadow_regs) {
 		cpu->cd.m88k.cr[M88K_CR_SSBR] = 0;
 
-		/*  SNIP is the address to return to, when executing rte:  */
 		cpu->cd.m88k.cr[M88K_CR_SXIP] = cpu->pc | M88K_XIP_V;
 
+		/*  SNIP is the address to return to, when executing rte:  */
 		if (cpu->delay_slot) {
-			cpu->cd.m88k.cr[M88K_CR_SXIP] += 4;
-			cpu->cd.m88k.cr[M88K_CR_SNIP] =
-			    cpu->cd.m88k.delay_target | M88K_NIP_V;
+			if (vector == M88K_EXCEPTION_DATA_ACCESS) {
+				cpu->cd.m88k.cr[M88K_CR_SNIP] = cpu->cd.m88k.delay_target | M88K_NIP_V;
+				cpu->cd.m88k.cr[M88K_CR_SFIP] = cpu->cd.m88k.cr[M88K_CR_SNIP]+4;
+			} else if (vector == M88K_EXCEPTION_INSTRUCTION_ACCESS) {
+				/*  If we are in a delay slot, then pc is
+				    something like 0xc6000 here (not 0xc5ffc).  */
+				cpu->cd.m88k.cr[M88K_CR_SNIP] = cpu->cd.m88k.delay_target | M88K_NIP_V;
+				cpu->cd.m88k.cr[M88K_CR_SFIP] = 0;
+			} else {
+				/*  Perhaps something like this could work:  */
+				cpu->cd.m88k.cr[M88K_CR_SNIP] = (cpu->pc + 4) | M88K_NIP_V;
+				cpu->cd.m88k.cr[M88K_CR_SFIP] = cpu->cd.m88k.delay_target | M88K_NIP_V;
+			}
 		} else {
-			cpu->cd.m88k.cr[M88K_CR_SNIP] =
-			    (cpu->pc + 4) | M88K_NIP_V;
+			cpu->cd.m88k.cr[M88K_CR_SNIP] = (cpu->pc + 4) | M88K_NIP_V;
+			cpu->cd.m88k.cr[M88K_CR_SFIP] = cpu->cd.m88k.cr[M88K_CR_SNIP]+4;
 		}
-
-		cpu->cd.m88k.cr[M88K_CR_SFIP] = cpu->cd.m88k.cr[M88K_CR_SNIP]+4;
 
 		if (vector == M88K_EXCEPTION_INSTRUCTION_ACCESS)
 			cpu->cd.m88k.cr[M88K_CR_SXIP] |= M88K_XIP_E;
@@ -733,6 +750,17 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 	else
 		cpu->delay_slot = NOT_DELAYED;
 
+	/*  Default to no memory transactions:  */
+	cpu->cd.m88k.cr[M88K_CR_DMT0] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMD0] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMA0] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMT1] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMD1] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMA1] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMT2] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMD2] = 0;
+	cpu->cd.m88k.cr[M88K_CR_DMA2] = 0;
+
 	/*  Vector-specific handling:  */
 	if (vector < M88K_EXCEPTION_USER_TRAPS_START) {
 		switch (vector) {
@@ -741,7 +769,21 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 			fatal("[ m88k_exception: reset ]\n");
 			exit(1);
 
+		case M88K_EXCEPTION_INTERRUPT:
+			/*  When returning with rte, we want to re-  */
+			/*  execute the interrupted instruction:  */
+			cpu->cd.m88k.cr[M88K_CR_SNIP] -= 4;
+			cpu->cd.m88k.cr[M88K_CR_SFIP] -= 4;
+			break;
+
 		case M88K_EXCEPTION_INSTRUCTION_ACCESS:
+			/*  When returning with rte, we want to re-  */
+			/*  execute the instruction in SXIP, not SNIP/SFIP,  */
+			/*  (unless the exception was in a delay-slot):  */
+			if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+				cpu->cd.m88k.cr[M88K_CR_SNIP] = 0;
+				cpu->cd.m88k.cr[M88K_CR_SFIP] = 0;
+			}
 			break;
 
 		case M88K_EXCEPTION_DATA_ACCESS:
@@ -759,7 +801,16 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 			m88k_memory_transaction_debug_dump(cpu, 1);
 			break;
 
+#if 0
+		case M88K_EXCEPTION_ILLEGAL_INTEGER_DIVIDE:
+			/*  TODO: Is it correct to continue on the instruction
+			    _after_ the division by zero? Or should the PC
+			    be backed up one step?  */
+			break;
+#endif
+
 		default:fatal("m88k_exception(): 0x%x: TODO\n", vector);
+			fflush(stdout);
 			exit(1);
 		}
 	}
@@ -1041,6 +1092,53 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 		}
 		break;
 
+	case 0x21:
+		switch (op11) {
+		case 0x00:	/*  fmul  */
+		case 0x05:	/*  fadd  */
+		case 0x06:	/*  fsub  */
+		case 0x07:	/*  fcmp  */
+		case 0x0e:	/*  fdiv  */
+			switch (op11) {
+			case 0x00: mnem = "fmul"; break;
+			case 0x05: mnem = "fadd"; break;
+			case 0x06: mnem = "fsub"; break;
+			case 0x07: mnem = "fcmp"; break;
+			case 0x0e: mnem = "fdiv"; break;
+			}
+			debug("%s.%c%c%c r%i,r%i,r%i\n",
+			    mnem,
+			    ((iw >> 5) & 1)? 'd' : 's',
+			    ((iw >> 9) & 1)? 'd' : 's',
+			    ((iw >> 7) & 1)? 'd' : 's',
+			    d, s1, s2);
+			break;
+		case 0x04:	/*  flt  */
+			switch (op11) {
+			case 0x04: mnem = "flt"; break;
+			}
+			debug("%s.%cs\tr%i,r%i\n",
+			    mnem,
+			    ((iw >> 5) & 1)? 'd' : 's',
+			    d, s2);
+			break;
+		case 0x09:	/*  int  */
+		case 0x0a:	/*  nint  */
+		case 0x0b:	/*  trnc  */
+			switch (op11) {
+			case 0x09: mnem = "int"; break;
+			case 0x0a: mnem = "nint"; break;
+			case 0x0b: mnem = "trnc"; break;
+			}
+			debug("%s.s%c r%i,r%i\n",
+			    mnem,
+			    ((iw >> 7) & 1)? 'd' : 's',
+			    d, s2);
+			break;
+		default:debug("UNIMPLEMENTED 0x21, op11=0x%02x\n", op11);
+		}
+		break;
+
 	case 0x30:
 	case 0x31:
 	case 0x32:
@@ -1077,10 +1175,12 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 			case 0x1: debug("gt0"); break;
 			case 0x2: debug("eq0"); break;
 			case 0x3: debug("ge0"); break;
+			case 0x7: debug("not_maxneg"); break;
+			case 0x8: debug("maxneg"); break;
 			case 0xc: debug("lt0"); break;
 			case 0xd: debug("ne0"); break;
 			case 0xe: debug("le0"); break;
-			default:  debug("%i", d);
+			default:  debug("unimplemented_%i", d);
 			}
 		} else {
 			debug("%i", d);

@@ -1,60 +1,60 @@
+TODO list for GXemul
+====================
 
 Some things, in no specific order, that I'd like to fix:
 (Some items in this list are perhaps already fixed.)
 
 -------------------------------------------------------------------------------
 
-0.4.6.6:
-	README
-	RELEASE NOTES
-	Send SVN dump to Sourceforge
-	Tarball creation
-	Sourceforge file release
-	Home page update
-	Freshmeat
-	Wikipedia page (version number and date)
-	#GXemul (version number in topic)
-	gxemul-users mail
+Goals for 0.5.x:
+
+  [ ]	Make -K default on?
+
+  [ ]	Start to SLOWLY convert to C++. Instead of restarting from scratch
+	(which was my last experiment with GXemul/C++), only translate
+	things that make sense.
+
+  [ ]	Go through ALL emulation modes, to find out which ones have
+	good timer code, and which ones have broken timers. Try to fix
+	those that are broken.
+
+  [ ]	Perhaps continue on one or more unfinished architectures, such as
+	Alpha or SPARC? Or something new like M32R?
+
 
 -------------------------------------------------------------------------------
 
-Play around with the SGI O2 PROM image again, from the real O2.
-
-0.3.7: Ok, starts up with graphics (_IF_ the cache detection is skipped)
-
-20051112: Ok with graphics
-20051127: Ok
-20051201: Ok			<-- Somewhere between 20051201 and 20051203
-20051203: Not work.		    I apparently lost the graphical boot
-20051211: Does NOT work.
-
-0.3.8: Boots but switches to serial console ("could not open console") (also with
-       cache detection skipped manually)
-0.4.0: The cache detection breakpoint is not triggered :(
-
--------------------------------------------------------------------------------
+To be translated prefetch:
+	o)  ONLY do this when able to read directly from memory
+	    pages, NOT when running via a slow device!
 
 M88K:
-	o)  FIP != NIP + 4, in rte! (Simulate delayed branch stuff.)
+	o)  MVME187:
+		o)  disk bootblock boot
+		o)  ethernet
+	o)  PERFORMANCE!
 	o)  cpu_dyntrans.c: MEMORY_USER_ACCESS implementation for M88K!
+	    Currently, user memory accesses are not entered into the
+	    translation caches, which result in extremely poor performance.
+	    Also, the entire translation cache is thrown away on user/supervisor
+	    mode switches, which (I guess) makes e.g. syscalls quite
+	    expensive.
 	o)  xmem: Set transaction registers!
 	o)  CMMUs:
 		o)  Translation invalidations, could be optimized.
 		o)  Move initialization from dev_mvme187 to somewhere
 		    more reasonable?
 	o)  Instruction trace by using bits of ??IP control regs.
-	o)  Interrupts (these are machine dependent, though).
-	o)  Implement devices etc. for one or more machine modes,
-	    to get some guest OS running. OpenBSD/mvme88k on MVME187
-	    seems to be the smartest path to follow for now.
-		o)  VME bus device
-		o)  PCC2
-		o)  Cirrus Logic serial port controller
+	o)  Breakpoints: How to indicate user space vs supervisor? (Also the
+	    "dump" instruction and other things need this support.)
 	o)  Instruction disassembly, and implementation:
 		o)  See http://www.panggih.staff.ugm.ac.id/download/GCC/info/gcc.i5
 		    for some strange cases of when "div" can fail (?)
-		o)  Floating point stuff
-		o)  "Graphics" instructions (M88110-specific)
+		o)  Floating point stuff:
+			+) Refactor all the fsub, fadd, fmul etc. They
+			   are currently quite horribly redundant.
+			+) Exceptions for overflow etc!
+		o)  88110-specific instructions, e.g. "graphics" instructions
 
 MIPS:
 	o)  Nicer MIPS status bits in register dumps.
@@ -91,6 +91,8 @@ MIPS:
 		x)  memory space, exceptions, ...
 		x)  use cop0 framemask for tlb lookups
 		    (http://techpubs.sgi.com/library/tpl/cgi-bin/getdoc.cgi/hdwr/bks/SGI_Developer/books/R10K_UM/sgi_html/t5.Ver.2.0.book_284.html)
+	o)  Playstation 2 with NetBSD? Perhaps USB keyboard is a big step
+	    on the way to running the whole OS. (?)
 
 SuperH:
 	x)  Auto-generation of loads/stores! This should get rid of at least
@@ -99,10 +101,12 @@ SuperH:
 	    actually needed. (20070522: I'm turning it off today.)
 	x)  SH4 interrupt controller:
 		x)  MASKING should be possible!
-	x)  SH4 DMA (0xffa00000)
 	x)  SH4 UBC (0xff200000)
+	x)  SH4 DMA (0xffa00000): non-dreamcast-PVR modes
 	x)  Store queues can copy 32 bytes at a time, there's no need to
 	    copy individual 32-bit words. (Performance improvement.)
+	    (Except that e.g. the Dreamcast TA currently receives using
+	    32-bit words... hm)
 	x)  SH4 BSC (Bus State Controller)
 	x)  Instruction tracing should include symbols for branch targets,
 	    and so on, to make the output more human readable.
@@ -110,13 +114,22 @@ SuperH:
 	x)  NetBSD/evbsh3, hpcsh! Linux?
 	x)  Floating point speed!
 	x)  Floating point exception correctness.
+		E.g. fipr and the other "geometric" instructions should
+		throw an exception if the "precision" bit is wrong
+		(since the geometric instructions loose precision).
+		See the manual about this!
 	x)  Exceptions for unaligned load/stores. OpenBSD/landisk uses
 	    this mechanism for its reboot code (machine_reset).
 
 Dreamcast:
-	x)  G2 DMA
-	x)  LAN adapter (dev_mb8696x.c).  NetBSD root-on-nfs.
+	x)  Try to make the ROM from my real Dreamcast boot.
 	x)  PVR:  Lots of stuff. See dev_pvr.c.
+		x)  DMA to non-0x10000000
+		x)  Textures...
+		x)  Make it fast! if possible
+	x)  G2 DMA
+	x)  SPU: Sound emulation (ARM cpu).
+	x)  LAN adapter (dev_mb8696x.c).  NetBSD root-on-nfs.
 	x)  Better GDROM support
 	x)  Modem
 	x)  PCI bridge/bus?
@@ -129,7 +142,6 @@ Dreamcast:
 		    nothing.)
 	x)  Make as many as possible of the KOS examples run!
 	x)  More homebrew demos/games.
-	x)  SPU: Sound emulation (ARM cpu).
 	x)  VME processor emulation? "(Sanyo LC8670 "Potato")" according to
 	    Wikipedia, LC86K87 according to Comstedt's page. See
 	    http://www.maushammer.com/vmu.html for a good description of
@@ -204,6 +216,21 @@ Malta:
 		1. PCI IDE; make Linux oops.
 		2. Implement the NIC.
 
+SGI O2:
+	Play around with the SGI O2 PROM image again, from the real O2.
+
+	0.3.7: Ok, starts up with graphics (_IF_ the cache detection is skipped)
+
+	20051112: Ok with graphics
+	20051127: Ok
+	20051201: Ok			<-- Somewhere between 20051201 and 20051203
+	20051203: Not work.		    I apparently lost the graphical boot
+	20051211: Does NOT work.
+
+	0.3.8: Boots but switches to serial console ("could not open console") (also with
+	       cache detection skipped manually)
+	0.4.0: The cache detection breakpoint is not triggered :(
+
 HPCmips:
 	x)  Mouse/pad support! :)
 	x)  A NIC? (As a PCMCIA device?)
@@ -213,14 +240,23 @@ ARM:
 	    occured" message after reboot/halt is too ugly.
 	o)  Generic ARM "wait"-like instruction?
 	o)  try to get netbsd/evbarm 3.x or 4.x running (iq80321)
+	o)  netbsd/iyonix? the i80321 device currently tells netbsd that
+	    RAM starts at 0xa0000000, but that is perhaps not correct for the
+	    iyonix.
 	o)  make the xscale counter registers (ccnt) work
 	o)  make the ata controller usable for FreeBSD!
 	o)  Debian/cats crashes because of unimplemented coproc stuff.
 	    fix this?
 
+M32R:
+	o)  Everything.
+	o)  /home/debug/emul/m32r/linux-2.6.14.6-20060127-revE.root/boot/vmlinux-2.6.14.6-20060127-revE
+
 Test machines:
-	o)  dev_fb block fill and copy
-	o)  dev_fb draw characters (from the built-in font)?
+	o)  dev_fb 2D acceleration functions, to make dev_fb useful for
+	    simple graphical OSes:
+		x) block fill and copy
+		x) draw characters (from the built-in font)?
 	o)  dev_fb input device? mouse pointer coordinates and buttons
 		(allow changes in these to cause interrupts as well?)
 	o)  Redefine the halt() function so that it stops "sometimes
@@ -228,11 +264,15 @@ Test machines:
 		for (;;) {
 			halt();
 		}
+	o)  More demos/examples.
 
 Debugger:
 	o)  How does SMP debugging work? Does it simply use "threads"?
 	    What if the guest OS (running on an emulated SMP machine)
 	    has a usertask running, with userland threads?
+	o)  Count reads/writes to memory areas, for statistics and breakpoints!
+	    (Don't insert those pages into the fast load/store lookup tables,
+	    or course.)
 	o)  Try to make the debugger more modular and, if possible, reentrant!
 	o)  Memory dumps should be able to dump both physical and
 	    virtual emulated memory.
@@ -531,6 +571,68 @@ Better framebuffer and X-windows functionality:
 		    emulator)
 	o)  Generalize the framebuffer stuff by moving _ALL_ X11
 		specific code to a separate module.
+
+C++:
+	o)  SLOWLY try to convert the code from C to C++. What will this
+	    achieve? Well, one of the absolutely biggest problems in
+	    GXemul so far (in C) is that it has not been written in a
+	    way which would allow the following things:
+
+		x)  Adding and removing devices during runtime.
+		    This is hindered by the fact that the C code is
+		    written in a "construct only" kind of way, with no
+		    "destructors". It will be much easier to achieve this
+		    in C++ than having to rewrite EVERYTHING in C to
+		    use destructors.
+
+		x)  Serializing/deserializing a snapshot of the entire
+		    emulation to a file (which in the long run would
+		    allow things like "live migration").
+		    This will be much easier in C++ than in C.
+
+		x)  Allowing multiple _DIFFERENT_ CPU architectures per
+		    machine, and different cache configurations and
+		    busses.
+		    Also possible with C, but will be easier with C++.
+		    (Already tried some of it in the experimental C++
+		    branch.)
+		    Example: Dreamcast has both an SH4 and an ARM cpu.
+
+		x)  Controlled abort, when something fails. The C code
+		    right now is unable to use somthing similar to
+		    "exceptions", which would be good to abort emulation
+		    e.g. when something unimplemented is attempted.
+
+	    But for the future, it would also allow the code to be
+	    more easily maintained. Hopefully some of the template magic
+	    (which currently consists of programs creating temporary
+	    C files which are compiled into the program) can be replaced
+	    by native C++ templates instead.
+
+Release checklist:
+	README
+	RELEASE NOTES
+	Send SVN dump to Sourceforge
+	Tarball creation
+	Sourceforge file release
+	Home page update: version numbers
+	Home page News page update
+	#GXemul (version number in topic)
+	gxemul-users mail
+	Freshmeat
+	Wikipedia page (version number and date)
+	Send mail to package maintainers (if they are not subscribed
+		to the mailing list(s))
+	If new arch:
+		Wikipedia page
+		Linux-MIPS wiki page
+		Ohloh description page
+		gavare.se main page
+		GXemul web main page
+		CV
+	Graph: Release timeline (date on x axis, including release numbers,
+		and comments for major new features).
+
 
 -------------------------------------------------------------------------------
 

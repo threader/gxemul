@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: device.c,v 1.2.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  COMMENT: Device registry framework
  */
@@ -334,7 +332,7 @@ void *device_add(struct machine *machine, char *name_and_params)
 				exit(1);
 			}
 		} else if (strncmp(s2, "irq=", 4) == 0) {
-			snprintf(devinit.interrupt_path, interrupt_path_len,s3);
+			snprintf(devinit.interrupt_path, interrupt_path_len, "%s", s3);
 			if (strchr(devinit.interrupt_path, ' ') != NULL)
 				*strchr(devinit.interrupt_path, ' ') = '\0';
 		} else if (strncmp(s2, "in_use=", 7) == 0) {
@@ -354,7 +352,7 @@ void *device_add(struct machine *machine, char *name_and_params)
 			h = s2 + 6;
 			if (*h == '\'')
 				len -= 2, h++;
-			snprintf(devinit.name2, len + 1, h);
+			snprintf(devinit.name2, len + 1, "%s", h);
 		} else {
 			fatal("unknown param: %s\n", s2);
 			if (device_exit_on_error)

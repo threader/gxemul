@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: file_ecoff.c,v 1.3.2.1 2008-01-18 19:12:31 debug Exp $
  *
  *  COMMENT: ECOFF file support
  */
@@ -340,7 +338,10 @@ static void file_load_ecoff(struct machine *m, struct memory *mem,
 					ofs = f_symptr + altname +
 					    sizeof(struct ms_sym) * f_nsyms;
 					fseek(f, ofs, SEEK_SET);
-					fread(name, 1, sizeof(name), f);
+					if (fread(name, 1, sizeof(name), f) != sizeof(name)) {
+						fprintf(stderr, "error reading symbol from %s\n", filename);
+						exit(1);
+					}
 					name[sizeof(name)-1] = '\0';
 					/*  debug(" [altname=0x%x '%s']",
 					    altname, name);  */
@@ -380,7 +381,10 @@ static void file_load_ecoff(struct machine *m, struct memory *mem,
 		CHECK_ALLOCATION(symbol_data = malloc(issExtMax + 2));
 		memset(symbol_data, 0, issExtMax + 2);
 		fseek(f, cbSsExtOffset, SEEK_SET);
-		fread(symbol_data, 1, issExtMax + 1, f);
+		if (fread(symbol_data, 1, issExtMax + 1, f) != issExtMax+1) {
+			fprintf(stderr, "error reading symbol data from %s\n", filename);
+			exit(1);
+		}
 
 		nsymbols = iextMax;
 
@@ -388,7 +392,11 @@ static void file_load_ecoff(struct machine *m, struct memory *mem,
 		    malloc(iextMax * sizeof(struct ecoff_extsym)));
 		memset(extsyms, 0, iextMax * sizeof(struct ecoff_extsym));
 		fseek(f, cbExtOffset, SEEK_SET);
-		fread(extsyms, 1, iextMax * sizeof(struct ecoff_extsym), f);
+		if (fread(extsyms, 1, iextMax * sizeof(struct ecoff_extsym), f) !=
+		    iextMax * sizeof(struct ecoff_extsym)) {
+			fprintf(stderr, "error reading extsyms from %s\n", filename);
+			exit(1);
+		}
 
 		/*  Unencode the strindex and value first:  */
 		for (sym_nr=0; sym_nr<nsymbols; sym_nr++) {

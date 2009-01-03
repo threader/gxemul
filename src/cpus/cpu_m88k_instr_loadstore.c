@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: cpu_m88k_instr_loadstore.c,v 1.8.2.1 2008-01-18 19:12:25 debug Exp $
  *
  *  M88K load/store instructions; the following args are used:
  *  
@@ -130,7 +128,7 @@ void LS_GENERIC_N(struct cpu *cpu, struct m88k_instr_call *ic)
 	cpu->cd.m88k.dmt[1] = cpu->cd.m88k.dmt[0];
 	cpu->cd.m88k.dmt[0] |= DMT_DOUB1;
 	cpu->cd.m88k.dma[1] = cpu->cd.m88k.dma[0] + sizeof(uint32_t);
-	cpu->cd.m88k.dmd[0] = 0;
+	cpu->cd.m88k.dmd[1] = 0;
 #ifdef LS_LOAD
 	{
 		int dreg = (((uint32_t *)ic->arg[0]) - &cpu->cd.m88k.r[0]);

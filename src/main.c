@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *  SUCH DAMAGE.
  *
  *
- *  $Id: main.c,v 1.311.2.1 2008-01-18 19:12:24 debug Exp $
+ *  GXemul's main entry point.
  */
 
 #include <stdio.h>
@@ -196,7 +196,7 @@ void internal_w(char *arg)
  */
 static void usage(int longusage)
 {
-	printf("GXemul "VERSION"    Copyright (C) 2003-2008  Anders Gavare\n");
+	printf("GXemul "VERSION"    Copyright (C) 2003-2009  Anders Gavare\n");
 	printf("Read the source code and/or documentation for "
 	    "other Copyright messages.\n");
 
@@ -714,6 +714,13 @@ int main(int argc, char *argv[])
 
 	get_cmd_args(argc, argv, emul, &diskimages, &n_diskimages);
 
+	if (emul->machines[0]->machine_type == MACHINE_NONE) {
+		printf("No machine type specified? Run  gxemul -H  for a list\n"
+		    "of available machine types. Use the -e or -E option(s)\n"
+		    "to specify the machine type.\n");
+		exit(1);
+	}
+
 	if (!skip_srandom_call) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
@@ -721,7 +728,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Print startup message:  */
-	debug("GXemul "VERSION"    Copyright (C) 2003-2008  Anders Gavare\n"
+	debug("GXemul "VERSION"    Copyright (C) 2003-2009  Anders Gavare\n"
 	    "Read the source code and/or documentation for other Copyright "
 	    "messages.\n\n");
 

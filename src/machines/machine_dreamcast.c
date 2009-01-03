@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *   
- *
- *  $Id: machine_dreamcast.c,v 1.33.2.2 2008-02-24 05:43:17 debug Exp $
  *
  *  COMMENT: SEGA Dreamcast
  */
@@ -69,7 +67,7 @@ MACHINE_SETUP(dreamcast)
 	 *
 	 *  0x00000000 - 0x001fffff	Boot ROM (2 MB)
 	 *  0x00200000 - 0x003fffff	Flash (256 KB)
-	 *  0x005f6800 - ...		G2 DMA registers
+	 *  0x005f6800 - ...		PowerVR2 DMA registers
 	 *  0x005f6900 - ...		ASIC registers
 	 *  0x005f6c00 - ...		Maple registers (controller ports)
 	 *  0x005f7000 - ...		GDROM registers

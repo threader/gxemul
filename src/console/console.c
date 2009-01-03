@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: console.c,v 1.3.2.1 2008-01-18 19:12:24 debug Exp $
  *
  *  Generic console support functions.
  *
@@ -428,7 +426,8 @@ void console_putchar(int handle, int ch)
 		start_xterm(handle);
 
 	buf[0] = ch;
-	write(console_handles[handle].w_descriptor, buf, 1);
+	if (write(console_handles[handle].w_descriptor, buf, 1) != 1)
+		perror("error writing to console handle");
 }
 
 
@@ -505,7 +504,8 @@ static void console_slave_sigint(int x)
 
 	/*  Send a ctrl-c:  */
 	buf[0] = 3;
-	write(console_slave_outputd, buf, sizeof(buf));
+	if (write(console_slave_outputd, buf, sizeof(buf)) != sizeof(buf))
+		perror("error writing to console handle");
 
 	/*  Reset the signal handler:  */
 	signal(SIGINT, console_slave_sigint);
@@ -581,7 +581,8 @@ void console_slave(char *arg)
 			len = read(STDIN_FILENO, buf, sizeof(buf));
 			if (len < 1)
 				exit(0);
-			write(console_slave_outputd, buf, len);
+			if (write(console_slave_outputd, buf, len) != len)
+				perror("error writing to console handle");
 		}
 
 		usleep(10000);

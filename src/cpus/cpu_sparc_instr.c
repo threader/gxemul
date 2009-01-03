@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: cpu_sparc_instr.c,v 1.29.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  SPARC instructions.
  *
@@ -1217,8 +1215,11 @@ X(to_be_translated)
 
 	/*  SPARC instruction words are always big-endian. Convert
 	    to host order:  */
-	iword = BE32_TO_HOST( *((uint32_t *)&ib[0]) );
-
+	{
+		uint32_t *p = (uint32_t *) ib;
+		iword = *p;
+		iword = BE32_TO_HOST(iword);
+	}
 
 #define DYNTRANS_TO_BE_TRANSLATED_HEAD
 #include "cpu_dyntrans.c"

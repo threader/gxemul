@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2008  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -24,8 +24,6 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  *
- *
- *  $Id: cpu_sh_instr.c,v 1.64.2.1 2008-01-18 19:12:26 debug Exp $
  *
  *  SH instructions.
  *
@@ -2348,6 +2346,39 @@ X(fsca_fpul_drn)
 
 
 /*
+ *  fipr_fvm_fvn:  Vector * vector  =>  vector
+ *
+ *  arg[0] = ptr to FVm
+ *  arg[1] = ptr to FVn
+ *
+ *  Result of adding all   FR{m+i} * FR{n+i}  where i=0..3
+ *  is stored in FR{n+3}.
+ */
+X(fipr_fvm_fvn)
+{
+	struct ieee_float_value frn0, frn1, frn2, frn3;
+	struct ieee_float_value frm0, frm1, frm2, frm3;
+
+	FLOATING_POINT_AVAILABLE_CHECK;
+
+	ieee_interpret_float_value(reg(ic->arg[0] + 0), &frm0, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[0] + 4), &frm1, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[0] + 8), &frm2, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[0] + 12), &frm3, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[1] + 0), &frn0, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[1] + 4), &frn1, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[1] + 8), &frn2, IEEE_FMT_S);
+	ieee_interpret_float_value(reg(ic->arg[1] + 12), &frn3, IEEE_FMT_S);
+
+	frn3.f =
+	    frm0.f * frn0.f + frm1.f * frn1.f +
+	    frm2.f * frn2.f + frm3.f * frn3.f;
+
+	reg(ic->arg[1] + 12) = ieee_store_float_value(frn3.f, IEEE_FMT_S, 0);
+}
+
+
+/*
  *  ftrv_xmtrx_fvn:  Matrix * vector  ==>  vector
  *
  *  arg[0] = ptr to FVn
@@ -2391,6 +2422,7 @@ X(ftrv_xmtrx_fvn)
  *  fneg:  Negate a floating point register
  *  fabs:  Get the absolute value of a floating point register
  *  fsqrt: Calculate square root
+ *  fsrra: Calculate 1 / (square root)
  *
  *  arg[0] = ptr to fp register
  *  arg[1] = (uint32_t) immediate value (for fldi)
@@ -2432,6 +2464,28 @@ X(fsqrt_frn)
 		int32_t ieee, r1 = reg(ic->arg[0]);
 		ieee_interpret_float_value(r1, &op1, IEEE_FMT_S);
 		ieee = ieee_store_float_value(sqrt(op1.f), IEEE_FMT_S, 0);
+		reg(ic->arg[0]) = ieee;
+	}
+}
+X(fsrra_frn)
+{
+	// I'm guessing that this is 1/sqrt. That's how it is described at
+	// http://yam.20to4.net/dreamcast/hints/index.html at least.
+
+	struct ieee_float_value op1;
+
+	FLOATING_POINT_AVAILABLE_CHECK;
+
+	if (cpu->cd.sh.fpscr & SH_FPSCR_PR) {
+		/*  Double-precision:  */
+		fatal("Double-precision fsrra? TODO\n");
+		exit(1);
+	} else {
+		/*  Single-precision:  */
+		int32_t ieee, r1 = reg(ic->arg[0]);
+		ieee_interpret_float_value(r1, &op1, IEEE_FMT_S);
+		ieee = ieee_store_float_value(1.0f / sqrt(op1.f),
+		    IEEE_FMT_S, 0);
 		reg(ic->arg[0]) = ieee;
 	}
 }
@@ -2921,11 +2975,16 @@ X(to_be_translated)
 		}
 	}
 
-	iword = *((uint16_t *)&ib[0]);
+	{
+		uint16_t *p = (uint16_t *) ib;
+		iword = *p;
+	}
+
 	if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
 		iword = LE16_TO_HOST(iword);
 	else
 		iword = BE16_TO_HOST(iword);
+
 	main_opcode = iword >> 12;
 	r8 = (iword >> 8) & 0xf;
 	r4 = (iword >> 4) & 0xf;
@@ -3842,6 +3901,10 @@ X(to_be_translated)
 			/*  FSQRT FRn  */
 			ic->f = instr(fsqrt_frn);
 			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8];
+		} else if (lo8 == 0x7d) {
+			/*  FSRRA FRn  */
+			ic->f = instr(fsrra_frn);
+			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8];
 		} else if (lo8 == 0x8d) {
 			/*  FLDI0 FRn  */
 			ic->f = instr(fldi_frn);
@@ -3860,6 +3923,11 @@ X(to_be_translated)
 			/*  FCNVDS DRm,FPUL  */
 			ic->f = instr(fcnvds_drm_fpul);
 			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8];
+		} else if (lo8 == 0xed) {
+			/*  FIPR FVm,FVn  */
+			ic->f = instr(fipr_fvm_fvn);
+			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8 & 0xc];  /* m */
+			ic->arg[1] = (size_t)&cpu->cd.sh.fr[(r8&3)*4];  /* n */
 		} else if ((iword & 0x01ff) == 0x00fd) {
 			/*  FSCA FPUL,DRn  */
 			ic->f = instr(fsca_fpul_drn);

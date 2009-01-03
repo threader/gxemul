@@ -1,6 +1,5 @@
-.\" $Id: gxemul.1,v 1.101.2.3 2008-06-09 14:22:45 debug Exp $
 .\"
-.\" Copyright (C) 2004-2008  Anders Gavare.  All rights reserved.
+.\" Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions are met:
@@ -30,7 +29,7 @@
 .\"
 .\"     groff -man -Tascii gxemul.1    or    nroff -man gxemul.1
 .\"
-.Dd NOVEMBER 2008
+.Dd JANUARY 2009
 .Dt GXEMUL 1
 .Os
 .Sh NAME
@@ -54,8 +53,8 @@ It is working well enough to allow unmodified "guest" operating
 systems (e.g. NetBSD) to run inside the emulator, as if they were running 
 on real hardware.
 .Pp
-The emulator emulates (networks of) real machines. The machines may
-consist of ARM, MIPS, PowerPC, and SuperH processors, and various
+The emulator emulates (networks of) real machines. The machines may consist
+of ARM, MIPS, Motorola 88K, PowerPC, and SuperH processors, and various
 surrounding hardware components such as framebuffers, busses, interrupt
 controllers, ethernet controllers, disk controllers, and serial port
 controllers.
@@ -495,7 +494,7 @@ guest operating system's clock run at the same speed as the host clock.
 However, the number of instructions executed per clock tick can
 obviously vary, depending on the current CPU load on the host.
 .Sh AUTHOR
-GXemul is Copyright (C) 2003-2008 Anders Gavare <anders@gavare.se>
+GXemul is Copyright (C) 2003-2009  Anders Gavare <anders@gavare.se>
 .Pp
 See http://gavare.se/gxemul/ for more information. For other Copyright
 messages, see the corresponding parts of the source code and/or
