@@ -20,13 +20,17 @@ configure-stamp:
 	CFLAGS="${CFLAGS}" ./configure
 	touch configure-stamp
 
-build: patch-stamp configure-stamp build-stamp
+build: ${DPATCH_STAMPFN} configure-stamp build-stamp
 build-stamp:
 	dh build --after configure
 	touch build-stamp
 
-clean: unpatch
-	dh clean
+clean: clean-patched unpatch
+clean-patched:
+	dh clean --before dh_auto_clean
+	rm -f build-stamp configure-stamp
+	[ ! -f Makefile ] || $(MAKE) clean_all
+	dh clean --after dh_auto_clean
 
 %:
 	dh $@
