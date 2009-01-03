@@ -1,20 +1,20 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## <debian@jwiltshire.org.uk>
+## Jonathan Wiltshire <debian@jwiltshire.org.uk>
 
 ## DP: Replaces hyphens with minus signs in the manpage where appropriate
 
 --- gxemul-0.4.6.5/man/gxemul.1	2008-06-09 15:22:45.000000000 +0100
 +++ gxemul-0.4.6.5/man/gxemul.1.patched	2008-08-30 17:57:21.000000000 +0100
-@@ -260,7 +260,7 @@
+@@ -259,7 +259,7 @@
  Set the boot argument (mostly useful for DEC, ARC, or SGI emulation).
  Default
  .Ar arg
 -for DEC is "-a", for ARC/SGI it is "-aN", and for CATS it is "-A".
-+for DEC is "-a", for ARC/SGI it is "\-aN", and for CATS it is "\-A".
++for DEC is "\-a", for ARC/SGI it is "\-aN", and for CATS it is "\-A".
  .It Fl p Ar pc
  Add a breakpoint.
  .Ar pc
-@@ -443,7 +443,7 @@
+@@ -442,7 +442,7 @@
  NetBSD/pmax filesystem.
  .Pp
  The following command will start an emulation session based on settings in 
