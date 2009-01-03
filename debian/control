@@ -5,6 +5,8 @@ Maintainer: Jonathan Wiltshire <debian@jwiltshire.org.uk>
 Build-Depends: debhelper (>= 7), libx11-dev, dpatch
 Standards-Version: 3.8.0.0
 Homepage: http://gavare.se/gxemul/
+Vcs-Browser: http://robin.powdarrmonkey.net/cgi-bin/gitweb.cgi?p=gxemul
+Vcs-Git: git://robin.powdarrmonkey.net/git/gxemul/
 
 Package: gxemul
 Architecture: any
