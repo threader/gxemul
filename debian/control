@@ -10,7 +10,7 @@ Vcs-Git: git://robin.powdarrmonkey.net/git/gxemul/
 
 Package: gxemul
 Architecture: any
-Depends: ${shlibs:Depends} ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: gxemul-doc
 Description: machine emulator for multiple architectures
  GXemul aims at emulating complete machines with enough hardware
