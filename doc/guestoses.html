@@ -104,7 +104,6 @@ you might find the following information interesting:
   <li><a href="unsupported.html#declinuxredhat">Redhat Linux for DECstation</a>
   <li><a href="unsupported.html#openbsdsgiinstall">OpenBSD/sgi</a>
   <li><a href="unsupported.html#openbsdarcinstall">OpenBSD/arc 2.3</a>
-  <li><a href="unsupported.html#openbsdmvme88kinstall">OpenBSD/mvme88k 4.4</a>
   <li><a href="unsupported.html#debiancats">Debian GNU/Linux for CATS</a>
   <li><a href="unsupported.html#linux_malta">Linux/Malta</a>
   <li><a href="unsupported.html#linux_qemu_mips">Linux/QEMU_MIPS</a>
@@ -300,6 +299,12 @@ NetBSD/hpcmips on an emulated MobilePro 770:
 	MobilePro 770. (Install onto wd0, choose "Use entire disk" when
 	doing the MBR partitioning, and choose to install from CD-ROM.)
 </ol>
+
+<p>(While it is possible to install and run NetBSD/hpcmips without the <tt>-X</tt>
+command line option (i.e. using serial console), NetBSD 4.0.1's default
+<tt>/etc/ttys</tt> file after a full install does not have
+<tt>/dev/console</tt> enabled, so you need to edit <tt>/etc/ttys</tt>
+before you reboot after the install, to be able to log in.)
 
 <p>
 If everything worked, NetBSD should now be installed on the disk image.
