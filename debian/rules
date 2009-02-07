@@ -11,8 +11,6 @@ else
   CFLAGS += -O2
 endif
 
-include /usr/share/dpatch/dpatch.make
-
 configure: configure-stamp
 configure-stamp:
 	dh build --before configure
@@ -20,13 +18,12 @@ configure-stamp:
 	CFLAGS="${CFLAGS}" ./configure
 	touch configure-stamp
 
-build: ${DPATCH_STAMPFN} configure-stamp build-stamp
+build: configure-stamp build-stamp
 build-stamp:
 	dh build --after configure
 	touch build-stamp
 
-clean: clean-patched unpatch
-clean-patched:
+clean:
 	dh clean --before dh_auto_clean
 	rm -f build-stamp configure-stamp
 	[ ! -f Makefile ] || $(MAKE) clean_all
