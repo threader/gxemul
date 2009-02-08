@@ -1,3 +1,15 @@
+gxemul (0.4.7.1-1) unstable; urgency=low
+
+  * New Upstream Version:
+    - Minor documentation errors fixed.
+    - Some more missing M88K instructions added.
+    - NetBSD/hpcmips can now be installed and run using serial console
+      (i.e. without -X), in addition to using the framebuffer. 
+  * Corrected dependency field for binary package gxemul
+  * All patches integrated upstream; removing dpatch dependency and rules
+
+ -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Sat, 07 Feb 2009 17:02:10 +0000
+
 gxemul (0.4.7-1) unstable; urgency=low
 
   * New Upstream Version
