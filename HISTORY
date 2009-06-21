@@ -3811,3 +3811,22 @@ Changelog for GXemul:
 		framebuffer.
 
 ==============  RELEASE 0.4.7.1  ==============
+
+20090215	Updating the guest OS page for HelenOS 0.4.0.
+20090513	Fixing the MIPS tne, teq, tge, tgeu, tlt, and tltu instructions
+		to allow non-zero "code" values.
+		Adding a new Linux/Malta "variant 2" entry to the unsupported
+		guest OS page.
+20090518	Changing the 8253 interrupt mechanism to assert interrupts
+		regardless of "mode" bits, causing Linux/Malta to get further.
+		Hacking on piix4 a bit to attempt to please Linux/Malta;
+		interrupts are lost.
+20090610	Making configuration files work again! (Thanks to Wu Kan for
+		noticing this bug.)
+20090611	Documentation updates (NetBSD 5 etc).
+20090621	Adding a hack for the pcc2 PSCALEADJ register, making it
+		possible to install and run OpenBSD/mvme88k 4.5.
+		NetBSD/evbmips, /sgimips, and /cobalt 5.0 have been verified
+		to work.
+
+==============  RELEASE 0.4.7.2  ==============
