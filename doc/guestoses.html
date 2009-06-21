@@ -46,14 +46,14 @@ SUCH DAMAGE.
 <p>
 <ul>
   <li><a href="#generalnotes">General notes on running "guest OSes"</a>
-  <li><a href="#netbsdpmaxinstall">NetBSD/pmax 4.0.1</a>
+  <li><a href="#netbsdpmaxinstall">NetBSD/pmax 5.0</a>
   <li><a href="#netbsdarcinstall">NetBSD/arc 4.0.1</a>
   <li><a href="#netbsdhpcmipsinstall">NetBSD/hpcmips 4.0.1</a>
-  <li><a href="#netbsdcobaltinstall">NetBSD/cobalt 3.1</a>
-  <li><a href="#netbsdevbmipsinstall">NetBSD/evbmips 4.0.1</a>
+  <li><a href="#netbsdcobaltinstall">NetBSD/cobalt 5.0</a>
+  <li><a href="#netbsdevbmipsinstall">NetBSD/evbmips 5.0</a>
   <li><a href="#netbsdalgorinstall">NetBSD/algor 3.1</a>
-  <li><a href="#netbsdsgimips">NetBSD/sgimips 3.1</a>
-  <li><a href="#netbsdcatsinstall">NetBSD/cats 4.0.1</a>
+  <li><a href="#netbsdsgimips">NetBSD/sgimips 5.0</a>
+  <li><a href="#netbsdcatsinstall">NetBSD/cats 5.0</a>
   <li><a href="#netbsdevbarminstall">NetBSD/evbarm 2.1</a>
   <li><a href="#netbsdnetwinderinstall">NetBSD/netwinder 3.1</a>
   <li><a href="#netbsdprepinstall">NetBSD/prep 2.1</a>
@@ -64,9 +64,9 @@ SUCH DAMAGE.
   <li><a href="dreamcast.html#linux_live_cd">Linux/dreamcast</a>
   <li><a href="#openbsdpmaxinstall">OpenBSD/pmax 2.8-BETA</a>
   <li><a href="#openbsdcatsinstall">OpenBSD/cats 4.0</a>
-  <li><a href="#openbsdlandiskinstall">OpenBSD/landisk 4.4</a>
-  <li><a href="#openbsdmvme88kinstall">OpenBSD/mvme88k 4.4</a>
-  <li><a href="#helenos">HelenOS 0.3.0</a>
+  <li><a href="#openbsdlandiskinstall">OpenBSD/landisk 4.5</a>
+  <li><a href="#openbsdmvme88kinstall">OpenBSD/mvme88k 4.5</a>
+  <li><a href="#helenos">HelenOS 0.4.0</a>
   <li><a href="#ultrixinstall">Ultrix/RISC 4.5</a>
   <li><a href="#sprite">Sprite for DECstation</a>
   <li><a href="#declinux">Debian GNU/Linux for DECstation</a>
@@ -105,7 +105,8 @@ you might find the following information interesting:
   <li><a href="unsupported.html#openbsdsgiinstall">OpenBSD/sgi</a>
   <li><a href="unsupported.html#openbsdarcinstall">OpenBSD/arc 2.3</a>
   <li><a href="unsupported.html#debiancats">Debian GNU/Linux for CATS</a>
-  <li><a href="unsupported.html#linux_malta">Linux/Malta</a>
+  <li><a href="unsupported.html#linux_malta">Linux/Malta</a> (variant 1)
+  <li><a href="unsupported.html#linux_malta2">Linux/Malta</a> (variant 2)
   <li><a href="unsupported.html#linux_qemu_mips">Linux/QEMU_MIPS</a>
   <li><a href="unsupported.html#windows_nt_mips">Windows NT/MIPS</a>
   <li><a href="unsupported.html#netbsdbeboxinstall">NetBSD/bebox 19981119</a>
@@ -119,8 +120,10 @@ or are not yet working but could be in the future.
 
 <p>Some operating systems are listed with a version number <i>less</i> 
 than what was available at the time of this GXemul release (e.g. 
-NetBSD/prep). The reasons for this is because of incompleteness in 
+NetBSD/prep). The reasons for this may be because of incompleteness in 
 GXemul's machine, device, and/or processor implementations.
+It may also simply be that I have not had time to verify the 
+installation prodecure with any higher version that the listed one.
 
 
 
@@ -152,11 +155,11 @@ follow these instructions:
 
 </pre>
   <li>Download a NetBSD CD-ROM iso image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/pmaxcd-4.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/pmaxcd-4.0.1.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/pmaxcd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/pmaxcd-5.0.iso</a>
 
 </pre>
   <li>Start the emulator like this:<pre>
-	<b>gxemul -X -e 3max -d nbsd_pmax.img -d b:pmaxcd-4.0.1.iso</b>
+	<b>gxemul -X -e 3max -d nbsd_pmax.img -d b:pmaxcd-5.0.iso</b>
 </pre>
 </ol>
 
@@ -345,7 +348,7 @@ image, from an emulated DECstation 3MAX machine:
 <p>
 <ol>
   <li>Download a NetBSD/pmax (DECstation) install RAMDISK kernel:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/pmax/binary/kernel/netbsd-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/pmax/binary/kernel/netbsd-INSTALL.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/pmax/binary/kernel/netbsd-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/pmax/binary/kernel/netbsd-INSTALL.gz</a>
 </pre>
   <p>
   <li>Create an empty harddisk image, which will be the disk image
@@ -353,13 +356,13 @@ image, from an emulated DECstation 3MAX machine:
 	<b>dd if=/dev/zero of=nbsd_cobalt.img bs=1024 count=1 seek=700000</b>
 
 </pre>
-  <li>Download the generic kernel for Cobalt and the 3.1 ISO image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/cobalt/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/cobalt/binary/kernel/netbsd-GENERIC.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/3.1/cobaltcd-3.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/3.1/cobaltcd-3.1.iso</a>
+  <li>Download the generic kernel for Cobalt and the ISO image:<pre>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cobalt/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cobalt/binary/kernel/netbsd-GENERIC.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/cobaltcd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/cobaltcd-5.0.iso</a>
 
 </pre>
   <li>Start the emulated DECstation machine like this:<pre>
-	<b>gxemul -e 3max -d nbsd_cobalt.img -d cobaltcd-3.1.iso netbsd-INSTALL.gz</b>
+	<b>gxemul -e 3max -d nbsd_cobalt.img -d cobaltcd-5.0.iso netbsd-INSTALL.gz</b>
 
 </pre>
   <li>At the <tt>Terminal type? [rcons]</tt> prompt, type <b>CTRL-B</b>
@@ -380,7 +383,7 @@ cd /; umount /mnt; umount /mnt2; halt</b>
 
 <p>
 You should now be able to boot NetBSD/cobalt like this:<pre>
-	<b>gxemul -E cobalt -d nbsd_cobalt.img netbsd-GENERIC.gz</b>
+	<b>gxemul -x -E cobalt -d nbsd_cobalt.img netbsd-GENERIC.gz</b>
 </pre>
 
 Note that the installation instructions above create a filesystem
@@ -428,14 +431,14 @@ image, from an emulated DECstation 3MAX machine:
 	<b>dd if=/dev/zero of=nbsd_malta.img bs=1024 count=1 seek=700000</b>
 
 </pre>
-  <li>Download the Malta kernel and the 4.0.1 ISO image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/evbmips/binary/kernel/netbsd-MALTA.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/evbmips/binary/kernel/netbsd-MALTA.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/iso/evbmips-mipselcd-4.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/iso/evbmips-mipselcd-4.0.1.iso</a>
+  <li>Download the Malta kernel and the ISO image:<pre>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/evbmips/binary/kernel/netbsd-MALTA.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/evbmips/binary/kernel/netbsd-MALTA.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/iso/evbmips-mipselcd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/iso/evbmips-mipselcd-5.0.iso</a>
 
 </pre>
   <p>
   <li>Start the emulated DECstation machine like this:<pre>
-	<b>gxemul -e 3max -d nbsd_malta.img -d evbmips-mipselcd-4.0.1.iso netbsd-INSTALL.gz</b>
+	<b>gxemul -e 3max -d nbsd_malta.img -d evbmips-mipselcd-5.0.iso netbsd-INSTALL.gz</b>
 
 </pre>
   <li>At the <tt>Terminal type? [vt100]</tt> prompt, type <b>CTRL-B</b>
@@ -459,8 +462,8 @@ cd /; umount /mnt; umount /mnt2; halt</b>
 </pre>
 
 <p>NOTE: To select a 4Kc (MIPS32) CPU instead of the default 5Kc 
-(MIPS64) CPU, add <tt><b>-C 4Kc</b></tt> to the command line. With NetBSD 
-4.0.1, however, there will be little or no difference in functionality, as
+(MIPS64) CPU, add <tt><b>-C 4Kc</b></tt> to the command line. With current
+NetBSD design, however, there will be little or no difference in functionality, as
 NetBSD still runs in 32-bit mode on 64-bit MIPS CPUs. There are two things
 that differ:<ol>
   <li>The dynamic translation core runs faster when emulating 32-bit
@@ -598,7 +601,7 @@ time consuming, but necessary:
 <ol>
   <li>First of all, the "<tt>nfs server</tt>" machine must be set up.
 	This needs to have a 750 MB <tt>/tftpboot</tt> partition.
-	<a href="#netbsdpmaxinstall">Install NetBSD/pmax 3.1 from CDROM</a>.
+	<a href="#netbsdpmaxinstall">Install NetBSD/pmax from CDROM</a>.
 	(Don't forget to add the extra partition!)
   <p>
   <li>Configure the nfs server machine to act as an nfs server.
@@ -632,21 +635,23 @@ echo 10.0.0.1 client &gt; /etc/hosts
 reboot</b>
 </pre></td></tr></table>
   <p>
-  <li>Download the NetBSD/sgimips CD-ROM iso image, and the
+  <li>Download the files corresponding to a NetBSD/sgimips CD-ROM iso image, and the
 	GENERIC and INSTALL kernels:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/3.1/sgimipscd-3.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/3.1/sgimipscd-3.1.iso</a>
-	<a href="ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-3.1/sgimips/binary/kernel/netbsd-GENERIC32_IP3x.gz">ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-3.1/sgimips/binary/kernel/netbsd-GENERIC32_IP3x.gz</a>
-	<a href="ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-3.1/sgimips/binary/kernel/netbsd-INSTALL32_IP3x.gz">ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-3.1/sgimips/binary/kernel/netbsd-INSTALL32_IP3x.gz</a>
+	<a href="ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-5.0/sgimips/binary/kernel/netbsd-GENERIC32_IP3x.gz">ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-5.0/sgimips/binary/kernel/netbsd-GENERIC32_IP3x.gz</a>
+	<a href="ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-5.0/sgimips/binary/kernel/netbsd-INSTALL32_IP3x.gz">ftp://ftp.NetBSD.org/pub/NetBSD/NetBSD-5.0/sgimips/binary/kernel/netbsd-INSTALL32_IP3x.gz</a>
+
+	wget -np -l 0 -r <a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/sgimips/binary/sets/">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/sgimips/binary/sets/</a>
+	mkisofs -U -o sgimips.iso ftp.netbsd.org/pub/NetBSD/NetBSD-5.0
 
 </pre>
   <li>Start the DECstation emulation again:<pre>
-	<b>gxemul -e 3max -d nbsd_pmax.img -d sgimipscd-3.1.iso</b>
+	<b>gxemul -e 3max -d nbsd_pmax.img -d sgimips.iso</b>
 
 </pre>and extract the files from the sgimips CD-ROM image to the
 	DECstation disk image:
 <p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
 <b>cd /tftpboot; mount /dev/cd0a /mnt
-for a in /mnt/*/binary/sets/[bcegmt]*; do echo $a; tar zxfp $a; done
+for a in /mnt/*/binary/sets/[bcegmt]*.tgz; do echo $a; tar zxfp $a; done
 echo 10.0.0.2:/tftpboot / nfs rw 0 0 &gt; /tftpboot/etc/fstab
 echo rc_configured=YES &gt;&gt; /tftpboot/etc/rc.conf
 echo 10.0.0.254 &gt;&gt; /tftpboot/etc/mygate
@@ -776,15 +781,15 @@ To install NetBSD/cats onto a disk image, follow these instructions:
 	<b>dd if=/dev/zero of=nbsd_cats.img bs=1024 count=1 seek=3000000</b>
 
 </pre>
-  <li>Download the NetBSD/cats 4.0.1 ISO image and the generic and install kernels:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/catscd-4.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/catscd-4.0.1.iso</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/cats/binary/kernel/netbsd.aout-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/cats/binary/kernel/netbsd.aout-GENERIC.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/cats/binary/kernel/netbsd.aout-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/cats/binary/kernel/netbsd.aout-INSTALL.gz</a>
+  <li>Download the NetBSD/cats ISO image and the generic and install kernels:<pre>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/catscd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/catscd-5.0.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cats/binary/kernel/netbsd.aout-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cats/binary/kernel/netbsd.aout-GENERIC.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cats/binary/kernel/netbsd.aout-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cats/binary/kernel/netbsd.aout-INSTALL.gz</a>
 
 </pre>
   <p>
   <li>Start the installation like this:<pre>
-	<b>gxemul -XEcats -d nbsd_cats.img -d catscd-4.0.1.iso netbsd.aout-INSTALL.gz</b>
+	<b>gxemul -XEcats -d nbsd_cats.img -d catscd-5.0.iso netbsd.aout-INSTALL.gz</b>
 
 </pre>
 	and proceed like you would do if you were installing NetBSD on a real
@@ -1607,9 +1612,9 @@ follow these instructions:
 
 </pre>
   <li>Download the entire landisk directory from the ftp server:<pre>
-	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.4/landisk/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.4/landisk/</a></b>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.4/landisk/bsd .</b>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.4/landisk/bsd.rd .</b>
+	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/</a></b>
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/bsd .</b>
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/bsd.rd .</b>
 
 </pre>
 	(Replace ftp.se.openbsd.org with a server closer to you, for
@@ -1619,12 +1624,12 @@ follow these instructions:
 	(I recommend using <tt>mkisofs</tt> for that purpose. If you don't
 	already have <tt>mkisofs</tt> installed on your system, you need
 	to install it in order to do this.)<pre>
-	<b>mkisofs -U -o openbsd_landisk_4.4.iso ftp.se.openbsd.org/pub/OpenBSD/</b>
+	<b>mkisofs -U -o openbsd_landisk_4.5.iso ftp.se.openbsd.org/pub/OpenBSD/</b>
 	<b>rm -rf ftp.se.openbsd.org</b>      <i>(this directory is not needed anymore)</i>
 
 </pre>
   <li>Start the emulator using this command line:<pre>
-	<b>gxemul -x -E landisk -d obsd_landisk.img -d d:openbsd_landisk_4.4.iso bsd.rd</b>
+	<b>gxemul -x -E landisk -d obsd_landisk.img -d d:openbsd_landisk_4.5.iso bsd.rd</b>
 
 </pre>
 	and proceed like you would do if you were installing OpenBSD
@@ -1641,7 +1646,7 @@ follow these instructions:
 	  <li>Location of sets = <b>disk</b>
 	  <li>Is the disk partition already mounted = <b>no</b>
 	  <li>Disk containing the install media = <b>wd1</b>
-	  <li>Pathname to the sets = <b>4.4/landisk</b>
+	  <li>Pathname to the sets = <b>4.5/landisk</b>
 	</ul>
 </ol>
 
@@ -1684,7 +1689,7 @@ instructions:
 
 </pre>
   <li>Download the entire mvme88k directory from the ftp server:<pre>
-	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.4/mvme88k/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.4/mvme88k/</a></b>
+	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.5/mvme88k/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.5/mvme88k/</a></b>
 
 </pre>
 
@@ -1692,17 +1697,17 @@ instructions:
 	(I recommend using <tt>mkisofs</tt> for that purpose. If you don't
 	already have <tt>mkisofs</tt> installed on your system, you need
 	to install it in order to do this.)<pre>
-	<b>mkisofs -o openbsd_mvme88k_4.4.iso -U ftp.se.openbsd.org/pub/OpenBSD/</b>
+	<b>mkisofs -o openbsd_mvme88k_4.5.iso -U ftp.se.openbsd.org/pub/OpenBSD/</b>
 
 </pre>
   <li>Copy away the kernel, we'll need it later. But remove the rest of the
 	downloaded tree.<pre>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.4/mvme88k/bsd .
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.5/mvme88k/bsd .
 	rm -rf ftp.se.openbsd.org</b>
 </pre>
 
   <li>Start the emulator using this command line:<pre>
-	<b>gxemul -e mvme187 -d obsd_mvme88k.img -d b:openbsd_mvme88k_4.4.iso -j 4.4/mvme88k/bsd.rd</b>
+	<b>gxemul -e mvme187 -d obsd_mvme88k.img -d b:openbsd_mvme88k_4.5.iso -j 4.5/mvme88k/bsd.rd</b>
 
 </pre>
 	and proceed like you would do if you were installing OpenBSD
@@ -1710,7 +1715,7 @@ instructions:
 	the CDROM, since there is no disklabel [and/or because the emulator
 	perhaps does not simulate CDROM TOCs well enough], but it's possible
 	to mount
-	the filesystem using manual intervention. Here is an example of what
+	the filesystem using manual intervention. Here is an example (from 4.4) of what
 	an install can look like: (user input in <font color="#0000ff"><i>blue italic</i></font>)<pre>
 	CPU0 is associated to 2 MC88200 CMMUs
 	Copyright (c) 1982, 1986, 1989, 1991, 1993
@@ -1904,32 +1909,35 @@ from within the guest OS.
 <a name="helenos"></a>
 <h3>HelenOS:</h3>
 
-<a href="http://www.helenos.eu/">HelenOS</a> can run in GXemul's
+<a href="http://www.helenos.org/">HelenOS</a> can run in GXemul's
 <tt>testarm</tt> and <tt>testmips</tt> machine modes.
 
 <p>To run HelenOS for ARM in GXemul:
 <ol>
   <li>Download the HelenOS kernel:<pre>
-	<a href="http://www.helenos.eu/releases/HelenOS-0.3.0-arm32-gxemul.boot">http://www.helenos.eu/releases/HelenOS-0.3.0-arm32-gxemul.boot</a>
+	<a href="http://www.helenos.org/releases/HelenOS-0.4.0-arm32-gxemul.boot">http://www.helenos.org/releases/HelenOS-0.4.0-arm32-gxemul.boot</a>
   </pre>
   <li>Start GXemul using the following command line:<pre>
-  	<b>gxemul -X -E testarm HelenOS-0.3.0-arm32-gxemul.boot</b>
+  	<b>gxemul -X -E testarm HelenOS-0.4.0-arm32-gxemul.boot</b>
   </pre>
 </ol>
 
 <p>To run HelenOS for MIPS in GXemul:
 <ol>
   <li>Download the HelenOS kernel:<pre>
-	<a href="http://www.helenos.eu/releases/HelenOS-0.3.0-mips32-gxemul.boot">http://www.helenos.eu/releases/HelenOS-0.3.0-mips32-gxemul.boot</a>
+	<a href="http://www.helenos.org/releases/HelenOS-0.4.0-mips32-gxemul.boot">http://www.helenos.org/releases/HelenOS-0.4.0-mips32-gxemul.boot</a>
   </pre>
   <li>Start GXemul using the following command line:<pre>
-  	<b>gxemul -X -E testmips -C 5Kc HelenOS-0.3.0-mips32-gxemul.boot</b>
+  	<b>gxemul -X -E testmips -C 5Kc HelenOS-0.4.0-mips32-gxemul.boot</b>
   </pre>
-	(Note the <tt>-C 5Kc</tt> option.)
+	(Note the <tt>-C 5Kc</tt> option. HelenOS depends on the fact that
+	the MIPS rdhwr instruction should trigger an 'invalid opcode'
+	exception, and the default testmips CPU (5KE) does not treat this
+	as an invalid opcode. It is valid, but not yet implemented.)
 </ol>
 
-<p>Once the kernel has booted, you can press e.g. F2 to get to the
-Tetris task, or F12 to enter the kernel console.
+<p>Once the kernel has booted, you can press e.g. F3 to get to the
+command line shell, or F12 + Enter to enter the kernel console.
 
 
 
