@@ -1,3 +1,11 @@
+gxemul (0.4.7.2-1) unstable; urgency=low
+
+  * [24d2f0] New upstream version
+  * [f95d73] Update watch file to version=3, remove uupdate
+  * [798a80] Bump standards version (no changes required)
+
+ -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Sun, 21 Jun 2009 23:05:30 +0100
+
 gxemul (0.4.7.1-1) unstable; urgency=low
 
   * New Upstream Version:
