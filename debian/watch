@@ -1,2 +1,2 @@
 version=3
-http://gavare.se/gxemul/src/gxemul-(\d+\..+)\.tar\.gz
+http://gxemul.sourceforge.net/src/gxemul-(\d+\..+)\.tar\.gz
