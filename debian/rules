@@ -29,5 +29,8 @@ clean:
 	[ ! -f Makefile ] || $(MAKE) clean_all
 	dh clean --after dh_auto_clean
 
+override_dh_installchangelogs:
+	dh_installchangelogs HISTORY
+
 %:
 	dh $@
