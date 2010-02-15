@@ -2,7 +2,7 @@
 #define	BUS_PCI_H
 
 /*
- *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,8 @@
  */
 
 #include "misc.h"
-#include "pcireg.h"
+
+#include "thirdparty/pcireg.h"
 
 struct machine;
 struct memory;
@@ -150,10 +151,10 @@ void bus_pci_data_access(struct cpu *cpu, struct pci_data *pci_data,
 	uint64_t *data, int len, int writeflag);
 
 /*  Initialization:  */
-struct pci_data *bus_pci_init(struct machine *machine, char *irq_path,
+struct pci_data *bus_pci_init(struct machine *machine, const char *irq_path,
 	uint64_t pci_actual_io_offset, uint64_t pci_actual_mem_offset,
-	uint64_t pci_portbase, uint64_t pci_membase, char *pci_irqbase,
-	uint64_t isa_portbase, uint64_t isa_membase, char *isa_irqbase);
+	uint64_t pci_portbase, uint64_t pci_membase, const char *pci_irqbase,
+	uint64_t isa_portbase, uint64_t isa_membase, const char *isa_irqbase);
 
 /*  Add a PCI device to a PCI bus:  */
 void bus_pci_add(struct machine *machine, struct pci_data *pci_data,

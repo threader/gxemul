@@ -1,16 +1,22 @@
-<html><head><title>Gavare's eXperimental Emulator:&nbsp;&nbsp;&nbsp;Experimenting with GXemul</title>
-<meta name="robots" content="noarchive,nofollow,noindex"></head>
-<body>
-<table border=0 width=100% bgcolor="#d0d0d0"><tr>
-<td width=100% align=center valign=center><table border=0 width=100%><tr>
-<td align="left" valign=center bgcolor="#d0efff"><font color="#6060e0" size="6">
-<b>GXemul:</b></font>&nbsp;&nbsp;
-<font color="#000000" size="6"><b>Experimenting with GXemul</b>
-</font></td></tr></table></td></tr></table><p>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>GXemul: Experimenting with GXemul</title>
+  <meta name="robots" content="noarchive,nofollow,noindex">
+</head>
+<body style="font-family : sans-serif;">
+
+<!-- 10 lines header.  -->
+
+<h1>GXemul: Experimenting with GXemul</h1>
+<p>
+
+<a href="./">Back to the index.</a>
 
 <!--
 
-Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -37,12 +43,7 @@ SUCH DAMAGE.
 
 -->
 
-<a href="./">Back to the index</a>
-
 <p><br>
-<h2>Experimenting with GXemul</h2>
-
-<p>
 <ul>
   <li><a href="#hello">Hello world</a>
   <li><a href="#expdevices">Experimental devices</a>
@@ -57,7 +58,9 @@ SUCH DAMAGE.
 <a name="hello"></a>
 <h3>Hello world:</h3>
 
-You might want to use the emulator to develop programs on your own,
+<p>[ Note: This page is about the <font color="#dd2222"><b>LEGACY MODES</b></font> of GXemul. ]
+
+<p>You might want to use the emulator to develop programs on your own,
 not just run precompiled kernels such as NetBSD. To get started, I recommend
 that you do two things:
 
@@ -80,7 +83,7 @@ examples of how the demo programs can be built.
 
 <p>Once you have tried running the Hello World program from the command 
 line, e.g.<pre>
-	<b>gxemul -E testmips hello_mips</b>
+	<b>gxemul -E oldtestmips hello_mips</b>
 </pre>
 you can experiment with adding one or more of the following command line 
 options:
@@ -119,7 +122,7 @@ It can either run in "bare" mode, where no devices are included by default
 (just the CPU), or in a "test" mode where some simple devices are 
 emulated.
 
-<p>The test machines (<tt>testmips</tt>, <tt>testppc</tt>, etc) have the
+<p>The test machines (<tt>oldtestmips</tt>, <tt>testppc</tt>, etc) have the
 following experimental devices:
 
 <p>
@@ -392,6 +395,11 @@ following experimental devices:
 		<br><tt>0x00:</tt>&nbsp;receive a packet
 		<br><tt>0x01:</tt>&nbsp;send a packet</td>
 	  </tr>
+	  <tr>
+	    <td align="left" valign="top"><tt>0x4040</tt></td>
+	    <td align="left" valign="top">Write: an address, where the emulated
+	    	MAC address will be copied to.
+	  </tr>
 	</table>
     </td>
   </tr>
@@ -535,7 +543,7 @@ what kind of IPI it was.
 <p><center>
 <table border="1">
 	<tr><td align="center">
-		<b><tt>testmips</tt></b> (as native MIPS interrupts)
+		<b><tt>oldtestmips</tt></b> (as native MIPS interrupts)
 	</td></tr>
 	<tr><td>
 		<table border="0">

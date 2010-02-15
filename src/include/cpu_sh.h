@@ -2,7 +2,7 @@
 #define	CPU_SH_H
 
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -40,9 +40,9 @@
 
 #include "interrupt.h"
 #include "misc.h"
-
-#include "sh4_cpu.h"
 #include "sh4_dmacreg.h"
+
+#include "thirdparty/sh4_cpu.h"
 
 
 struct cpu_family;
@@ -50,7 +50,7 @@ struct cpu_family;
 
 /*  SH CPU types:  */
 struct sh_cpu_type_def {
-	char		*name;
+	const char	*name;
 	int		bits;
 	int		arch;
 	uint32_t	pvr;

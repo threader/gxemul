@@ -2,7 +2,7 @@
 #define	MISC_H
 
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -42,6 +42,47 @@
  */
 
 #include "../../config.h"
+
+
+#define	COPYRIGHT_MSG	"Copyright (C) 2003-2010  Anders Gavare"
+
+// The recommended way to add a specific message to the startup banner or
+// about box is to use the SECONDARY_MSG. This should end with a newline
+// character, unless it is completely empty.
+//
+// Example:  "Modified by XYZ to include support for machine type UVW.\n"
+//
+#define	SECONDARY_MSG	""
+
+
+#include <string>
+using std::string;
+typedef char stringchar;
+
+#include <map>
+using std::map;
+
+#include <list>
+using std::list;
+
+#include <vector>
+using std::vector;
+
+#include <sstream>
+using std::stringstream;
+
+#include <ostream>
+using std::ostream;
+
+#include <iostream>
+using std::cout;
+using std::cerr;
+
+#ifndef NDEBUG
+#include "thirdparty/debug_new.h"
+#endif
+
+#include "refcount_ptr.h"
 
 
 #ifdef NO_C99_PRINTF_DEFINES
@@ -112,27 +153,34 @@ struct emul;
 struct machine;
 struct memory;
 
+enum Endianness
+{
+	BigEndian = 0,
+	LittleEndian
+};
 
 #define	NO_BYTE_ORDER_OVERRIDE		-1
 #define	EMUL_UNDEFINED_ENDIAN		0
 #define	EMUL_LITTLE_ENDIAN		1
 #define	EMUL_BIG_ENDIAN			2
 
+#define	SWAP32(x)	    ((((x) & 0xff000000) >> 24) | (((x)&0xff) << 24) | \
+			     (((x) & 0xff0000) >> 8) | (((x) & 0xff00) << 8))
+#define	SWAP16(x)	    ((((x) & 0xff00) >> 8) | (((x)&0xff) << 8))
+
 #ifdef HOST_LITTLE_ENDIAN
 #define	LE16_TO_HOST(x)	    (x)
-#define	BE16_TO_HOST(x)	    ((((x) & 0xff00) >> 8) | (((x)&0xff) << 8))
+#define	BE16_TO_HOST(x)	    (SWAP16(x))
 #else
-#define	LE16_TO_HOST(x)	    ((((x) & 0xff00) >> 8) | (((x)&0xff) << 8))
+#define	LE16_TO_HOST(x)	    (SWAP16(x))
 #define	BE16_TO_HOST(x)	    (x)
 #endif
 
 #ifdef HOST_LITTLE_ENDIAN
 #define	LE32_TO_HOST(x)	    (x)
-#define	BE32_TO_HOST(x)	    ((((x) & 0xff000000) >> 24) | (((x)&0xff) << 24) | \
-			     (((x) & 0xff0000) >> 8) | (((x) & 0xff00) << 8))
+#define	BE32_TO_HOST(x)	    (SWAP32(x))
 #else
-#define	LE32_TO_HOST(x)	    ((((x) & 0xff000000) >> 24) | (((x)&0xff) << 24) | \
-			     (((x) & 0xff0000) >> 8) | (((x) & 0xff00) << 8))
+#define	LE32_TO_HOST(x)	    (SWAP32(x))
 #define	BE32_TO_HOST(x)	    (x)
 #endif
 
@@ -232,13 +280,13 @@ void file_load(struct machine *machine, struct memory *mem,
 
 /*  main.c:  */
 void debug_indentation(int diff);
-void debug(char *fmt, ...);
-void fatal(char *fmt, ...);
+void debug(const char *fmt, ...);
+void fatal(const char *fmt, ...);
 
 
 /*  misc.c:  */
 unsigned long long mystrtoull(const char *s, char **endp, int base);
-int mymkstemp(char *template);
+int mymkstemp(char *templ);
 #ifdef USE_STRLCPY_REPLACEMENTS
 size_t mystrlcpy(char *dst, const char *src, size_t size);
 size_t mystrlcat(char *dst, const char *src, size_t size);

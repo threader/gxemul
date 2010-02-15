@@ -2,7 +2,7 @@
 #define	MEMORY_H
 
 /*
- *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -137,8 +137,6 @@ unsigned char *memory_paddr_to_hostaddr(struct memory *mem,
 #define FLAG_NOEXCEPTIONS       2
 #define FLAG_INSTR              4
 
-int userland_memory_rw(struct cpu *cpu, struct memory *mem, uint64_t vaddr,
-	unsigned char *data, size_t len, int writeflag, int cache);
 #define	MEMORY_ACCESS_FAILED		0
 #define	MEMORY_ACCESS_OK		1
 #define	MEMORY_ACCESS_OK_WRITE		2
@@ -163,7 +161,7 @@ void memory_device_remove(struct memory *mem, int i);
 uint64_t memory_checksum(struct memory *mem);
 
 void dump_mem_string(struct cpu *cpu, uint64_t addr);
-void store_string(struct cpu *cpu, uint64_t addr, char *s);
+void store_string(struct cpu *cpu, uint64_t addr, const char *s);
 int store_64bit_word(struct cpu *cpu, uint64_t addr, uint64_t data64);
 int store_32bit_word(struct cpu *cpu, uint64_t addr, uint64_t data32);
 int store_16bit_word(struct cpu *cpu, uint64_t addr, uint64_t data16);
@@ -177,10 +175,10 @@ void store_16bit_word_in_host(struct cpu *cpu, unsigned char *data,
 uint64_t load_64bit_word(struct cpu *cpu, uint64_t addr);
 uint32_t load_32bit_word(struct cpu *cpu, uint64_t addr);
 uint16_t load_16bit_word(struct cpu *cpu, uint64_t addr);
-void store_buf(struct cpu *cpu, uint64_t addr, char *s, size_t len);
-void add_environment_string(struct cpu *cpu, char *s, uint64_t *addr);
+void store_buf(struct cpu *cpu, uint64_t addr, const char *s, size_t len);
+void add_environment_string(struct cpu *cpu, const char *s, uint64_t *addr);
 void add_environment_string_dual(struct cpu *cpu,
-        uint64_t *ptrp, uint64_t *addrp, char *s1, char *s2);
+        uint64_t *ptrp, uint64_t *addrp, const char *s1, const char *s2);
 void store_pointer_and_advance(struct cpu *cpu, uint64_t *addrp,
         uint64_t data, int flag64);
 

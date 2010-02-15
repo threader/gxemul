@@ -2,7 +2,7 @@
 #define	MACHINE_H
 
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -164,7 +164,6 @@ struct machine {
 	int	show_trace_tree;
 	int	emulated_hz;
 	int	allow_instruction_combinations;
-	char	*userland_emul;		/*  NULL for no userland emulation  */
 	int	force_netboot;
 	int	slow_serial_interrupts_hack_for_linux;
 	uint64_t file_loaded_end_addr;
@@ -203,12 +202,9 @@ struct machine {
 #define	ARCH_NOARCH		0
 #define	ARCH_MIPS		1
 #define	ARCH_PPC		2
-#define	ARCH_SPARC		3
-#define	ARCH_ALPHA		4
-#define	ARCH_ARM		5
-#define	ARCH_SH			6
-#define	ARCH_M88K		7
-#define	ARCH_M32R		8
+#define	ARCH_ARM		3
+#define	ARCH_SH			4
+#define	ARCH_M88K		5
 
 /*  MIPS:  */
 #define	MACHINE_BAREMIPS	1000
@@ -227,20 +223,9 @@ struct machine {
 #define	MACHINE_BAREPPC		2000
 #define	MACHINE_TESTPPC		2001
 #define	MACHINE_PMPPC		2002
-#define	MACHINE_BEBOX		2003
-#define	MACHINE_PREP		2004
-#define	MACHINE_MACPPC		2005
-#define	MACHINE_MVMEPPC		2006
-
-/*  SPARC:  */
-#define	MACHINE_BARESPARC	3000
-#define	MACHINE_TESTSPARC	3001
-#define	MACHINE_SPARC		3002
-
-/*  Alpha:  */
-#define	MACHINE_BAREALPHA	4000
-#define	MACHINE_TESTALPHA	4001
-#define	MACHINE_ALPHA		4002
+#define	MACHINE_PREP		2003
+#define	MACHINE_MACPPC		2004
+#define	MACHINE_MVMEPPC		2005
 
 /*  ARM:  */
 #define	MACHINE_BAREARM		5000
@@ -263,15 +248,9 @@ struct machine {
 #define	MACHINE_BAREM88K	7000
 #define	MACHINE_TESTM88K	7001
 #define	MACHINE_MVME88K		7002
-#define	MACHINE_LUNA88K		7003
-
-/*  M32R:  */
-#define	MACHINE_BAREM32R	8000
-#define	MACHINE_TESTM32R	8001
 
 /*  Other "pseudo"-machines:  */
 #define	MACHINE_NONE		0
-#define	MACHINE_USERLAND	100000
 
 /*  DEC:  */
 #define	MACHINE_DEC_PMAX_3100		1
@@ -326,13 +305,6 @@ struct machine {
 #define	MACHINE_PREP_IBM6050		1
 #define	MACHINE_PREP_MVME2400		2
 
-/*  Sun SPARC:  */
-#define	MACHINE_SPARC_SS5		1
-#define	MACHINE_SPARC_SS20		2
-#define	MACHINE_SPARC_ULTRA1		3
-#define	MACHINE_SPARC_ULTRA60		4
-#define	MACHINE_SPARC_SUN4V		5
-
 /*  MacPPC:  TODO: Real model names  */
 #define	MACHINE_MACPPC_G3		1
 #define	MACHINE_MACPPC_G4		2
@@ -347,10 +319,6 @@ struct machine {
 #define	MACHINE_MVME88K_187		1
 #define	MACHINE_MVME88K_188		2
 #define	MACHINE_MVME88K_197		3
-
-/*  LUNA88K  */
-#define	MACHINE_LUNA_88K		1
-#define	MACHINE_LUNA_88K2		2
 
 
 /*  For the automachine system:  */
