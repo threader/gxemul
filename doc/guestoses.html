@@ -1,16 +1,22 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head><title>Gavare's eXperimental Emulator:&nbsp;&nbsp;&nbsp;Installing and running "guest OSes"</title>
-<meta name="robots" content="noarchive,nofollow,noindex"></head>
-<body>
-<table border=0 width=100% bgcolor="#d0d0d0"><tr>
-<td width=100% align=center valign=center><table border=0 width=100%><tr>
-<td align="left" valign=center bgcolor="#d0efff"><font color="#6060e0" size="6">
-<b>GXemul:</b></font>&nbsp;&nbsp;<font color="#000000" size="6"><b>Installing and running "guest OSes"</b>
-</font></td></tr></table></td></tr></table><p>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>GXemul: Installing and running "guest OSes"</title>
+  <meta name="robots" content="noarchive,nofollow,noindex">
+</head>
+<body style="font-family : sans-serif;">
+
+<!-- 10 lines header.  -->
+
+<h1>GXemul: Installing and running "guest OSes"</h1>
+<p>
+
+<a href="./">Back to the index.</a>
 
 <!--
 
-Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -37,19 +43,14 @@ SUCH DAMAGE.
 
 -->
 
-
-<a href="./">Back to the index</a>
-
 <p><br>
-<h2>Installing and running "guest OSes"</h2>
-
-<p>
 <ul>
   <li><a href="#generalnotes">General notes on running "guest OSes"</a>
-  <li><a href="#netbsdpmaxinstall">NetBSD/pmax 5.0</a>
-  <li><a href="#netbsdarcinstall">NetBSD/arc 4.0.1</a>
+  <li><a href="#legacy">Legacy emulation modes</a>
+  <li><a href="#netbsdpmaxinstall">NetBSD/pmax 5.0.2</a>
+  <li><a href="#netbsdarcinstall">NetBSD/arc 5.0.1</a>
   <li><a href="#netbsdhpcmipsinstall">NetBSD/hpcmips 4.0.1</a>
-  <li><a href="#netbsdcobaltinstall">NetBSD/cobalt 5.0</a>
+  <li><a href="#netbsdcobaltinstall">NetBSD/cobalt 5.0.1</a>
   <li><a href="#netbsdevbmipsinstall">NetBSD/evbmips 5.0</a>
   <li><a href="#netbsdalgorinstall">NetBSD/algor 3.1</a>
   <li><a href="#netbsdsgimips">NetBSD/sgimips 5.0</a>
@@ -59,12 +60,12 @@ SUCH DAMAGE.
   <li><a href="#netbsdprepinstall">NetBSD/prep 2.1</a>
   <li><a href="#netbsdmacppcinstall">NetBSD/macppc 4.0.1</a>
   <li><a href="#netbsdpmppc">NetBSD/pmppc 3.1</a>
-  <li><a href="#netbsdlandiskinstall">NetBSD/landisk 4.0.1</a>
+  <li><a href="#netbsdlandiskinstall">NetBSD/landisk 5.0.1</a>
   <li><a href="dreamcast.html#netbsd_generic_md">NetBSD/dreamcast 4.0</a>
   <li><a href="dreamcast.html#linux_live_cd">Linux/dreamcast</a>
   <li><a href="#openbsdpmaxinstall">OpenBSD/pmax 2.8-BETA</a>
   <li><a href="#openbsdcatsinstall">OpenBSD/cats 4.0</a>
-  <li><a href="#openbsdlandiskinstall">OpenBSD/landisk 4.5</a>
+  <li><a href="#openbsdlandiskinstall">OpenBSD/landisk 4.6</a>
   <li><a href="#openbsdmvme88kinstall">OpenBSD/mvme88k 4.5</a>
   <li><a href="#helenos">HelenOS 0.4.0</a>
   <li><a href="#ultrixinstall">Ultrix/RISC 4.5</a>
@@ -109,7 +110,7 @@ you might find the following information interesting:
   <li><a href="unsupported.html#linux_malta2">Linux/Malta</a> (variant 2)
   <li><a href="unsupported.html#linux_qemu_mips">Linux/QEMU_MIPS</a>
   <li><a href="unsupported.html#windows_nt_mips">Windows NT/MIPS</a>
-  <li><a href="unsupported.html#netbsdbeboxinstall">NetBSD/bebox 19981119</a>
+  <li><a href="unsupported.html#netbsdplaystation2">NetBSD/playstation2</a>
 </ul>
 
 <p><b><font color="#ff0000">NOTE:</b>
@@ -123,9 +124,28 @@ than what was available at the time of this GXemul release (e.g.
 NetBSD/prep). The reasons for this may be because of incompleteness in 
 GXemul's machine, device, and/or processor implementations.
 It may also simply be that I have not had time to verify the 
-installation prodecure with any higher version that the listed one.
+installation prodecure with any higher version than the listed one.
 
 
+
+
+
+<p><br>
+<a name="legacy"></a>
+<h3>Legacy emulation modes</h3>
+
+Most of the emulation modes in GXemul have not yet been rewritten to use the
+<a href="framework.html">new 0.6.x framework</a>. These modes will still run,
+and are officially supported in the sense that they should work. However, since
+they do not use the new framework, they will not be developed further.
+
+<p>The long term goal is to rewrite as many of the legacy machines as possible
+into new implementations (using the new framework), but this will take time.
+Modes that cannot be rewritten for some reason (e.g. amount of work required
+is too large) will need to be removed sooner or later.
+
+<p>Modes that use the pre-0.6 framework are therefore marked
+<font color="#dd2222"><b>LEGACY MODE</b></font>.
 
 
 
@@ -134,6 +154,8 @@ installation prodecure with any higher version that the listed one.
 <p><br>
 <a name="netbsdpmaxinstall"></a>
 <h3>NetBSD/pmax:</h3>
+
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
 
 <p><a href="http://www.netbsd.org/ports/pmax/">NetBSD/pmax</a> was the
 first guest OS that could be
@@ -155,11 +177,11 @@ follow these instructions:
 
 </pre>
   <li>Download a NetBSD CD-ROM iso image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/pmaxcd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/pmaxcd-5.0.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/pmaxcd-5.0.2.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/pmaxcd-5.0.2.iso</a>
 
 </pre>
   <li>Start the emulator like this:<pre>
-	<b>gxemul -X -e 3max -d nbsd_pmax.img -d b:pmaxcd-5.0.iso</b>
+	<b>gxemul -X -e 3max -d nbsd_pmax.img -d b:pmaxcd-5.0.2.iso</b>
 </pre>
 </ol>
 
@@ -191,8 +213,9 @@ and log in as <tt>root</tt>. Type <tt>startx</tt> to start X windows.
 <a name="netbsdarcinstall"></a>
 <h3>NetBSD/arc:</h3>
 
-It is possible to install and run <a
-href="http://www.netbsd.org/ports/arc/">NetBSD/arc</a>
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install and run <a href="http://www.netbsd.org/ports/arc/">NetBSD/arc</a>
 on an emulated Acer PICA-61 in the emulator.
 
 <p>
@@ -210,48 +233,30 @@ harddisk image, follow these instructions:
 	<b>dd if=/dev/zero of=nbsd_arc.img bs=1024 count=1 seek=1000000</b>
 
 </pre>
-  <li>Download a NetBSD/arc 4.0 CDROM image, and the generic + ramdisk
-	NetBSD/arc kernels:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/arccd-4.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/arccd-4.0.1.iso</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/arc/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/arc/binary/kernel/netbsd-GENERIC.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/arc/binary/kernel/netbsd-RAMDISK.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/arc/binary/kernel/netbsd-RAMDISK.gz</a>
+  <li>Download a NetBSD/arc CDROM image, and the generic + ramdisk NetBSD/arc kernels:<pre>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.1/arccd-5.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.1/arccd-5.0.1.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/arc/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/arc/binary/kernel/netbsd-GENERIC.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/arc/binary/kernel/netbsd-RAMDISK.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/arc/binary/kernel/netbsd-RAMDISK.gz</a>
 
 </pre>
   <li>Start the emulator using this command line:<pre>
-	<b>gxemul -e pica -x -d nbsd_arc.img -d b:arccd-4.0.1.iso netbsd-RAMDISK.gz</b>
+	<b>gxemul -x -e pica -d nbsd_arc.img -d b:arccd-5.0.1.iso netbsd-RAMDISK.gz</b>
 
 </pre>
-	(Try removing <tt>-x</tt> if you have problems with the xterm.)
+	and proceed like you would do if you were installing NetBSD on a real
+	PICA-61. (Choose "Use entire disk" when doing the MBR partitioning,
+	and choose to install from CD-ROM.)
+	<p>
+	(Use <tt>-X</tt> if you feel more comfortable with a "graphical" text
+	display.)
     <p>
-  <li>From now on, you have to use your imagination, as there is no
-	automatic installation program for NetBSD/arc 4.0.1. Here are
-	some tips and hints on how you can proceed with the install:
-<p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
-<b>mount /dev/cd0a /mnt2
-disklabel -i -I sd0</b>    (for example 'a', '4.2BSD', '1c',
-    '700M', 'b', 'swap', '701M', '$', 'P', 'W', 'y', and 'Q')
-<b>newfs /dev/sd0a
-mount /dev/sd0a /mnt
-cd /mnt
-for a in /mnt2/arc/binary/sets/*.tgz; do echo $a; tar xzpf $a; done
-cd dev; sh MAKEDEV all
-cd ../etc; echo "rc_configured=YES" &gt;&gt; rc.conf
-cat > /mnt/etc/fstab
-/dev/sd0a / ffs rw 1 1
-/dev/sd0b none swap sw 0 0
-</b>(press ctrl-d)
-<b>cd /; umount /mnt; umount /mnt2
-halt</b>
-</pre></td></tr></table>
 </ol>
 
 <p>You can now use the generic NetBSD/arc kernel to boot from the harddisk 
 image, using the following command:<pre>
-	<b>gxemul -e pica -x -d nbsd_arc.img netbsd-GENERIC.gz</b>
+	<b>gxemul -x -e pica -d nbsd_arc.img netbsd-GENERIC.gz</b>
 
 </pre>
-
-<p>When asked for "<tt>root device: </tt>", enter <b><tt>sd0</tt></b>.
 
 
 
@@ -263,7 +268,9 @@ image, using the following command:<pre>
 <a name="netbsdhpcmipsinstall"></a>
 <h3>NetBSD/hpcmips:</h3>
 
-It is possible to install <a
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install <a
 href="http://www.netbsd.org/ports/hpcmips/">NetBSD/hpcmips</a> onto a disk
 image, on an an emulated MobilePro 770 or 800. (MobilePro 780 and 880 might
 work too, but I don't test those for every release of the emulator. They 
@@ -331,69 +338,42 @@ is available. This makes it a bit akward to use X.
 <a name="netbsdcobaltinstall"></a>
 <h3>NetBSD/cobalt:</h3>
 
-<a href="http://www.netbsd.org/ports/cobalt/">NetBSD/cobalt</a> is tricky
-to install, because the Cobalt machines were designed for Linux, and not
-very flexible. There is no traditional INSTALL kernel for NetBSD/cobalt.
-One way to install the NetBSD/cobalt distribution onto a disk image is to
-do it from another (emulated) machine.
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p><a href="http://www.netbsd.org/ports/cobalt/">NetBSD/cobalt</a> is possible
+to install on an emulated Cobalt Cube.
 
 <p>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <a href="20060812-netbsd-cobalt-3.0.1.png"><img src="20060812-netbsd-cobalt-3.0.1_small.png"></a>
 
-<p>
-The following instructions will let you install NetBSD/cobalt onto a disk 
-image, from an emulated DECstation 3MAX machine:
+<p>The following instructions will let you install NetBSD/cobalt onto a disk 
+image:
 
 <p>
 <ol>
-  <li>Download a NetBSD/pmax (DECstation) install RAMDISK kernel:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/pmax/binary/kernel/netbsd-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/pmax/binary/kernel/netbsd-INSTALL.gz</a>
-</pre>
-  <p>
   <li>Create an empty harddisk image, which will be the disk image
 	that you will install NetBSD/cobalt onto:<pre>
-	<b>dd if=/dev/zero of=nbsd_cobalt.img bs=1024 count=1 seek=700000</b>
+	<b>dd if=/dev/zero of=nbsd_cobalt.img bs=1024 count=1 seek=2700000</b>
 
 </pre>
   <li>Download the generic kernel for Cobalt and the ISO image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cobalt/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/cobalt/binary/kernel/netbsd-GENERIC.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/cobaltcd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0/cobaltcd-5.0.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/cobalt/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/cobalt/binary/kernel/netbsd-GENERIC.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.1/cobaltcd-5.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.1/cobaltcd-5.0.1.iso</a>
 
 </pre>
-  <li>Start the emulated DECstation machine like this:<pre>
-	<b>gxemul -e 3max -d nbsd_cobalt.img -d cobaltcd-5.0.iso netbsd-INSTALL.gz</b>
+  <li>Start the installation like this:<pre>
+  	<b>gxemul -x -E cobalt -d nbsd_cobalt.img -d bd:cobaltcd-5.0.1.iso -j cobalt/binary/kernel/netbsd-RAMDISK</b>
 
 </pre>
-  <li>At the <tt>Terminal type? [rcons]</tt> prompt, type <b>CTRL-B</b>
-to simulate a CTRL-C sent to NetBSD/pmax. Then execute the following commands:
-<p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
-<b>newfs /dev/sd0c
-mount /dev/cd0c /mnt
-mkdir /mnt2; mount /dev/sd0c /mnt2
-cd /mnt2; sh
-for a in /mnt/*/binary/sets/[bcekmt]*.tgz; do echo $a; tar zxfp $a; done
-exit
-cd dev; sh ./MAKEDEV all; cd ../etc
-echo rc_configured=YES >> rc.conf
-echo "/dev/wd0d / ffs rw 1 1" > fstab
-cd /; umount /mnt; umount /mnt2; halt</b>
-</pre></td></tr></table>
+	and proceed like you would do if you were installing NetBSD on a real
+	Cobalt. (Install onto <tt>wd0</tt>, choose "Use entire disk" when
+	doing the MBR partitioning, and choose to install from CD-ROM device "<tt>wd1d</tt>".)
 </ol>
 
 <p>
 You should now be able to boot NetBSD/cobalt like this:<pre>
 	<b>gxemul -x -E cobalt -d nbsd_cobalt.img netbsd-GENERIC.gz</b>
-</pre>
-
-Note that the installation instructions above create a filesystem
-<i>without</i> a disklabel, so there is only one ffs partition and no
-swap. You will need to enter the following things when booting with the
-generic kernel:<pre>
-	root device (default wd0a): <b>wd0d</b>
-	dump device (default wd0b): <b>none</b>
-	file system (default generic): <b>ffs</b>
-	init path (default /sbin/init):     <i>(just press enter here)</i>
 </pre>
 
 
@@ -406,7 +386,9 @@ generic kernel:<pre>
 <a name="netbsdevbmipsinstall"></a>
 <h3>NetBSD/evbmips:</h3>
 
-<a href="http://www.netbsd.org/ports/evbmips/">NetBSD/evbmips</a> can run 
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p><a href="http://www.netbsd.org/ports/evbmips/">NetBSD/evbmips</a> can run 
 in GXemul on an emulated Malta evaluation board, with a 5Kc (MIPS64) or 
 4Kc (MIPS32) processor. 5Kc is the default.
 
@@ -499,7 +481,9 @@ generic kernel:<pre>
 <a name="netbsdalgorinstall"></a>
 <h3>NetBSD/algor:</h3>
 
-<a href="http://www.netbsd.org/ports/algor/">NetBSD/algor</a> can
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p><a href="http://www.netbsd.org/ports/algor/">NetBSD/algor</a> can
 run in GXemul on an emulated Algorithmics P5064 evaluation board.
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -576,6 +560,8 @@ generic kernel:<pre>
 <p><br>
 <a name="netbsdsgimips"></a>
 <h3>NetBSD/sgimips:</h3>
+
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
 
 <p>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -765,7 +751,9 @@ to IPv4.
 <a name="netbsdcatsinstall"></a>
 <h3>NetBSD/cats:</h3>
 
-It is possible to install and run
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install and run
 <a href="http://www.netbsd.org/ports/cats/">NetBSD/cats</a> in GXemul.
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -799,7 +787,7 @@ To install NetBSD/cats onto a disk image, follow these instructions:
 <p>Note that there are <i>long</i> delays during bootup.
 
 <p>Alternatively, to install from FTP, you can skip downloading the ISO,
-and start the install without <tt>-d catscd-4.0.1.iso</tt>. Suitable network 
+and start the install without <tt>-d catscd-5.0.iso</tt>. Suitable network 
 settings are IP 10.0.0.1, gateway/default route 10.0.0.254, netmask 
 255.0.0.0, nameserver 10.0.0.254.
 
@@ -819,7 +807,9 @@ Use the following command line to boot the emulated CATS machine:<pre>
 <a name="netbsdevbarminstall"></a>
 <h3>NetBSD/evbarm:</h3>
 
-<a href="http://www.netbsd.org/ports/evbarm/">NetBSD/evbarm</a> can
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p><a href="http://www.netbsd.org/ports/evbarm/">NetBSD/evbarm</a> can
 run in GXemul on an emulated IQ80321 evaluation board.
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -887,7 +877,9 @@ cd /; umount /mnt; umount /mnt2; sync; halt</b>
 <a name="netbsdnetwinderinstall"></a>
 <h3>NetBSD/netwinder:</h3>
 
-It is possible to run <a 
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to run <a 
 href="http://www.netbsd.org/ports/netwinder/">NetBSD/netwinder</a>
 in GXemul.
 
@@ -984,7 +976,9 @@ generic kernel:<pre>
 <a name="netbsdprepinstall"></a>
 <h3>NetBSD/prep:</h3>
 
-It is possible to install and run <a 
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install and run <a 
 href="http://www.netbsd.org/ports/prep/">NetBSD/prep</a> 2.1 in GXemul on 
 an emulated IBM 6050 (PowerPC) machine. (Newer versions of NetBSD/prep use 
 the wdc controller in a way which isn't implemented in GXemul yet, or 
@@ -1085,7 +1079,9 @@ system type, and init path.
 <a name="netbsdmacppcinstall"></a>
 <h3>NetBSD/macppc:</h3>
 
-It is possible to install and run <a 
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install and run <a 
 href="http://www.netbsd.org/ports/macppc/">NetBSD/macppc</a> in GXemul on 
 an emulated generic PowerPC machine. No specific Machintosh model is 
 emulated, but it is enough to for NetBSD to recognize it.
@@ -1139,6 +1135,8 @@ the disk image.
 <p><br>
 <a name="netbsdpmppc"></a>
 <h3>NetBSD/pmppc:</h3>
+
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
 
 <p><a href="http://www.netbsd.org/ports/pmppc/">NetBSD/pmppc</a> can 
 run in GXemul on an emulated Artesyn PM/PPC board. Currently, no SCSI or other
@@ -1284,7 +1282,9 @@ the following values:<pre>
 <a name="netbsdlandiskinstall"></a>
 <h3>NetBSD/landisk:</h3>
 
-<a href="http://www.netbsd.org/ports/landisk/">NetBSD/landisk</a> can
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p><a href="http://www.netbsd.org/ports/landisk/">NetBSD/landisk</a> can
 run in GXemul.
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -1309,9 +1309,9 @@ image, using an emulated CATS machine:
 </pre>
   <p>
   <li>Download NetBSD/landisk and make an iso image of it:<pre>
-	<b>wget -np -l 0 -r <a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/landisk">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/landisk</a>
-	cp ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/landisk/binary/kernel/netbsd-GENERIC.gz .
-	mkisofs -U -o landisk.iso ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1</b>
+	<b>wget -np -l 0 -r <a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/landisk">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/landisk</a>
+	cp ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/landisk/binary/kernel/netbsd-GENERIC.gz .
+	mkisofs -U -o landisk.iso ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1</b>
 </pre>
 
   <p>
@@ -1375,7 +1375,9 @@ Moved <a href="dreamcast.html#netbsd_generic_md">here</a>.
 <a name="openbsdpmaxinstall"></a>
 <h3>OpenBSD/pmax:</h3>
 
-Installing <a href="http://www.openbsd.org/pmax.html">OpenBSD/pmax</a> is
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>Installing <a href="http://www.openbsd.org/pmax.html">OpenBSD/pmax</a> is
 a bit harder than installing NetBSD/pmax. You should first read the <a
 href="#netbsdpmaxinstall">section above</a> on how to install NetBSD/pmax,
 before continuing here. If you have never installed OpenBSD on any
@@ -1521,7 +1523,9 @@ enter <b><tt>rcons</tt></b> if you are using the graphical framebuffer,
 <a name="openbsdcatsinstall"></a>
 <h3>OpenBSD/cats:</h3>
 
-It is possible to install and run
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install and run
 <a href="http://www.openbsd.org/cats.html">OpenBSD/cats</a>
 in GXemul. Unfortunately, "The OpenBSD/cats port has been discontinued 
 after the 4.0 release." according to
@@ -1594,7 +1598,9 @@ boot from the harddisk image:
 <a name="openbsdlandiskinstall"></a>
 <h3>OpenBSD/landisk:</h3>
 
-It is possible to install and run
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to install and run
 <a href="http://www.openbsd.org/landisk.html">OpenBSD/landisk</a>
 in GXemul.
 
@@ -1612,9 +1618,9 @@ follow these instructions:
 
 </pre>
   <li>Download the entire landisk directory from the ftp server:<pre>
-	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/</a></b>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/bsd .</b>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.5/landisk/bsd.rd .</b>
+	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/</a></b>
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/bsd .</b>
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/bsd.rd .</b>
 
 </pre>
 	(Replace ftp.se.openbsd.org with a server closer to you, for
@@ -1624,12 +1630,12 @@ follow these instructions:
 	(I recommend using <tt>mkisofs</tt> for that purpose. If you don't
 	already have <tt>mkisofs</tt> installed on your system, you need
 	to install it in order to do this.)<pre>
-	<b>mkisofs -U -o openbsd_landisk_4.5.iso ftp.se.openbsd.org/pub/OpenBSD/</b>
+	<b>mkisofs -U -o openbsd_landisk_4.6.iso ftp.se.openbsd.org/pub/OpenBSD/</b>
 	<b>rm -rf ftp.se.openbsd.org</b>      <i>(this directory is not needed anymore)</i>
 
 </pre>
   <li>Start the emulator using this command line:<pre>
-	<b>gxemul -x -E landisk -d obsd_landisk.img -d d:openbsd_landisk_4.5.iso bsd.rd</b>
+	<b>gxemul -x -E landisk -d obsd_landisk.img -d d:openbsd_landisk_4.6.iso bsd.rd</b>
 
 </pre>
 	and proceed like you would do if you were installing OpenBSD
@@ -1638,15 +1644,16 @@ follow these instructions:
 	<ul>
 	  <li>Terminal type = <b>xterm</b>
 	  <li>root disk = <b>wd0</b> (the disk to install onto)
-	  <li>Use the entire disk for OpenBSD = <b>yes</b>
-	  <li>Create one big root partition (a) and a small swap partition (b). c is the entire disk.
+	  <li>Use the entire disk for OpenBSD (<b>whole</b>)
+	  <li>Accept the auto-layout (one big root partition (a) and a
+	  	small swap partition (b). c is the entire disk).
 	  <li>Do <b>not</b> configure the network. (The Realtek NIC
 		found in the Landisk machine is not implemented yet
 		in the emulator.)
 	  <li>Location of sets = <b>disk</b>
 	  <li>Is the disk partition already mounted = <b>no</b>
 	  <li>Disk containing the install media = <b>wd1</b>
-	  <li>Pathname to the sets = <b>4.5/landisk</b>
+	  <li>Pathname to the sets = <b>4.6/landisk</b>
 	</ul>
 </ol>
 
@@ -1675,7 +1682,9 @@ landisk machine, see
 <a name="openbsdmvme88kinstall"></a>
 <h3>OpenBSD/mvme88k:</h3>
 
-It is possible to run <a href="http://www.openbsd.org/mvme88k.html">OpenBSD/mvme88k</a>
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to run <a href="http://www.openbsd.org/mvme88k.html">OpenBSD/mvme88k</a>
 on an emulated Motorola MVME187 machine in the emulator.
 
 <p>To install OpenBSD/mvme88k onto an emulated harddisk image, follow these
@@ -1909,8 +1918,10 @@ from within the guest OS.
 <a name="helenos"></a>
 <h3>HelenOS:</h3>
 
-<a href="http://www.helenos.org/">HelenOS</a> can run in GXemul's
-<tt>testarm</tt> and <tt>testmips</tt> machine modes.
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p><a href="http://www.helenos.org/">HelenOS</a> can run in GXemul's
+<tt>testarm</tt> and <tt>oldtestmips</tt> machine modes.
 
 <p>To run HelenOS for ARM in GXemul:
 <ol>
@@ -1928,11 +1939,11 @@ from within the guest OS.
 	<a href="http://www.helenos.org/releases/HelenOS-0.4.0-mips32-gxemul.boot">http://www.helenos.org/releases/HelenOS-0.4.0-mips32-gxemul.boot</a>
   </pre>
   <li>Start GXemul using the following command line:<pre>
-  	<b>gxemul -X -E testmips -C 5Kc HelenOS-0.4.0-mips32-gxemul.boot</b>
+  	<b>gxemul -X -E oldtestmips -C 5Kc HelenOS-0.4.0-mips32-gxemul.boot</b>
   </pre>
 	(Note the <tt>-C 5Kc</tt> option. HelenOS depends on the fact that
 	the MIPS rdhwr instruction should trigger an 'invalid opcode'
-	exception, and the default testmips CPU (5KE) does not treat this
+	exception, and the default oldtestmips CPU (5KE) does not treat this
 	as an invalid opcode. It is valid, but not yet implemented.)
 </ol>
 
@@ -1951,7 +1962,9 @@ command line shell, or F12 + Enter to enter the kernel console.
 <a name="ultrixinstall"></a>
 <h3>Ultrix/RISC:</h3>
 
-Ultrix 4.x can run in GXemul on an emulated DECstation 5000/200.
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>Ultrix 4.x can run in GXemul on an emulated DECstation 5000/200.
 (Ultrix was the native OS for these machines, but
 <a href="#netbsdpmaxinstall">NetBSD/pmax</a> is also usable.)
 
@@ -2051,7 +2064,9 @@ that file as a disk image file in the emulator.
 <a name="sprite"></a>
 <h3>Sprite for DECstation:</h3>
 
-Sprite was a research operating system at the University of Berkeley.
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>Sprite was a research operating system at the University of Berkeley.
 A copy of a Sprite harddisk image for a DECstation 5000/200 is still
 available. If you want to find out more about Sprite in general, read
 <a href="http://www.cs.berkeley.edu/projects/sprite/retrospective.html">
@@ -2113,7 +2128,9 @@ start the X11 environment.
 <a name="declinux"></a>
 <h3>Debian GNU/Linux for DECstation:</h3>
 
-It is possible to run Debian GNU/Linux for DECstation in the emulator,
+<p>[Note: This is a <a href="#legacy"><font color="#dd2222"><b>LEGACY MODE</b></font></a>.]
+
+<p>It is possible to run Debian GNU/Linux for DECstation in the emulator,
 on an emulated 5000/200 ("3max"). However, just choosing any 
 Linux/DECstation kernel at random for the installation will not work.
 

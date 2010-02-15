@@ -2,7 +2,7 @@
 #define	CPU_M88K_H
 
 /*
- *  Copyright (C) 2007-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -34,13 +34,14 @@
 #include "misc.h"
 #include "interrupt.h"
 
-#include "m88k_psl.h"
+#include "thirdparty/m88k_psl.h"
+
 
 struct cpu_family;
 
 /*  M88K CPU types:  */
 struct m88k_cpu_type_def {
-	char		*name;
+	const char	*name;
 	int		type;
 	uint32_t	pid;
 };

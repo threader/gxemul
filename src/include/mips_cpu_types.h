@@ -2,7 +2,7 @@
 #define	MIPS_CPU_TYPES_H
 
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,7 @@
 #include <misc.h>
 
 /*  MIPS CPU types:  */
-#include "mips_cpuregs.h"
+#include "thirdparty/mips_cpuregs.h"
 
 #define	EXC3K		3
 #define	EXC4K		4

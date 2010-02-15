@@ -2,7 +2,7 @@
 #define	ARCBIOS_H
 
 /*
- *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,9 @@
  */
 
 #include "misc.h"
-#include "sgi_arcbios.h"
+
+#include "thirdparty/sgi_arcbios.h"
+
 
 struct cpu;
 
@@ -48,9 +50,9 @@ uint64_t arcbios_get_scsicontroller(struct machine *machine);
 void arcbios_add_memory_descriptor(struct cpu *cpu,
 	uint64_t base, uint64_t len, int arctype);
 uint64_t arcbios_addchild_manual(struct cpu *cpu,
-	uint64_t class, uint64_t type, uint64_t flags, uint64_t version,
+	uint64_t cclass, uint64_t type, uint64_t flags, uint64_t version,
 	uint64_t revision, uint64_t key, uint64_t affinitymask,
-	char *identifier, uint64_t parent, void *config_data,
+	const char *identifier, uint64_t parent, void *config_data,
 	size_t config_len);
 int arcbios_emul(struct cpu *cpu);
 void arcbios_set_default_exception_handler(struct cpu *cpu);
@@ -58,7 +60,7 @@ void arcbios_set_default_exception_handler(struct cpu *cpu);
 void arcbios_console_init(struct machine *machine,
 	uint64_t vram, uint64_t ctrlregs);
 void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
-	char *primary_ether_string, uint8_t *primary_ether_macaddr);
+	const char *primary_ether_string, uint8_t *primary_ether_macaddr);
 
 
 /*  For internal use in arcbios.c:  */

@@ -2,7 +2,7 @@
 #define	CPU_MIPS_H
 
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -44,7 +44,7 @@ struct timer;
  */
 
 struct mips_cpu_type_def {
-	char		*name;
+	const char	*name;
 	int		rev;
 	int		sub;
 	char		flags;

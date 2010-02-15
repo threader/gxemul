@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+.\" Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,7 @@
 .\"
 .\"     groff -man -Tascii gxemul.1    or    nroff -man gxemul.1
 .\"
-.Dd MAY 2009
+.Dd JANUARY 2010
 .Dt GXEMUL 1
 .Os
 .Sh NAME
@@ -37,14 +37,24 @@
 .Nd an experimental framework for full-system machine emulation
 .Sh SYNOPSIS
 .Nm
+.Op options
+.Fl e
+.Ar name
+.Op file Ar ...
+.Nm
+.Op options
+.Ar configfile
+.Nm
+.Fl V
+.Nm
+.Fl H
+.Sh SYNOPSIS (LEGACY)
+.Nm
 .Op machine, other, and general options
 .Op file Ar ...
 .Nm
 .Op general options
 .Ar @configfile
-.Nm
-.Op userland, other, and general options
-.Ar file Op Ar args ...
 .Sh DESCRIPTION
 .Nm
 is a framework for full-system computer architecture emulation.
@@ -59,16 +69,57 @@ surrounding hardware components such as framebuffers, busses, interrupt
 controllers, ethernet controllers, disk controllers, and serial port
 controllers.
 .Pp
+Note: Only very few emulated machine modes have been rewritten to use the new
+emulation framework introduced in version 0.6.0, so there are two different
+ways to use the emulator. (Most emulation modes and machines are only valid
+in the old framework.) The options available for the new framework are:
+.Pp
+.Bl -tag -width Ds
+.It Fl B
+Enables snapshotting (required for reverse execution/stepping).
+.It Fl e Ar name
+Start with a machine based on template 'name'. The name may be followed by
+optional arguments in parentheses, e.g.
+.Pp
+.Dl "gxemul -V -e 'testmips(cpu=R4400)'"
+.Pp
+Remember to use quotes if your shell gives special meaning to parentheses.
+.It Fl H
+Display a list of available machine templates.
+.It Fl q
+Start up in Quiet mode (i.e. suppress debug messages). If an error occurs
+during emulation which stops execution and drops the user into the debugger,
+quiet mode is turned off.
+.It Fl V
+Start up in interactive mode, paused. If this option is used,
+.Fl q
+is ignored.
+.El
+.Pp
+Any files supplied on the command line when using the
+.Fl e
+option will be loaded into root.machine0.mainbus0.cpu0 (which is assumed
+to be the main CPU in the machine created by the template configuration).
+.Pp
+When not using the
+.Fl e
+option, the config file should be one that was previously saved from within
+the emulator using the 'save' command.
+.Pp
+Starting the emulator with the
+.Fl V
+switch will bring you to the interactive debugger environment, without
+starting the emulation.
+.Sh RUNNING GUEST OPERATING SYSTEMS
+Please read the HTML documentation for more details on how to run complete
+guest operating systems in the emulator.
+.Sh DESCRIPTION (LEGACY)
 The emulator can be invoked in the following ways:
 .Pp
 1. When emulating a complete machine, configuration options can be
 supplied directly on the command line.
 .Pp
 2. Options can be read from a configuration file.
-.Pp
-3. When emulating a userland environment (syscall-only emulation, not
-emulating complete machines), then the program name and its argument
-should be given on the command line. (This mode is not really usable yet.)
 .Pp
 The easiest way to use the emulator is to supply settings directly on the 
 command line.
@@ -369,18 +420,6 @@ Add
 as an X11 display to use for framebuffers.
 .El
 .Pp
-Userland options:
-.Bl -tag -width Ds
-.It Fl u Ar emul-mode
-Userland-only (syscall) emulation. (Use
-.Fl H
-to get a list of available emulation modes.) Some (but not all) of the
-options listed under Other options above can also be used with 
-userland emulation.
-.Pp
-Note: Userland (syscall) emulation does not really work yet.
-.El
-.Pp
 General options:
 .Bl -tag -width Ds
 .It Fl c Ar cmd
@@ -397,13 +436,10 @@ However, if the emulated machine has clocks or timer interrupt sources,
 or if user interaction is taking place (e.g. keyboard input at irregular
 intervals), then this option is meaningless.
 .It Fl H
-Display a list of available CPU types, machine types, and userland
-emulation modes. (Most of these don't work. Please read the documentation
-included in the
+Display a list of available CPU types and machine types.
+(Most of these don't work. Please read the HTML documentation included in the
 .Nm
-distribution for details on which modes that actually work. Userland
-emulation is not included in stable release builds, since it doesn't work 
-yet.)
+distribution for details on which modes that actually work.)
 .It Fl h
 Display a list of all available command line options.
 .It Fl k Ar n
@@ -415,7 +451,9 @@ Force the single-step debugger to be entered at the end of a simulation.
 .It Fl q
 Quiet mode; this suppresses startup messages.
 .It Fl V
-Start up in the single-step debugger, paused.
+Start up in the single-step debugger, paused. If this option is used,
+.Fl q
+is ignored.
 .It Fl v
 Increase verbosity (show more debug messages). This option can be used
 multiple times.
@@ -428,11 +466,11 @@ Start an emulation based on the contents of
 .Ar "configfile".
 .El
 .Pp
-For more information, please read the documentation in the doc/
+For more information, please read the HTML documentation in the doc/
 subdirectory of the
 .Nm
 distribution.
-.Sh EXAMPLES
+.Sh LEGACY EXAMPLES
 The following command will start NetBSD/pmax on an emulated DECstation 
 5000/200 (3MAX):
 .Pp
@@ -472,15 +510,17 @@ another emulation mode.
 In general, however, real ROM images require much more emulation detail 
 than GXemul provides, so they can usually not run.
 .Pp
-Please read the documentation for more details.
+Please read the HTML documentation for more details.
 .Sh BUGS
 There are many bugs. Some of the known bugs are mentioned in the TODO 
 file in the
 .Nm
 source distribution, some are marked as TODO in the source code itself.
 .Pp
-Userland (syscall-only) emulation, i.e. running a userland binary directly 
-without simulating an entire machine, doesn't really work yet.
+Most emulation modes are LEGACY modes, which have not yet been rewritten
+to use the new framework. The documentation is most likely buggy, in the
+sense that it describes things from the old framework when the new one
+applies, and/or vice versa.
 .Pp
 .Nm
 is in general not cycle-accurate; it does not simulate individual
@@ -496,6 +536,6 @@ obviously vary, depending on the current CPU load on the host.
 .Sh AUTHOR
 GXemul is Copyright (C) 2003-2009  Anders Gavare <anders@gavare.se>
 .Pp
-See http://gavare.se/gxemul/ for more information. For other Copyright
+See http://gxemul.sourceforge.net/ for more information. For other Copyright
 messages, see the corresponding parts of the source code and/or
 documentation.

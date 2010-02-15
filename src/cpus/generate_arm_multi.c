@@ -35,9 +35,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "misc.h"
-
+#include <inttypes.h>
 
 /*
  *  generate_opcode():

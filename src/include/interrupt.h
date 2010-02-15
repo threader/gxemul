@@ -2,7 +2,7 @@
 #define	INTERRUPT_H
 
 /*
- *  Copyright (C) 2006-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -92,9 +92,9 @@ struct interrupt {
  *  controllers) should call interrupt_handler_register() to register itself.
  */
 
-void interrupt_handler_register(struct interrupt *template);
-void interrupt_handler_remove(char *name);
-int interrupt_handler_lookup(char *name, struct interrupt *template);
+void interrupt_handler_register(struct interrupt *templ);
+void interrupt_handler_remove(const char *name);
+int interrupt_handler_lookup(const char *name, struct interrupt *templ);
 
 
 /*
