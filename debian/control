@@ -3,7 +3,7 @@ Section: misc
 Priority: extra
 Maintainer: Jonathan Wiltshire <debian@jwiltshire.org.uk>
 Build-Depends: debhelper (>= 7.0.50), libx11-dev
-Standards-Version: 3.8.2
+Standards-Version: 3.8.4
 Homepage: http://gxemul.sourceforge.net/
 Vcs-Browser: http://robin.powdarrmonkey.net/cgi-bin/gitweb.cgi?p=gxemul
 Vcs-Git: git://robin.powdarrmonkey.net/git/gxemul/
