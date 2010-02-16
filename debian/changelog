@@ -1,3 +1,20 @@
+gxemul (0.6.0-1) unstable; urgency=low
+
+  * [54e53c] New upstream version
+  * [a0bd0a] Standards version 3.8.4
+  * [eaccac] Update homepage in debian/control (Closes: #535654)
+  * [03e9a2] Update watch file
+  * [50cf38] Increase dependency on debhelper for use of overrides
+  * [fe94dc] Install upstream changelog (HISTORY)
+  * [230274] Source format 3.0 (quilt), ready for patches
+  * [93a5fa] New patch buildsystem.patch to fix upstream's new build
+    system
+  * [850565] Refactor Debian packaging to fit new upstream build system
+  * [371afb] Register documentation with install-docs
+  * [71a712] Update copyright dates
+
+ -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Tue, 16 Feb 2010 12:57:38 +0000
+
 gxemul (0.4.7.2-1) unstable; urgency=low
 
   * [24d2f0] New upstream version
