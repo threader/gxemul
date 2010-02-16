@@ -1,0 +1,8 @@
+Document: gxemul-doc
+Title: GXEmul Documentation
+Author: Anders Gavare
+Abstract: The full documentation for GXEmul, a machine emulator for multiple architectures
+
+Format: HTML
+Index: /usr/share/doc/gxemul-doc/index.html
+Files: /usr/share/doc/gxemul-doc/*.html
