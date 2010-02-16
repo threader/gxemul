@@ -2,6 +2,7 @@ Source: gxemul
 Section: misc
 Priority: extra
 Maintainer: Jonathan Wiltshire <debian@jwiltshire.org.uk>
+DM-Upload-Allowed: yes
 Build-Depends: debhelper (>= 7.0.50), libx11-dev
 Standards-Version: 3.8.4
 Homepage: http://gxemul.sourceforge.net/
