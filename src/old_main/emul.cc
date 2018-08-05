@@ -373,6 +373,9 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 
 	m->cpu_family = cpu_family_ptr_by_number(m->arch);
 
+	if (m->arch == ARCH_ALPHA)
+		m->arch_pagesize = 8192;
+
 	machine_memsize_fix(m);
 
 	/*
@@ -555,6 +558,11 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 		cpu->pc = entrypoint;
 
 		switch (m->arch) {
+
+		case ARCH_ALPHA:
+			/*  For position-independent code:  */
+			cpu->cd.alpha.r[ALPHA_T12] = cpu->pc;
+			break;
 
 		case ARCH_ARM:
 			if (cpu->pc & 3) {
@@ -792,13 +800,12 @@ void emul_run(struct emul *emul)
 
 	/*  Run any additional debugger commands before starting:  */
 	if (emul->n_debugger_cmds > 0) {
-		int j;
 		if (i == 0)
 			print_separator_line();
-		for (j = 0; j < emul->n_debugger_cmds; j ++) {
-			debug("> %s\n", emul->debugger_cmds[j]);
-			debugger_execute_cmd(emul->debugger_cmds[j],
-			    strlen(emul->debugger_cmds[j]));
+		for (int k = 0; k < emul->n_debugger_cmds; k ++) {
+			debug("> %s\n", emul->debugger_cmds[k]);
+			debugger_execute_cmd(emul->debugger_cmds[k],
+			    strlen(emul->debugger_cmds[k]));
 		}
 	}
 

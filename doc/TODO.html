@@ -19,7 +19,8 @@
 project, the first 0.6.x releases will most likely not be very meaningful to
 end-users, since almost all old features will be deprecated/legacy features,
 and the new features will only work with <tt>testm88k</tt> (which most users
-will not care about). Still, it feels like the way to go forward.
+will not care about), or other partially implemented emulation modes.
+Still, it feels like the way to go forward.
 
 <p>(The name "0.5.x" was skipped. This was the C++ version that was supposed
 to be a complete rewrite from scratch, with no legacy mode support.
@@ -40,6 +41,90 @@ Some things, in no specific order, that I'd like to fix:
 ------------------------------------------------------------------------
 </i>
 
+  [/]   Cache components.
+  
+  	This is hopefully a good way to get started working on GXemul again,
+  	after the long break.
+
+	Sub-tasks: (write unit tests for EACH of these, while going along)
+
+	[/]  State consists of
+	   [/]	size (e.g. 4 KB, or 1.75 MB)
+	   [/]	associativity (1 = direct mapped, 4 = 4-way, 0 = fully associative?)
+	   [/]	cache-line length (e.g. 4 bytes, or 64 bytes, or more)
+	   [ ]	replacement policy: ?
+	   [ ]  write-policy: write-through vs write-back vs copy-back
+	   [ ]	Small memory area (the cache memory) itself, consisting of cache lines.
+		Cache lines are:
+		  [ ]	data
+		  [ ]	tag/index(offset?)
+		  [ ]	valid bit
+		  [ ]   dirty bit
+		  [ ]	PC of last writer?
+
+	[ ]  Implement the addressable data bus interface, but if data is contained
+	     in the cache (the small memory state belonging to the cache component),
+	     do not call the main memory.
+
+	[ ]  How about simulating cycle delays? A read or write in this type
+		of model is not instantaneous, but rather a "request", which may
+		take arbitrary long time to execute and return a result.
+
+	[ ]  If possible, for each cache-line, store statistics:
+		nr of hits (reads, writes)
+		nr of misses (reads, writes)
+		on writes, store the PC of the writer, so that on misses,
+			statistics can be gathered.
+
+	[ ]  Caches should be added _onto_ a cpu. The cpu should first look
+	     for a cache as an address data bus, THEN for a parent.
+
+	     [ ]  The cache must then go downwards TWO steps (../..) to get
+	          past the owning cpu, when trying to reach the mainbus/ram.
+
+	     [ ]  How about multi-level caches that are shared between
+	          CPUs/cores? Think through this.
+
+	Or:
+	
+		machine
+		  mainbus
+		    ram
+		    rom
+		    l2cache0
+		      cpu0
+		        l1icache
+		        l1dcache
+		      cpu1
+		        l1icache
+		        l1dcache
+		    l2cache1
+		      cpu2
+		        l1icache
+		        l1dcache
+		      cpu3
+		        l1icache
+		        l1dcache
+
+	if e.g. a 4-core CPU has each core having its own L1 caches (I and D),
+	but sharing L2 caches between pairs of cores.
+
+	Problem: What if there is hyperthreading, and the hyperthread "cpus"
+	share L1I _AND_ L1D? Then the L1 caches cannot be children of both
+	cpus.
+
+	[ ]  Test with caches attached to M88K and MIPS cpus.
+
+	     [ ]  How about a command line switch (or other command) to
+	     	  quickly turn caches on or off? Or maybe just an optional
+	     	  argument to the machine templates (caches=true or false),
+	     	  but that makes it hard to switch during runtime.
+	     	  (Switching during runtime from no caches to caches is
+	     	  easiest (?), but from caches to non-cached will require cache
+	     	  flushes...)
+
+
+
   [/]	Improve dyntrans CTRL-C behavior! Abort quicker.
   	[X]  Implement an abort instruction call
   		[X]  sync pc should take this kind of abort into consideration.
@@ -50,42 +135,90 @@ Some things, in no specific order, that I'd like to fix:
   		[ ]  There is still a crash bug; try interleaving continue +
   			CTRL-C + continue + CTRL-C, with trace enabled!
 
-  [ ]	Refactor/move helper functions into some helper module:
-	[ ]  SplitStringIntoVector
-	[ ]  parse_number
+  [ ]  Components! instead of the planned plugin stuff?!
 
-  [ ]	Plugin framework
-  	Note: The term "Plugin" does not mean dynamically loaded. It simply is a
-  	generalization of "something" which is the common base for file loaders,
-  	framebuffers, statistics viewers, etc.
-	[ ] Base class for plugins.
-	[ ] Plugin registry.
-	[ ] MOVE src/main/fileloaders TO PLUGINS!!! --------------------------
-	[ ] On-reset commands should be _PER COMPONENT_ instead of per GXemul
-		instance (will likely be good for testm88k-reset, stack pointer etc.)
-		[ ] Serialize the on-reset command list (per component) 
-	[ ] Plugins may be attached to component paths!
-		[ ] Multiple components to one plugin (e.g. keyboard + framebuffer to one plugin)
-		[ ] Multiple plugins monitoring the same component.
-	[ ] Think about the "load" command. Load vs attach?
-	[ ] What should a plugin be able to do?
-		[ ] Attach/load
-		[ ] On-reset
+	[ ]  Pretty print of files and disk images:
+		
+		cpu0  (5KE, 100 MHz)
+		\--  file  (netbsd-GENERIC.gz)
+
+		or
+
+		wd0  (ATAPI primary harddisk)
+		\--  image  (cow, netbsd.img)
+
+	Should these be added without digits primarily? And then
+	starting from 1. "file", "file1", "file2" etc. Or is file0
+	better? Just "file" is slightly clearer.
+
+	When adding e.g. a machine with a specific ROM, the ROM file could
+	be looked for in standard places (/usr/blah/share/gxemul/rom/therom.bin,
+	~/.gxemul/rom/therom.bin, ./therom.bin, etc) and if not found anywhere,
+	give an error unless overridden using arguments to the machine template.
+	Like:  gxemul -e "sgi_ip32(prom=my_therom.bin)" netbsd.gz
+
+	New syntax:
+
+		path_to_add_to:component(args)
+
+	or
+		path_to_add_to:filename		args is: "name=filename"
+
+	or
+		filename			cpu0 is the path to add to
+
+	I.e. DON'T make an "attach" command, just use the add command.
+
+	Maybe change it to:
+	
+		add component_type [at existing_component_path]
+	
+	and/or support the colon-style notation as well?
+	
+		add [existing_component_path:]component_type(args)
+
+	or
+	
+		add existing_component_path:filename
+
+	Think about this!!!
+
+	$ gxemul -e testmips netbsd-GENERIC.gz
+	$ gxemul -e testmips netbsd-GENERIC.gz wd0:netbsd.img fb_videoram0:sdl()
+	$ gxemul -e testmips netbsd-GENERIC.gz file(type=raw,vaddr=0xbfc00000,name=prom.bin)
+
+	Same as:
+		add file(name=netbsd-GENERIC.gz) cpu0
+		add disk(name=netbsd.img) wd0
+		add file(type=raw,vaddr=0xbfc00000,name=prom.bin) cpu0
+		add sdl() fb_videoram0
+
+	[ ] What should a component be able to do? [as a plugin]
+		[ ] Attach/load/add
+		[ ] On-early-reset  (clear memory etc)
+		[ ] On-late-reset  (fill memory with file contents etc)
 		[ ] Detach
 		[ ] Monitor changes in component(s)' state
 		[ ] Periodical updates (e.g. framebuffers)
 		[ ] Run in a different thread (pthread multithreading?)
 		[ ] Insert stuff into the event queue (e.g. keyboard keypresses
 			from a framebuffer/keyboard plugin)
+
 	[ ] The Snapshots (the clones) release the plugin connection; the plugins only
 		work on the main tree.
+
 	[ ] Plugins have to be compatible with replaying during reverse execution!
 		(Maybe they should be disconnected while re-executing?)
+
 	[ ] Think about how events should contain changes such as breakpoints,
 		added/removed plugins, etc.
+
 	[ ] Example plugins:
 		[ ] File loaders
-		[ ] Disk image mappers
+			[ ]  Move these from src/main/fileloaders to
+				src/components/file ...
+			[ ]  raw mode: file(raw(vaddr[,skiplen[,entry]]))
+		[ ] Disk image mappers:  src/components/image
 		[ ] Framebuffer displays
 			[ ] Think about VGA (charcell AND video framebuffer, being able
 				to switch live)
@@ -95,94 +228,14 @@ Some things, in no specific order, that I'd like to fix:
 		[ ] Audio (emulated -> host)
 		[ ] Cache statistics viewer.
 
-	[ ]  CONSISTENT and extensible way of supplying files, disk images,
-		raw files, ... to various plugins on the command line,
-		e.g.:
-			[component:]filename
+	[ ]  com0:stdio() should not be needed, if it is the default
+	     choice. com0:null() would disconnect com0 from any output.
+	     stdio() would then have to be a plugin which handles multi-
+	     plexing of multiple outputs, and allows one input serial console.
 
-		where cpu0 would be the default component. This would make it
-		look nice when adding disk images, like wd0:netbsd.img
-
-			[component:][plugin([args]):]name
-
-		e.g. loader could be raw(vaddr[,skiplen[,entry]])
-		or                   file(raw(vaddr[,skiplen[,entry]]))
-
-		so,	monkey:filename		would load into component monkey
-		but	monkey():filename	would load into the default comonent
-						using the monkey loader.
-		and	a:b(c):filename		would load into component a using
-						the b loader, with args c
-
-		"Plugin descriptors"
-			optional component
-			optional plugin([args])
-			optional name
-
-		If all fields are left out, it's an empty descriptor, which is
-		ignored. GXemul's command line syntax would then be:
-		
-			gxemul [options] [.gxemul file] [plugin descriptors...]
-
-		[ ]  The set of loaders to ask could be different depending on
-		     which interfaces the component supports. For AddressDataBus,
-		     it would be the regular file loaders (ELF, raw, a.out, ...).
-
-		     For block devices (disks, e.g. wd0, sd0), it would be a
-		     disk image mapper.
-
-		filename is also optional, and in fact more like a second
-		argument. E.g. the sdl() plugin doesn't need a filename.
-
-		The "load" command could be replaced by some kind of "attach"
-		command, which would run the same thing as the plugin descriptors
-		entered on the command line:
-		
-		Example output:
-			GXemul> attach wd0:netbsd.img
-			wd0: Attaching to image(): netbsd.img
-			     SCSI disk image, 2400 MB
-
-			GXemul> attach vfb:sdl(apa bepa)
-			vfb0: Unable to attaching to sdl(apa bepa)
-			Invalid arguments to sdl().
-
-			GXemul> attach vfb:sdl()
-			vfb0: Attaching to sdl()
-
-			GXemul> attach test/FileLoader_A.OUT_M88K
-			cpu0: Attaching to file(): test/FileLoader_A.OUT_M88K
-			      a.out: entry point 0x000012b8
-			      text + data = 4096 + 4096 bytes
-			      symbols: 1260 bytes at 0x2000
-			      strings: 1070 bytes at 0x24ec
-			      14 symbols read
-
-		Note that the load command should still be used for loading
-		[parts of] emulation setups!
-
-		Think more about this!
-		----------------------
-
-			netbsd-GENERIC.gz			(load a basic file into cpu0)
-			cpu1:netbsd-GENERIC.gz			(load into a specific cpu)
-			wd0:netbsd.img				(disk image file mapper)
-			wd0:image(readonly):netbsd.img		(mapper with arguments! non-writable image)
-			wd0:image(cow):netbsd.img		(non-writable, but COW to temporary file (TMPDIR))
-			cpu0.dcache:cachestatisticsviewer()
-			vga0:sdl()				(for displaying graphical controllers, which can
-								be interrogated about memory format, resolution etc)
-			vga0:sdl(DISPLAY=othermachine:1.0)	(sdl on remote display)
-			fb_videoram0:sdl(x=800,y=600,data=rgb24) (for displaying raw memory ranges)
-			com0:stdio()		(default stdio)
-			com0:xterm()		(new xterm)
-			...
-
-		com0:stdio() should not be needed, if it is the default
-		choice. com0:null() would disconnect com0 from any output.
-		stdio() would then have to be a plugin which handles multi-
-		plexing of multiple outputs, and allows one input serial
-		console.
+	[ ]  How about "-X" behavior of the legacy modes? I.e. a machine, which
+	     when run with -X will set up PROM emulation variables so that the
+	     guest OS uses graphics, and without -X to use serial console...
 
   [/]	The testm88k machine.
 
@@ -204,7 +257,13 @@ Some things, in no specific order, that I'd like to fix:
 	     64-bit and 32-bit emulated CPUs).
 	[ ]  All the other devices (interrupts, ethernet, serial, SMP, ...)
 
+  [ ]	SPARC64? Would be nice; multithreaded Niagara emulation etc.
+
   [/]	STEP EXECUTIONS, REVERSE EXECUTION, SNAPSHOTTING, ...
+
+	[ ] Try to get away from using doubles for scheduling! The scheduling
+	    must be made more stable, even in the precense of rounding errors.
+	    See e.g. http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=570899
 
 	[/] Continuous execution forward.
 		[ ]  "Sloppy" accuracy mode: it could be possible to
@@ -326,7 +385,8 @@ Some things, in no specific order, that I'd like to fix:
 	     I.e. implement an a.out file loader.
 	[ ]  More initial register contents upon reset: r31 isn't enough for
 	     mvme187. See old machine_mvme88k.cc for details.
-		[ ]  Soft PROM emulation.
+
+		[ ]  Soft PROM emulation, if no PROM file is found.
 			MAYBE implement PROM emulation as a plugin? Like
 
 				attach cpu0:mvmeprom(187)
@@ -342,8 +402,6 @@ Some things, in no specific order, that I'd like to fix:
 			specified as arguments, like:  bootregs=linux or
 			bootregs=netbsd  or similar.
 
-     	[ ]  -Q command line flag (backwards compatibility) for
-     	     turning off soft PROM emulation?
      	[ ]  Ability to load raw files (e.g. PROM).
 	[ ]  Serial controller component.
 	[ ]  Plugin (?) for serial output (i.e. a terminal window), or
@@ -397,6 +455,8 @@ Some things, in no specific order, that I'd like to fix:
   [/]	Symbol registry.
   	[X]  Add ELF symbols (see end of FileLoader_ELF.cc).
   	[X]  Load a.out symbols.
+  	[ ]  Include device addresses and hardware registers in the symbol
+  	     registry (as in the legacy Dreamcast mode).
   	[ ]  Cloning a CPUComponent should also clone its symbol registry!
   	     Think about serializing symbols...
 
@@ -481,6 +541,15 @@ Some things, in no specific order, that I'd like to fix:
 	     fail, while R could create an implicit empty overlay
 	     in the tmp directory, so that writes within a session
 	     will succeed. At reboot/reset they'd be lost.
+	[ ]  Make sure that there is either
+		a) a sync after each write to make sure that the data is
+		   consistently written, or that
+		b) (for the test devices at least, or perhaps some others)
+		   a mechanism is available to turn off the write-after-every-access
+		   policy but then the data must be manually synched by the
+		   guest OS every now and then.
+	     (This will be a requirement for e.g. a persistent Single
+	     Storage guest OS.)
 
   [ ]	Breakpoints
 
@@ -563,6 +632,11 @@ Some things, in no specific order, that I'd like to fix:
 			A pcibus can be added into a mainbus (in a machine.)
 			etc.
 		bool IsItOkToAddItToThisProposedParentComponent(propsedParent) const;
+	[ ]  Exceptions/traps to CPUs, could perhaps be generalized to sending
+	     "messages" or "interrupts" to any device/component. How should this
+	     be done manually from the command interpreter?
+	       cpu0.break              cause a breakpoint exception? if the cpu supports it
+	       cpu0.exception [args]   where args is VERY dependent on the exception
 
   [ ]	ConsoleUI and/or CommandInterpreter: Make use of COLUMNS environment variable
 	when printing e.g. tab completion tables.
@@ -650,21 +724,6 @@ Some things, in no specific order, that I'd like to fix:
 	[ ]  Make the save/load of state more efficient. Right now, it's a hex dump! Yuck.
 	[ ]  methods for searching for values (strings, words, etc?)
 	[ ]  methods for bulk fill/copy [from other address/data busses?]
-
-   [ ]  Cache components.
-
-	[ ]  Implement the addressable data bus interface, but if data is contained
-	     in the cache (a small memory area), do not call the main memory.
-	     Rather straight-forward idea, but will take time to implement
-	     all common variants: associativity, statistics gathering (i.e.
-	     "who [i.e. which PC] evicted who [which other PC] from the cache"), ...
-
-		[ ]  Caches should be added _onto_ a cpu. The cpu first looks
-		     for a cache as an address data bus, THEN for a parent. Hm.
-		[ ]  The cache must then go downwards TWO steps (../..) to get
-		     past the owning cpu, when trying to reach the mainbus/ram.
-
-	[ ]  Unit tests.
 
    [ ]	Floating point helper.
 
@@ -992,33 +1051,6 @@ section is kept here, so that the same mistakes may be avoided in the rewrite.]
 	x)  Allow SLIP connections, possibly PPP, in addition to
 	    ethernet?
 
-Documentation:
-	x)  Update the documentation regarding the testmachine interrupts.
-	x)  Note about sandboxing/security:
-		Not all emulated instructions fail in the way they would
-		do on real hardware (e.g. a userspace program writing to
-		a system register might work in GXemul, but it would
-		fail on real hardware).  Sandbox = contain from the
-		host OS. But the emulated programs will run "less
-		securely".
-	x)  Rewrite the section about experimental devices, after the
-	    framebuffer acceleration has been implemented, and demos
-	    written. (Symbolic names instead of numbers; example
-	    use cases, etc. Mention demo files that use the various
-	    features?)
-	x)  "a very simple linear framebuffer device (for graphics output)"
-	    under "which machines does gxemul emulate" ==> better
-	    description?
-
-The Device subsystem:
-	x)  allow devices to be moved and/or changed in size (down to a
-	    minimum size, etc, or up to a max size); if there is a collision,
-	    return false. It is up to the caller to handle this situation!
-	x)  NOTE: Translations must be invalidated, both for
-	    registering new devices, and for moving existing ones.
-	    cpu->invalidate translation caches, for all CPUs that
-	    are connected to a specific memory.
-
 PCI:
 [Obsoleted; the new framework will need a much better bus implementation. This
 section is kept here, so that the same mistakes may be avoided in the rewrite.]
@@ -1052,19 +1084,6 @@ ASC SCSI controller:
 	    in NetBSD itself, http://mail-index.netbsd.org/source-changes/
 	    2005/11/06/0024.html suggests that.)
 	    NetBSD 4.x seems to work? :)
-
-File/disk/symbol handling:
-	o)  Make sure that disks can be added/removed during runtime!
-	    (Perhaps this needs a reasonably large re-write.)
-	o)  Remove some of the complexity in file format guessing, for
-		Ultrix kernels that are actually disk images?
-	o)  Remove temporary files (/tmp/gxemul.blahblah) if loading fails
-	    for some reason (unrecognized file, etc).
-	o)  Better handling of tape files	
-	o)  Read function argument count and types from binaries? (ELF?)
-	o)  Better demangling of C++ names. Note: GNU's C++ differs from e.g.
-	    Microsoft's C++, so multiple schemes must be possible. See
-	    URL at top of src/symbol_demangle.c for more info.
 
 Better framebuffer and X-windows functionality:
 [Obsoleted; the new framework will most likely use SDL. This section
@@ -1123,10 +1142,12 @@ Release checklist:
 	Freshmeat
 	Wikipedia page (version number and date, possibly architectures update,
 		or description update).
+		https://secure.wikimedia.org/wikipedia/en/wiki/GXemul
 	Send mail to package maintainers (if they are not subscribed
 		to the mailing list(s))
 	If new arch:
 		Linux-MIPS wiki page
+		https://secure.wikimedia.org/wikipedia/en/wiki/Comparison_of_platform_virtual_machines
 		Ohloh description page
 		gavare.se main page
 

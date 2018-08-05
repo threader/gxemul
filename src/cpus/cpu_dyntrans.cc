@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2014  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -249,6 +249,14 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 #endif
 	}
 
+#ifdef DYNTRANS_ARM
+	if (cpu->cd.arm.cpsr & ARM_FLAG_T) {
+		fatal("THUMB execution not implemented.\n");
+		cpu->running = false;
+		return 0;
+	}
+#endif
+
 	cached_pc = cpu->pc;
 
 	cpu->n_translated_instrs = 0;
@@ -389,9 +397,12 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 #ifdef DYNTRANS_MIPS
 	/*  Update the count register (on everything except EXC3K):  */
 	if (cpu->cd.mips.cpu_type.exc_model != EXC3K) {
-		uint32_t old = cpu->cd.mips.coproc[0]->reg[COP0_COUNT];
-		int32_t diff1 = cpu->cd.mips.coproc[0]->reg[COP0_COMPARE] - old;
-		int32_t diff2;
+		uint32_t old;
+		int32_t diff1, diff2;
+		cpu->cd.mips.coproc[0]->reg[COP0_COUNT] -= cpu->cd.mips.count_register_read_count;
+		cpu->cd.mips.count_register_read_count = 0;
+		old = cpu->cd.mips.coproc[0]->reg[COP0_COUNT];
+		diff1 = cpu->cd.mips.coproc[0]->reg[COP0_COMPARE] - old;
 		cpu->cd.mips.coproc[0]->reg[COP0_COUNT] =
 		    (int32_t) (old + n_instrs);
 		diff2 = cpu->cd.mips.coproc[0]->reg[COP0_COMPARE] -
@@ -453,10 +464,14 @@ void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 	char *symbol;
 	uint64_t ot;
 	int x, print_dots = 1, n_args_to_print =
+#if defined(DYNTRANS_ALPHA)
+	    6
+#else
 #if defined(DYNTRANS_SH) || defined(DYNTRANS_M88K)
 	    8	/*  Both for 32-bit and 64-bit SuperH, and M88K  */
 #else
 	    4	/*  Default value for most archs  */
+#endif
 #endif
 	    ;
 
@@ -485,6 +500,9 @@ void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 	 */
 	for (x=0; x<n_args_to_print; x++) {
 		int64_t d = cpu->cd.DYNTRANS_ARCH.
+#ifdef DYNTRANS_ALPHA
+		    r[ALPHA_A0
+#endif
 #ifdef DYNTRANS_ARM
 		    r[0
 #endif
@@ -1051,6 +1069,34 @@ static void DYNTRANS_INVALIDATE_TLB_ENTRY(struct cpu *cpu,
 }
 #endif
 
+/*
+	int found = -1;
+	for (int q = 0; q < 192; ++q)
+	{
+		if (cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[q].vaddr_page == vaddr_page &&
+			cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[q].valid)
+		{
+			if (found >= 0)
+			{
+				printf("ALREADY FOUND = %i\n", found);
+				int zz = found;
+				printf("%03i: ", zz);
+				printf("vaddr=%016llx\n", (long long)cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].vaddr_page);
+				printf("valid=%i\n", cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].valid);
+
+				zz = q;
+				printf("%03i: ", zz);
+				printf("vaddr=%016llx\n", (long long)cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].vaddr_page);
+				printf("valid=%i\n", cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].valid);
+
+				exit(1);
+			}
+			
+			found = q;
+		}
+	}
+*/
+
 	l3->host_load[x3] = NULL;
 	l3->host_store[x3] = NULL;
 	l3->phys_addr[x3] = 0;
@@ -1059,6 +1105,16 @@ static void DYNTRANS_INVALIDATE_TLB_ENTRY(struct cpu *cpu,
 		cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[
 		    l3->vaddr_to_tlbindex[x3] - 1].valid = 0;
 		l3->refcount --;
+	} else {/*
+		printf("APA: vaddr_page=%016llx l3->refcount = %i\n", (long long)vaddr_page, l3->refcount);
+		for (int zz = 0; zz < 128; ++zz)
+		{
+			printf("%03i: ", zz);
+			printf("vaddr=%016llx\n", (long long)cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].vaddr_page);
+			printf("valid=%i\n", cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].valid);
+		}
+		
+		exit(1);*/
 	}
 	l3->vaddr_to_tlbindex[x3] = 0;
 
@@ -1273,6 +1329,8 @@ void DYNTRANS_INVALIDATE_TC_CODE(struct cpu *cpu, uint64_t addr, int flags)
 				*physpage_entryp = ppp->next_ofs;
 		}
 #else
+		prev_ppp = prev_ppp;	// shut up compiler warning
+
 		/*
 		 *  Instead of removing the page from the code cache, each
 		 *  entry can be set to "to_be_translated". This is slow in
@@ -1410,6 +1468,8 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 		writeflag &= ~MEMORY_USER_ACCESS;
 		useraccess = 1;
 	}
+
+	useraccess = useraccess;  // shut up compiler warning about unused var
 
 #ifdef DYNTRANS_M88K
 	/*  TODO  */
@@ -1613,6 +1673,10 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 			l3->host_store[x3] = writeflag? host_page : NULL;
 			l3->phys_addr[x3] = paddr_page;
 		}
+		
+		/*  HM!  /2013-11-17  */
+		/*  Should this be here?  2014-08-02  */
+		//l3->phys_page[x3] = NULL;
 
 #ifdef BUGHUNT
 /*  Count how many pages are actually in use:  */
@@ -1660,10 +1724,10 @@ cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid);
 			if (curpc == (MODE_uint_t)
 			    cpu->machine->breakpoints.addr[i]) {
 				if (!cpu->machine->instruction_trace) {
-					int old_quiet_mode = quiet_mode;
+					int tmp_old_quiet_mode = quiet_mode;
 					quiet_mode = 0;
 					DISASSEMBLE(cpu, ib, 1, 0);
-					quiet_mode = old_quiet_mode;
+					quiet_mode = tmp_old_quiet_mode;
 				}
 #ifdef MODE32
 				fatal("BREAKPOINT: pc = 0x%"PRIx32"\n(The "

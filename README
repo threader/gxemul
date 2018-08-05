@@ -1,10 +1,10 @@
 
           --------------------------------------------------------
-             Gavare's eXperimental Emulator   --   GXemul 0.6.0
+            Gavare's eXperimental Emulator   --   GXemul 0.6.0.1
           --------------------------------------------------------
 
 
-Copyright (C) 2003-2010  Anders Gavare
+Copyright (C) 2003-2014  Anders Gavare
 
 
 
@@ -113,5 +113,5 @@ Feedback
 --------
 
 If you have found GXemul useful in some way, or feel like sending me
-comments or feedback in general, then mail me at anders(at)gavare.se.
+comments or feedback in general, then mail me at gavare@gmail.com.
 

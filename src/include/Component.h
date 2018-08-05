@@ -80,7 +80,7 @@ protected:
 	Component(const string& className, const string& visibleClassName);
 
 public:
-	virtual ~Component() = 0;
+	virtual ~Component() { }
 
 	/**
 	 * \brief Gets the class name of the component.
@@ -180,6 +180,13 @@ public:
 	string GenerateTreeDump(const string& branchTemplate,
 		bool htmlLinksForClassNames = false,
 		string prefixForComponentUrls = "") const;
+
+	/**
+	 * \brief Generate details about the component.
+	 *
+	 * @return A string containing details about the component.
+	 */
+	virtual string GenerateDetails() const;
 
 	/**
 	 * \brief Resets the state of this component and all its children.
@@ -559,7 +566,8 @@ protected:
 		if (it != m_stateVariables.end())
 			return false;
 
-		m_stateVariables[name] = StateVariable(name, variablePointer);
+		m_stateVariables.insert(pair<string,StateVariable>
+		    (name, StateVariable(name, variablePointer)));
 		return true;
 	}
 
@@ -581,7 +589,8 @@ protected:
 		if (it != m_stateVariables.end())
 			return false;
 
-		m_stateVariables[name] = StateVariable(name, variableHandler);
+		m_stateVariables.insert(pair<string,StateVariable>
+		    (name, StateVariable(name, variableHandler)));
 		return true;
 	}
 

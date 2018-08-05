@@ -4485,3 +4485,143 @@ Changelog for GXemul:
 
 ==============  RELEASE 0.6.0  ==============
 
+20100214	Fixing order of machine.html and components.html generation,
+		relative to individual machines from skeleton files.
+20100220	Improve install path guessing (DESTDIR and MANDIR) based on
+		feedback from Tom Callaway.
+		Moving the multiple identical instances of parse_number and
+		SplitStringIntoVector to a new StringHelper class, and adding
+		some unit tests.
+		Adding a PluginDescriptor class, for parsing plugin descriptor
+		strings (component:plugin(args):filename etc).
+		Beginning on the new plugin mechanism: adding an 'attach'
+		command, to be used instead of 'load'.
+20100222	Scrapping the "plugin" concept; the already existing component
+		framework should hopefully be enough as it is.
+20100314	Updating doc/translation.html with more examples on how the
+		dyntrans system works (in pre-0.6.x and in 0.6.x).
+20100319	Fixing flawed mymkstemp by also passing O_CREAT | O_EXCL (used
+		on systems without mkstemp) (reported as Debian bug #574537).
+20100322	const fixes, enabling builds using GCC's -Wcast-qual.
+		Fixes to allow build using GCC's -Wshadow.
+20100326	Running 'make test' will now treat memory leaks as test
+		failure (in debug builds only). Also fixing a memory leak.
+20100406	Bogus hack to machine_evbmips.cc to let RTEMS print some boot
+		messages (again?) for mvme5500.
+20100806	nbjoerg on #GXemul (FreeNode) noticed an easy way to trigger
+		an unhandled case in memory_sh.cc; applying a potential fix.
+20100830	Updating the OpenBSD/landisk guest operating system install
+		instructions from 4.6 to 4.7.
+		Improved the "pretty print" of components in the tree dump,
+		by moving it out to a per-component virtual function.
+20100901	Beginning on CacheComponent (a generic memory cache component).
+20100910	The mechanism for detecting when to assert MIPS compare
+		interrupts could sometimes stop delivering interrupts, if the
+		count register was read. Fixed by keeping track of how many
+		times the register is read and reverting it before doing the
+		count/compare interrupt assert check. (Thanks to Jakub Jermar
+		for noticing this bug using HelenOS.)
+20100912	Updating the NetBSD/hpcmips guest operating system install
+		instructions from 4.0.1 to 5.0.2, and the NetBSD/algor install
+		instructions from 3.1 to 5.0.2.
+20110212	Updating the NetBSD/pmax install instructions: 5.0.2 -> 5.1.
+		Updating OpenBSD/landisk instructions: 4.7 -> 4.8.
+20110606	Updating the documentation on how to start Dreamcast binaries,
+		and updating from NetBSD/dreamcast 5.0.1 to 5.1.
+20110609	Adding automagic guessing of Dreamcast ISO filesystem offset,
+		so that Linux/dreamcast can be booted without specifying the
+		offset.
+		Booting Dreamcast via bootblock now uses software PROM starting
+		point instead of calling a particular bootblock address, making
+		it possible to run a complete boot sequence in more cases.
+		When unimplemented SuperH instructions cause an abort failure,
+		GXemul now drops into the debugger instead of calling exit()
+		(if started with -K).
+20110610	In SH4 instruction trace, include address in printout in a few
+		more cases than before.
+		Make NetBSD/dreamcast etc. boot correctly with 480 pixels in
+		the y direction (random read hack from PDTRA).
+		Use the 8x16 font as a fake Dreamcast ROM font.
+		Adding fake/skeleton Dreamcast ROM SYSINFO_INIT, SYSINFO_ID,
+		FLASHROM_INIT, and FLASHROM_READ calls.
+20110616	Adding Dreamcast devices as symbols, so that runtime debugging
+		will show meaningful names instead of just addresses, when
+		reading and writing device registers.
+20110621	Adding "trace" versions of SuperH bsr and bsrf_rn instructions.
+		Adding the first SuperH instruction combination for speeding
+		up a variable read loop (bt_samepage_wait_for_variable).
+20110622	Continuing on Dreamcast and SuperH emulation: the SH4 DMA
+		channel numbers were off-by-one (but didn't really have any
+		negative effect). Experimenting with end-of-DMA mechanism in
+		dev_pvr. Adding a second device thing at 0x005f7c00, which
+		seems to be a PVR DMA register range, but not much used?
+20110623	Found a bug in the SH4 fsca instruction: the angle argument for
+		sin and cos was incorrectly calculated. "dcfighting.bin" and
+		"gltest.bin" (two "homebrew" Dreamcast programs) now look much
+		more like on the real Dreamcast.
+		Various other small Dreamcast and/or SH4 related updates.
+20110624	Updating OpenBSD/landisk installation instructions: 4.8 -> 4.9.
+20110626	Moving Dreamcast BIOS emulation entry points to 0x8c000100+ofs,
+		so they are not "in the way" of the real BIOS' data area at
+		0x8c000000-0x8c0000ff. Some other minor Dreamcast fixes.
+		Moving GDROM DMA register handling into dev_dreamcast_gdrom.
+		Fixing a bug in the SH4 fipr instruction (inner product): the
+		rm and rn registers were reversed!
+		Implementing fmov_rm_frn for double-sized register access.
+20110702	dev_ram now has a "trace" flag. Useful for figuring out e.g.
+		when/if a program accesses certain memory ranges.
+		Continuing on Dreamcast PVR (graphics) emulation; implementing
+		software triangle rendering, so that some demo programs (such
+		as Comstedt's "tatest", KOS' "gltest.bin" and "dcfighting.bin")
+		now render solid polygons. Color is random though, and no
+		textures yet.
+20110706	Implementing register pair variant of SuperH fmov_frm_rn,
+		adding implementations of "LDS Rm,MACH", and "LDS Rm,MACL".
+20110902	Reviving the old legacy Alpha CPU support, which was removed
+		20090703 (i.e. NOT using the new framework).
+20110906	Slowly continuing on the Alpha emulation mode: going through
+		the existing virtual memory and PALcode stuff.
+20120120	Avoid crash in cpu_ppc_instr_loadstore.cc for 64-bit emulation
+		(since only 32-bit access is actually implemented); fallback
+		to generic (slow) access.
+		Minor OpenFirmware and SPR fixes to reach further with a
+		FreeBSD/powerpc 9.0 kernel (-Xe g4).
+		Updating the NetBSD/pmax install instructions: 5.1 -> 5.1.1.
+		Updating the NetBSD/cobalt install instructions 5.0.1 to 5.1.1.
+		Redirect PowerPC SPRs 0x10c/10d to 0x11c/11d (Time Base).
+20120121	Updating OpenBSD/landisk installation instructions: 4.9 -> 5.0.
+20120507	Adding a patch from Juli Mallett for MIPS rdhwr reg 29.
+20120617	Adding a patch from James Peacock for ARM MSR fields.
+20120724	Adding a patch from David Brownlee (mkstemp on NetBSD), and
+		trying to make things build without warnings with GCC 4.6.x.
+20120731	Adding a patch from David Brownlee: a more reasonable TOC is
+		returned in dev_dreamcast_gdrom.cc (for NetBSD/dreamcast).
+20120906	Adding a patch from George Koehler to fix DHCP response bug.
+20120922	Fixing an ARM instruction encoding bug: for shifter_operand
+		immediates, the carry bit should be set to bit 31 of the
+		shifter_operand if and only if rotate_imm != 0. I've added
+		detection for the case when this would bug out (although I
+		have never seen it happen yet), and fixed a bug which did
+		happen: for short register formats (i.e. no shift or other
+		complex things), the code should not be run, but it was run
+		anyway, leading to wrong Carry flag results for e.g. the TST
+		instruction. This was triggered when running int64_t modulo.
+20130907	Updating NetBSD/dreamcast test instructions: 5.1 -> 6.1.1.
+		Updating NetBSD/pmax install instructions: 5.1.1 -> 6.1.1.
+20131006	Adding a dummy Raspberry Pi machine mode.
+20131109	Updating OpenBSD/landisk install instructions: 5.0 -> 5.4.
+20140803	Some cleanup and minor progress of the Dreamcast PVR graphics.
+		(The graphics displayed when attempting to run the original
+		ROM now looks more reasonable.)
+		Updating NetBSD/dreamcast test instructions: 6.1.1 -> 6.1.4.
+		Updating NetBSD/pmax install instructions: 6.1.1 -> 6.1.4.
+		Renaming machine mvme187 to mvme187old to avoid collision.
+		Enabling ELF file support for 88K experiments.
+20140805	Fixing color bug in dev_pvr.cc simpleline, which is used when
+		rendering Gouraud shaded triangles.
+20140810	Beginning on disassembly of ARM THUMB (16-bit) encoding.
+20140815	Adding rudimentary culling of clockwise / counter-clockwise
+		polygons in the PVR rendering code.
+20140816	Fixing console.cc so that it doesn't complain about buffer
+		overrun when pasting a lot of data.
+

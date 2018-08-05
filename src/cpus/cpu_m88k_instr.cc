@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2011  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -42,7 +42,9 @@
                 cpu->pc += (low_pc << M88K_INSTR_ALIGNMENT_SHIFT);      \
         }
 
-#define	ABORT_EXECUTION	  {	cpu->cd.m88k.next_ic = &nothing_call;	\
+#define	ABORT_EXECUTION	  {	SYNCH_PC;				\
+				fatal("Execution aborted at: pc = 0x%08x\n", (int)cpu->pc); \
+				cpu->cd.m88k.next_ic = &nothing_call;	\
 				cpu->running = 0;			\
 				debugger_n_steps_left_before_interaction = 0; }
 
@@ -1908,7 +1910,7 @@ X(to_be_translated)
 	unsigned char *page;
 	unsigned char ib[4];
 	uint32_t op26, op10, op11, d, s1, s2, cr6, imm16;
-	int32_t d16, d26, simm16;
+	int32_t d16, d26; //, simm16;
 	int offset, shift;
 	int in_crosspage_delayslot = 0;
 	void (*samepage_function)(struct cpu *, struct m88k_instr_call *)=NULL;
@@ -1981,7 +1983,7 @@ X(to_be_translated)
 	s1     = (iword >> 16) & 0x1f;
 	s2     =  iword        & 0x1f;
 	imm16  =  iword        & 0xffff;
-	simm16 = (int16_t) (iword & 0xffff);
+	// simm16 = (int16_t) (iword & 0xffff);
 	cr6    = (iword >>  5) & 0x3f;
 	d16    = ((int16_t) (iword & 0xffff)) * 4;
 	d26    = ((int32_t)((iword & 0x03ffffff) << 6)) >> 4;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2014  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -47,7 +47,7 @@
 #include "misc.h"
 
 
-/*  #define debug fatal  */
+#define debug fatal
 
 struct dreamcast_rtc_data {
 	int		dummy;
@@ -67,9 +67,13 @@ DEVICE_ACCESS(dreamcast_rtc)
 
 	case 0:
 	case 4:
+		/*
+		 *  While writing to the RTC could set the date/time of the
+		 *  host, that would probably be very annoying. For now,
+		 *  simply ignore writes.
+		 */
 		if (writeflag == MEM_WRITE)
-			debug("[ dreamcast_rtc: Writes are ignored, only "
-			    "reads are supported. ]\n");
+			break;
 
 		gettimeofday(&tv, NULL);
 
@@ -80,6 +84,13 @@ DEVICE_ACCESS(dreamcast_rtc)
 			odata = (odata >> 16) & 0xffff;
 		else
 			odata &= 0xffff;
+		break;
+
+	case 8:
+		/*
+		 *  The Dreamcast PROM writes a 1 here when setting the
+		 *  date/time. Let's ignore it for now.
+		 */
 		break;
 
 	default:

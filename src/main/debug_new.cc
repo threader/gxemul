@@ -1,3 +1,5 @@
+#include <iostream>
+
 /*
  *  GXemul specific changes to debug_new.cc:
  *
@@ -9,6 +11,8 @@
  *   x) #print_position changed to print_position (removed the #), to
  *      suppress a Doxygen warning
  *   x) "@file" changed to "@ file" to suppress a Doxygen warning.
+ *   x) variable names in local scopes changed to allow usage of GCC's -Wshadow
+ *   x) a "catch point" added for catching specific (repeatable) allocations
  */
 
 #ifndef NDEBUG
@@ -480,6 +484,7 @@ static void free_pointer(new_ptr_list_t** raw_ptr, void* addr, bool array_mode)
                 (unsigned) ptr->size, (unsigned) total_mem_alloc);
     }
     *raw_ptr = ptr->next;
+    memset(ptr, 0xdd, ptr->size + aligned_list_item_size);
     free(ptr);
     return;
 }
@@ -500,7 +505,7 @@ int check_leaks()
             continue;
         while (ptr)
         {
-            fast_mutex_autolock lock(new_output_lock);
+            fast_mutex_autolock lock2(new_output_lock);
             fprintf(new_output_fp,
                     "Leaked object at %p (size %u, ",
                     (char*)ptr + aligned_list_item_size,
@@ -534,6 +539,23 @@ void* operator new(size_t size, const char* file, int line)
         _DEBUG_NEW_ERROR_ACTION;
     }
     void* pointer = (char*)ptr + aligned_list_item_size;
+
+    // GXemul hack/addition: Crash on a specific allocation. Useful
+    // for getting a call stack for a memory leak, at the point where the
+    // actual allocation took place. (Only possible if the address is
+    // stable over multiple runs.)
+    if ((size_t)pointer == 0xfefefefecdcdcdcdULL)
+    {
+	static int counter = 0;
+	counter ++;
+    	std::cerr << "--> MEMORY LEAK CATCH POINT, counter = " << counter << "\n";
+
+	if (counter == -42)
+	{
+	    abort();
+	}
+    }
+
     size_t hash_index = _DEBUG_NEW_HASH(pointer);
 #if _DEBUG_NEW_FILENAME_LEN == 0
     ptr->file = file;
@@ -608,7 +630,7 @@ void operator delete(void* pointer) throw()
     new_ptr_list_t** raw_ptr = search_pointer(pointer, hash_index);
     if (raw_ptr == NULL)
     {
-        fast_mutex_autolock lock(new_output_lock);
+        fast_mutex_autolock lock2(new_output_lock);
         fprintf(new_output_fp, "delete: invalid pointer %p at ", pointer);
         print_position(_DEBUG_NEW_CALLER_ADDRESS, 0);
         fprintf(new_output_fp, "\n");
@@ -627,7 +649,7 @@ void operator delete[](void* pointer) throw()
     new_ptr_list_t** raw_ptr = search_pointer(pointer, hash_index);
     if (raw_ptr == NULL)
     {
-        fast_mutex_autolock lock(new_output_lock);
+        fast_mutex_autolock lock2(new_output_lock);
         fprintf(new_output_fp, "delete[]: invalid pointer %p at ", pointer);
         print_position(_DEBUG_NEW_CALLER_ADDRESS, 0);
         fprintf(new_output_fp, "\n");

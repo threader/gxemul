@@ -16,7 +16,7 @@
 
 <!--
 
-Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
+Copyright (C) 2003-2014  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -47,12 +47,12 @@ SUCH DAMAGE.
 <ul>
   <li><a href="#generalnotes">General notes on running "guest OSes"</a>
   <li><a href="#legacy">Legacy emulation modes</a>
-  <li><a href="#netbsdpmaxinstall">NetBSD/pmax 5.0.2</a>
+  <li><a href="#netbsdpmaxinstall">NetBSD/pmax 6.1.4</a>
   <li><a href="#netbsdarcinstall">NetBSD/arc 5.0.1</a>
-  <li><a href="#netbsdhpcmipsinstall">NetBSD/hpcmips 4.0.1</a>
-  <li><a href="#netbsdcobaltinstall">NetBSD/cobalt 5.0.1</a>
-  <li><a href="#netbsdevbmipsinstall">NetBSD/evbmips 5.0</a>
-  <li><a href="#netbsdalgorinstall">NetBSD/algor 3.1</a>
+  <li><a href="#netbsdhpcmipsinstall">NetBSD/hpcmips 5.0.2</a>
+  <li><a href="#netbsdcobaltinstall">NetBSD/cobalt 5.1.1</a>
+  <li><a href="#netbsdevbmipsinstall">NetBSD/evbmips 5.0.2</a>
+  <li><a href="#netbsdalgorinstall">NetBSD/algor 5.0.2</a>
   <li><a href="#netbsdsgimips">NetBSD/sgimips 5.0</a>
   <li><a href="#netbsdcatsinstall">NetBSD/cats 5.0</a>
   <li><a href="#netbsdevbarminstall">NetBSD/evbarm 2.1</a>
@@ -61,11 +61,11 @@ SUCH DAMAGE.
   <li><a href="#netbsdmacppcinstall">NetBSD/macppc 4.0.1</a>
   <li><a href="#netbsdpmppc">NetBSD/pmppc 3.1</a>
   <li><a href="#netbsdlandiskinstall">NetBSD/landisk 5.0.1</a>
-  <li><a href="dreamcast.html#netbsd_generic_md">NetBSD/dreamcast 4.0</a>
+  <li><a href="dreamcast.html#netbsd_generic_md">NetBSD/dreamcast 5.1</a>
   <li><a href="dreamcast.html#linux_live_cd">Linux/dreamcast</a>
   <li><a href="#openbsdpmaxinstall">OpenBSD/pmax 2.8-BETA</a>
   <li><a href="#openbsdcatsinstall">OpenBSD/cats 4.0</a>
-  <li><a href="#openbsdlandiskinstall">OpenBSD/landisk 4.6</a>
+  <li><a href="#openbsdlandiskinstall">OpenBSD/landisk 5.4</a>
   <li><a href="#openbsdmvme88kinstall">OpenBSD/mvme88k 4.5</a>
   <li><a href="#helenos">HelenOS 0.4.0</a>
   <li><a href="#ultrixinstall">Ultrix/RISC 4.5</a>
@@ -86,16 +86,45 @@ The emulator works well enough to run complete operating systems. These
 are often refered to as <i>guest</i> operating systems, in contrast to the 
 <i>host</i> operating system which the emulator is running under.
 
+<p>The emulation, however, is not necessarily complete enough to support
+previously untested guest operating. In many cases, the emulated devices have been
+implemented "on demand" as required by a specific guest operating system,
+and trying to run another operating system (or even a different version of
+a supported one) will trigger new things that are not yet implemented in
+the emulator. This page lists specific versions that are known to work.
+What this usually means is:
+
+<p>
+<ul>
+	<li>A full installation from scratch should work (usually from
+		a CD-ROM image or via the network).
+	<li>Logging in to the installed guest OS after install.
+	<li>Doing something non-trivial.
+</ul>
+
+<p>
+Printing "Hello world" is considered trivial, whereas e.g. building GXemul
+itself inside the emulated guest operating system is considered non-trivial.
+
+
+
+<p><b>Disk images:</b>
+
 <p>Although it is possible to let a guest OS access real hardware, such as 
 harddisks, it is much more flexible and attractive to simulate harddisks 
-using files residing in the host's filesystem. On Unix-like systems, files 
-may contain holes, which makes this really simple. To the guest operating 
-system, the harddisk image looks and acts like a real disk.
+using files residing in the host's filesystem.
+See <a href="misc.html#disk">this section</a> for details about how to
+use disk images.
 
-<p>The version numbers of the various operating systems were the latest 
-versions that worked satisfactory with GXemul at the time this page was 
-updated; if new versions have been released since then, they might work as 
-well.
+<p>While these files may look
+large (several GBs is common for hard disks), on Unix-like file systems, files 
+may contain holes, which means that the disk image files do not actually
+use up all that space from the start, but rather grows only as data is written
+to it. To the guest operating system, the harddisk image looks and acts like
+a real disk.
+
+
+<p><b>Unsupported guest operating systems, or experimental install instructions:</b>
 
 <p>In addition to the "working" guest operating systems listed above,
 you might find the following information interesting:
@@ -119,12 +148,24 @@ specific release of GXemul,</font> for example some of these
 modes may be legacy modes that worked before but not any longer,
 or are not yet working but could be in the future.
 
+
+<p><b>Version numbers:</b>
+
+<p>The version numbers of the various operating systems were the latest 
+versions that worked satisfactory with GXemul at the time this page was 
+updated; if new versions have been released since then, they might work as 
+well.
+
 <p>Some operating systems are listed with a version number <i>less</i> 
 than what was available at the time of this GXemul release (e.g. 
-NetBSD/prep). The reasons for this may be because of incompleteness in 
-GXemul's machine, device, and/or processor implementations.
-It may also simply be that I have not had time to verify the 
-installation prodecure with any higher version than the listed one.
+NetBSD/prep). The reasons for this is usually one of the following:
+<ul>
+	<li>incompleteness/bugs in GXemul's machine, device, and/or processor
+		implementations, which the newer version of the guest operating
+		system triggers, but not the older version, or
+	<li>the newer guest operating system version would work, but the
+		full installation procedure has not been verified.
+</ul>
 
 
 
@@ -177,11 +218,11 @@ follow these instructions:
 
 </pre>
   <li>Download a NetBSD CD-ROM iso image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/pmaxcd-5.0.2.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/pmaxcd-5.0.2.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/6.1.4/NetBSD-6.1.4-pmax.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/6.1.4/NetBSD-6.1.4-pmax.iso</a>
 
 </pre>
   <li>Start the emulator like this:<pre>
-	<b>gxemul -X -e 3max -d nbsd_pmax.img -d b:pmaxcd-5.0.2.iso</b>
+	<b>gxemul -X -e 3max -d nbsd_pmax.img -d b:NetBSD-6.1.4-pmax.iso</b>
 </pre>
 </ol>
 
@@ -200,8 +241,12 @@ NetBSD from the harddisk image:<pre>
 
 and log in as <tt>root</tt>. Type <tt>startx</tt> to start X windows.
 
-<p>(Remove <b><tt>-X</tt></b> if you only want a serial console.)
+<p>Remove <b><tt>-X</tt></b> if you only want a serial console.
 
+<p>(It seems that NetBSD 6.1.4 needs the user to enter root disk
+name (<tt>sd0</tt>) when booting. I don't think that was necessary when
+booting earlier NetBSD versions in the emulator,
+so there has been some regression here.)
 
 
 
@@ -293,16 +338,16 @@ NetBSD/hpcmips on an emulated MobilePro 770:
 	<b>dd if=/dev/zero of=nbsd_hpcmips.img bs=1024 count=1 seek=3000000</b>
 
 </pre>
-  <li>Download the NetBSD/hpcmips 4.0.1 ISO image, a generic kernel,
+  <li>Download the NetBSD/hpcmips 5.0.2 ISO image, a generic kernel,
 	and the installer kernel:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/">ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1</a>/<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/4.0.1/hpcmipscd-4.0.1.iso">hpcmipscd-4.0.1.iso</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/hpcmips/binary/kernel/">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/hpcmips/binary/kernel</a>/<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/hpcmips/binary/kernel/netbsd-GENERIC.gz">netbsd-GENERIC.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/hpcmips/installation/netbsd.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/hpcmips/installation/netbsd.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2</a>/<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/hpcmipscd-5.0.2.iso">hpcmipscd-5.0.2.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/hpcmips/binary/kernel/">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/hpcmips/binary/kernel</a>/<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/hpcmips/binary/kernel/netbsd-GENERIC.gz">netbsd-GENERIC.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/hpcmips/installation/netbsd.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/hpcmips/installation/netbsd.gz</a>
 
 </pre>
   <p>
   <li>Start the installation like this:<pre>
-	<b>gxemul -e mobilepro770 -X -d nbsd_hpcmips.img -d b:hpcmipscd-4.0.1.iso netbsd.gz</b>
+	<b>gxemul -e mobilepro770 -X -d nbsd_hpcmips.img -d b:hpcmipscd-5.0.2.iso netbsd.gz</b>
 
 </pre>
 	and proceed like you would do if you were installing NetBSD on a real
@@ -312,9 +357,10 @@ NetBSD/hpcmips on an emulated MobilePro 770:
 
 <p>(While it is possible to install and run NetBSD/hpcmips without the <tt>-X</tt>
 command line option (i.e. using serial console), NetBSD 4.0.1's default
-<tt>/etc/ttys</tt> file after a full install does not have
-<tt>/dev/console</tt> enabled, so you need to edit <tt>/etc/ttys</tt>
-before you reboot after the install, to be able to log in.)
+<tt>/etc/ttys</tt> file after a full install did not have
+<tt>/dev/console</tt> enabled, so you needed to edit <tt>/etc/ttys</tt>
+before you reboot after the install, to be able to log in. Whether this has
+changed after 4.0.1, I don't know.)
 
 <p>
 If everything worked, NetBSD should now be installed on the disk image.
@@ -358,12 +404,12 @@ image:
 
 </pre>
   <li>Download the generic kernel for Cobalt and the ISO image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/cobalt/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/cobalt/binary/kernel/netbsd-GENERIC.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.1/cobaltcd-5.0.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.1/cobaltcd-5.0.1.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.1.1/cobalt/binary/kernel/netbsd-GENERIC.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.1.1/cobalt/binary/kernel/netbsd-GENERIC.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.1.1/cobaltcd-5.1.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.1.1/cobaltcd-5.1.1.iso</a>
 
 </pre>
   <li>Start the installation like this:<pre>
-  	<b>gxemul -x -E cobalt -d nbsd_cobalt.img -d bd:cobaltcd-5.0.1.iso -j cobalt/binary/kernel/netbsd-RAMDISK</b>
+  	<b>gxemul -x -E cobalt -d nbsd_cobalt.img -d bd:cobaltcd-5.1.1.iso -j cobalt/binary/kernel/netbsd-RAMDISK</b>
 
 </pre>
 	and proceed like you would do if you were installing NetBSD on a real
@@ -414,13 +460,13 @@ image, from an emulated DECstation 3MAX machine:
 
 </pre>
   <li>Download the Malta kernel and the ISO image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/evbmips/binary/kernel/netbsd-MALTA.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/evbmips/binary/kernel/netbsd-MALTA.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/iso/evbmips-mipselcd-5.0.iso">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0/iso/evbmips-mipselcd-5.0.iso</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/evbmips/binary/kernel/netbsd-MALTA.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/evbmips/binary/kernel/netbsd-MALTA.gz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/evbmips-mipselcd-5.0.2.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/5.0.2/evbmips-mipselcd-5.0.2.iso</a>
 
 </pre>
   <p>
   <li>Start the emulated DECstation machine like this:<pre>
-	<b>gxemul -e 3max -d nbsd_malta.img -d evbmips-mipselcd-5.0.iso netbsd-INSTALL.gz</b>
+	<b>gxemul -e 3max -d nbsd_malta.img -d evbmips-mipselcd-5.0.2.iso netbsd-INSTALL.gz</b>
 
 </pre>
   <li>At the <tt>Terminal type? [vt100]</tt> prompt, type <b>CTRL-B</b>
@@ -497,8 +543,8 @@ image, from an emulated DECstation 3MAX machine:
 
 <p>
 <ol>
-  <li>Download a NetBSD/pmax (DECstation) install RAMDISK kernel:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/pmax/binary/kernel/netbsd-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/pmax/binary/kernel/netbsd-INSTALL.gz</a>
+  <li>Download a NetBSD/pmax (DECstation) install RAMDISK kernel (NOTE: not 5.0.2!):<pre>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/pmax/binary/kernel/netbsd-INSTALL.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-4.0.1/pmax/binary/kernel/netbsd-INSTALL.gz</a>
 </pre>
   <p>
   <li>Create an empty harddisk image, which will be the disk image
@@ -506,14 +552,24 @@ image, from an emulated DECstation 3MAX machine:
 	<b>dd if=/dev/zero of=nbsd_algor.img bs=1024 count=1 seek=700000</b>
 
 </pre>
-  <li>Download the P5064 Algor kernel and the 3.1 ISO image:<pre>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/algor/binary/kernel/netbsd-P5064.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-3.1/algor/binary/kernel/netbsd-P5064.gz</a>
-	<a href="ftp://ftp.netbsd.org/pub/NetBSD/iso/3.1/algorcd-3.1.iso">ftp://ftp.netbsd.org/pub/NetBSD/iso/3.1/algorcd-3.1.iso</a>
+  <li>Download the P5064 Algor kernel and the install sets:<pre>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/kernel/netbsd-P5064.gz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/kernel/netbsd-P5064.gz</a>
+
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/base.tgz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/base.tgz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/comp.tgz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/comp.tgz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/etc.tgz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/etc.tgz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/man.tgz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/man.tgz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/misc.tgz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/misc.tgz</a>
+	<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/text.tgz">ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.2/algor/binary/sets/text.tgz</a>
+
+</pre>
+  <li>Prepare an ISO image of the install sets:<pre>
+	mkisofs -U -o algor_files.iso base.tgz comp.tgz etc.tgz man.tgz misc.tgz text.tgz
 
 </pre>
   <p>
   <li>Start the emulated DECstation machine like this:<pre>
-	<b>gxemul -e 3max -d nbsd_algor.img -d algorcd-3.1.iso netbsd-INSTALL.gz</b>
+	<b>gxemul -e 3max -d nbsd_algor.img -d algor_files.iso netbsd-INSTALL.gz</b>
 
 </pre>
   <li>At the <tt>Terminal type? [rcons]</tt> prompt, type <b>CTRL-B</b>
@@ -523,7 +579,7 @@ to simulate a CTRL-C sent to NetBSD/pmax. Then execute the following commands:
 mount /dev/cd0c /mnt
 mkdir /mnt2; mount /dev/sd0c /mnt2
 cd /mnt2; sh
-for a in /mnt/*/binary/sets/[bcekmt]*.tgz; do echo $a; tar zxfp $a; done
+for a in /mnt/*.tgz; do echo $a; tar zxfp $a; done
 exit
 cd dev; sh ./MAKEDEV all; cd ../etc
 echo rc_configured=YES >> rc.conf
@@ -1606,6 +1662,8 @@ in GXemul.
 
 <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <a href="20081103-openbsd-landisk.png"><img src="20081103-openbsd-landisk-small.png"></a>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="20131109-openbsd_landisk.png"><img src="20131109-openbsd_landisk-small.jpg"></a>
 
 <p>To install OpenBSD/landisk onto an emulated harddisk image,
 follow these instructions:
@@ -1618,9 +1676,9 @@ follow these instructions:
 
 </pre>
   <li>Download the entire landisk directory from the ftp server:<pre>
-	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/">ftp://ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/</a></b>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/bsd .</b>
-	<b>cp ftp.se.openbsd.org/pub/OpenBSD/4.6/landisk/bsd.rd .</b>
+	<b>wget -np -l 0 -r <a href="ftp://ftp.se.openbsd.org/pub/OpenBSD/5.4/landisk/">ftp://ftp.se.openbsd.org/pub/OpenBSD/5.4/landisk/</a></b>
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/5.4/landisk/bsd .</b>
+	<b>cp ftp.se.openbsd.org/pub/OpenBSD/5.4/landisk/bsd.rd .</b>
 
 </pre>
 	(Replace ftp.se.openbsd.org with a server closer to you, for
@@ -1630,12 +1688,12 @@ follow these instructions:
 	(I recommend using <tt>mkisofs</tt> for that purpose. If you don't
 	already have <tt>mkisofs</tt> installed on your system, you need
 	to install it in order to do this.)<pre>
-	<b>mkisofs -U -o openbsd_landisk_4.6.iso ftp.se.openbsd.org/pub/OpenBSD/</b>
-	<b>rm -rf ftp.se.openbsd.org</b>      <i>(this directory is not needed anymore)</i>
+	<b>mkisofs -U -o openbsd_landisk_5.4.iso ftp.se.openbsd.org/pub/OpenBSD/</b>
+	<b>rm -rf ftp.se.openbsd.org</b>      <i># this directory is not needed anymore</i>
 
 </pre>
   <li>Start the emulator using this command line:<pre>
-	<b>gxemul -x -E landisk -d obsd_landisk.img -d d:openbsd_landisk_4.6.iso bsd.rd</b>
+	<b>gxemul -x -E landisk -d obsd_landisk.img -d d:openbsd_landisk_5.4.iso bsd.rd</b>
 
 </pre>
 	and proceed like you would do if you were installing OpenBSD
@@ -1643,17 +1701,17 @@ follow these instructions:
 	through the installation:
 	<ul>
 	  <li>Terminal type = <b>xterm</b>
+	  <li>Do <b>not</b> configure the network. (The Realtek NIC
+		found in the Landisk machine is not implemented yet
+		in the emulator.)
 	  <li>root disk = <b>wd0</b> (the disk to install onto)
 	  <li>Use the entire disk for OpenBSD (<b>whole</b>)
 	  <li>Accept the auto-layout (one big root partition (a) and a
 	  	small swap partition (b). c is the entire disk).
-	  <li>Do <b>not</b> configure the network. (The Realtek NIC
-		found in the Landisk machine is not implemented yet
-		in the emulator.)
 	  <li>Location of sets = <b>disk</b>
 	  <li>Is the disk partition already mounted = <b>no</b>
 	  <li>Disk containing the install media = <b>wd1</b>
-	  <li>Pathname to the sets = <b>4.6/landisk</b>
+	  <li>Pathname to the sets = <b>5.4/landisk</b>
 	</ul>
 </ol>
 
@@ -1664,6 +1722,8 @@ boot from the disk image:
 	<b>gxemul -x -E landisk -d obsd_landisk.img bsd</b>
 
 </pre>
+
+<p>Note: Generating ssh keys on the first bootup is extremely time consuming.
 
 <p>As with most emulation modes in GXemul, the NIC in this machine is 
 not emulated yet. If you want to transfer files to/from the emulated 
@@ -1716,7 +1776,7 @@ instructions:
 </pre>
 
   <li>Start the emulator using this command line:<pre>
-	<b>gxemul -e mvme187 -d obsd_mvme88k.img -d b:openbsd_mvme88k_4.5.iso -j 4.5/mvme88k/bsd.rd</b>
+	<b>gxemul -e mvme187old -d obsd_mvme88k.img -d b:openbsd_mvme88k_4.5.iso -j 4.5/mvme88k/bsd.rd</b>
 
 </pre>
 	and proceed like you would do if you were installing OpenBSD
@@ -1895,7 +1955,7 @@ instructions:
 Once the install has finished, the following command should let you 
 boot from the harddisk image:
 <pre>
-	<b>gxemul -e mvme187 -d obsd_mvme88k.img bsd</b>
+	<b>gxemul -e mvme187old -d obsd_mvme88k.img bsd</b>
 </pre>
 
 <p>When asked about root disk, enter <tt><b>sd0</b></tt>.

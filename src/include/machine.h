@@ -2,7 +2,7 @@
 #define	MACHINE_H
 
 /*
- *  Copyright (C) 2005-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2013  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -102,7 +102,7 @@ struct machine {
 	struct settings *settings;
 
 	/*  Name as choosen by the user:  */
-	char	*name;
+	const char *name;
 
 	/*  Full "path" to the machine, e.g. "machine[0]":  */
 	char	*path;
@@ -112,7 +112,7 @@ struct machine {
 	int	machine_subtype;	/*  MACHINE_DEC_3MAX_5000, ..  */
 
 	/*  Name set by code in src/machines/machine_*.c:  */
-	char	*machine_name;
+	const char *machine_name;
 
 	/*  The serial number is mostly used when emulating multiple machines
 	    in a network. nr_of_nics is the current nr of network cards, which
@@ -202,9 +202,10 @@ struct machine {
 #define	ARCH_NOARCH		0
 #define	ARCH_MIPS		1
 #define	ARCH_PPC		2
-#define	ARCH_ARM		3
-#define	ARCH_SH			4
-#define	ARCH_M88K		5
+#define	ARCH_ALPHA		4
+#define	ARCH_ARM		5
+#define	ARCH_SH			6
+#define	ARCH_M88K		7
 
 /*  MIPS:  */
 #define	MACHINE_BAREMIPS	1000
@@ -227,6 +228,11 @@ struct machine {
 #define	MACHINE_MACPPC		2004
 #define	MACHINE_MVMEPPC		2005
 
+/*  Alpha:  */
+#define	MACHINE_BAREALPHA	4000
+#define	MACHINE_TESTALPHA	4001
+#define	MACHINE_ALPHA		4002
+
 /*  ARM:  */
 #define	MACHINE_BAREARM		5000
 #define	MACHINE_TESTARM		5001
@@ -236,6 +242,7 @@ struct machine {
 #define	MACHINE_IQ80321		5005
 #define	MACHINE_IYONIX		5006
 #define	MACHINE_QEMU_ARM	5007
+#define	MACHINE_RPI		5008
 
 /*  SH:  */
 #define	MACHINE_BARESH		6000
