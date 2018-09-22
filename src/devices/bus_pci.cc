@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -120,7 +120,9 @@ void bus_pci_data_access(struct cpu *cpu, struct pci_data *pci_data,
 				*data = 0;
 		} else {
 			fatal("[ bus_pci_data_access(): write to non-existant"
-			    " device? ]\n");
+			    " device, bus %i func %i device %i ]\n",
+			    pci_data->cur_bus, pci_data->cur_func,
+			    pci_data->cur_device);
 		}
 		return;
 	}
@@ -1095,7 +1097,7 @@ printf("reg = 0x%x\n", reg);
 	case PCI_COMMAND_STATUS_REG:
 		if (value & PCI_COMMAND_IO_ENABLE)
 			enabled = 1;
-printf("  value = 0x%"PRIx32"\n", value);
+printf("  value = 0x%" PRIx32"\n", value);
 		if (wdc0 != NULL)
 			wdc_set_io_enabled((struct wdc_data *) wdc0, enabled);
 		if (wdc1 != NULL)

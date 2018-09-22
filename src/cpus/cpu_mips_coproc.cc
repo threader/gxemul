@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -516,7 +516,7 @@ static void invalidate_asid(struct cpu *cpu, unsigned int asid)
 	struct mips_tlb *tlb = cp->tlbs;
 
 	if (cpu->cd.mips.cpu_type.mmu_model == MMU3K) {
-		for (i=0; i<ntlbs; i++)
+		for (i = 0; i < ntlbs; i++)
 			if ((tlb[i].hi & R2K3K_ENTRYHI_ASID_MASK) == asid
 			    && (tlb[i].lo0 & R2K3K_ENTRYLO_V)
 			    && !(tlb[i].lo0 & R2K3K_ENTRYLO_G)) {
@@ -525,53 +525,51 @@ static void invalidate_asid(struct cpu *cpu, unsigned int asid)
 				    INVALIDATE_VADDR);
 			}
 	} else {
-		int non4kpages = 0;
-		uint64_t topbit = 1, fillmask = 0xffffff0000000000ULL;
-
-		if (cpu->is_32bit) {
-			topbit = 0x80000000;
-			fillmask = 0xffffffff00000000ULL;
-		} else if (cpu->cd.mips.cpu_type.mmu_model == MMU10K) {
-			topbit <<= 43;
-			fillmask <<= 4;
-		} else {
-			topbit <<= 39;
-		}
-
-		for (i=0; i<ntlbs; i++) {
-			// printf("A %02i: %016llx\n", i, (long long)tlb[i].mask);
-			uint64_t mask = tlb[i].mask & ~ 0x7ff;
-			if (mask != 0 && mask != 0x1800) {
-				non4kpages = 1;
-				//printf("non4kpages!\n");exit(1);
+		for (i = 0; i < ntlbs; i++) {
+			if ((tlb[i].hi & ENTRYHI_ASID) != asid || (tlb[i].hi & TLB_G))
 				continue;
+
+			uint64_t mask = cp->tlbs[i].mask;
+			uint64_t pagesize = 0x1000;
+			uint64_t tmp = mask >> 13;
+			while ((tmp & 1)) {
+				tmp >>= 1;
+				pagesize <<= 1;
+			}
+			
+			uint64_t oldvaddr;
+
+			if (cpu->cd.mips.cpu_type.mmu_model == MMU10K) {
+				oldvaddr = cp->tlbs[i].hi &
+					    (ENTRYHI_VPN2_MASK_R10K | ENTRYHI_R_MASK);
+				/*  44 addressable bits:  */
+				if (oldvaddr & 0x80000000000ULL)
+					oldvaddr |= 0x3ffff00000000000ULL;
+			} else if (cpu->is_32bit) {
+				/*  MIPS32 etc.:  */
+				oldvaddr = cp->tlbs[i].hi & ENTRYHI_VPN2_MASK;
+				oldvaddr = (int32_t)oldvaddr;
+			} else {
+				/*  Assume MMU4K  */
+				oldvaddr = cp->tlbs[i].hi &
+				    (ENTRYHI_R_MASK | ENTRYHI_VPN2_MASK);
+				/*  40 addressable bits:  */
+				if (oldvaddr & 0x8000000000ULL)
+					oldvaddr |= 0x3fffff0000000000ULL;
 			}
 
-//			if ((tlb[i].hi & ENTRYHI_ASID) == asid &&
-//			    !(tlb[i].hi & TLB_G)) {
-//				uint64_t vaddr0, vaddr1;
-//				vaddr0 = cp->tlbs[i].hi & ~fillmask & ~mask & ~ENTRYHI_ASID;
+			mask |= 0x1fff;
+			oldvaddr &= ~mask;
 
-			if ((tlb[i].hi & ENTRYHI_ASID) == asid &&
-			    !(tlb[i].hi & TLB_G)) {
-				uint64_t vaddr0, vaddr1;
-				vaddr0 = cp->tlbs[i].hi & ~fillmask;
-				if (vaddr0 & topbit)
-					vaddr0 |= fillmask;
-				vaddr1 = vaddr0 | 0x1000;  /*  TODO: mask  */
-
-				if (tlb[i].lo0 & ENTRYLO_V)
-					cpu->invalidate_translation_caches(cpu,
-					    vaddr0, INVALIDATE_VADDR);
-				if (tlb[i].lo1 & ENTRYLO_V)
-					cpu->invalidate_translation_caches(cpu,
-					    vaddr1, INVALIDATE_VADDR);
-			}
-		}
-
-		if (non4kpages) {
-			cpu->invalidate_translation_caches(cpu,
-			    0, INVALIDATE_ALL);
+			// printf("pagesize = %016llx mask = %016llx\n", pagesize, mask);
+			
+			if (cp->tlbs[i].lo0 & ENTRYLO_V)
+				for (uint64_t ofs = 0; ofs < pagesize; ofs += 0x1000)
+					cpu->invalidate_translation_caches(cpu, oldvaddr + ofs, INVALIDATE_VADDR);
+			
+			if (cp->tlbs[i].lo1 & ENTRYLO_V)
+				for (uint64_t ofs = 0; ofs < pagesize; ofs += 0x1000)
+					cpu->invalidate_translation_caches(cpu, oldvaddr + ofs + pagesize, INVALIDATE_VADDR);
 		}
 	}
 }
@@ -737,15 +735,15 @@ void coproc_register_write(struct cpu *cpu,
 			    tmp2 != 0x0ff &&
 			    tmp2 != 0x3ff &&
 			    tmp2 != 0xfff)
-				fatal("cpu%i: trying to write an invalid"
-				    " pagemask 0x%08lx to COP0_PAGEMASK\n",
+				fatal("[ cpu%i: trying to write an invalid"
+				    " pagemask 0x%08lx to COP0_PAGEMASK ]\n",
 				    cpu->cpu_id, (long)tmp);
 			unimpl = 0;
 			break;
 		case COP0_WIRED:
 			if (cpu->cd.mips.cpu_type.mmu_model == MMU3K) {
-				fatal("cpu%i: r2k/r3k wired register must "
-				    "always be 8\n", cpu->cpu_id);
+				fatal("[ cpu%i: r2k/r3k wired register must "
+				    "always be 8 ]\n", cpu->cpu_id);
 				tmp = 8;
 			}
 			cp->reg[COP0_RANDOM] = cp->nr_of_tlbs-1;
@@ -754,8 +752,8 @@ void coproc_register_write(struct cpu *cpu,
 			break;
 		case COP0_COUNT:
 			if (tmp != (uint64_t)(int64_t)(int32_t)tmp)
-				fatal("WARNING: trying to write a 64-bit value"
-				    " to the COUNT register!\n");
+				fatal("[ WARNING: trying to write a 64-bit value"
+				    " to the COUNT register! ]\n");
 			tmp = (int64_t)(int32_t)tmp;
 			unimpl = 0;
 			break;
@@ -773,10 +771,6 @@ void coproc_register_write(struct cpu *cpu,
 				else
 					hz = (double)cpu->machine->emulated_hz
 					    / (double)compare_diff;
-/*
- *  TODO: DON'T HARDCODE THIS!
- */
-hz = 100.0;
 
 				/*  Initialize or re-set the periodic timer:  */
 				if (hz > 0) {
@@ -798,8 +792,8 @@ hz = 100.0;
 			cp->reg[COP0_CAUSE] &= ~0x8000;
 
 			if (tmp != (uint64_t)(int64_t)(int32_t)tmp)
-				fatal("WARNING: trying to write a 64-bit value"
-				    " to the COMPARE register!\n");
+				fatal("[ WARNING: trying to write a 64-bit value"
+				    " to the COMPARE register! ]\n");
 
 			tmp = (int64_t)(int32_t)tmp;
 			cpu->cd.mips.compare_register_set = 1;
@@ -867,9 +861,9 @@ hz = 100.0;
 				switch (select) {
 				case 1:	cpu->cd.mips.cop0_config_select1 = tmp;
 					break;
-				default:fatal("coproc_register_write(): unimpl"
+				default:fatal("[ coproc_register_write(): unimpl"
 					    "emented config register select "
-					    "%i\n", select);
+					    "%i ]\n", select);
 					exit(1);
 				}
 				return;
@@ -957,8 +951,8 @@ hz = 100.0;
 	}
 
 	if (unimpl) {
-		fatal("cpu%i: warning: write to unimplemented coproc%i "
-		    "register %i (%s), data = 0x%016llx\n", cpu->cpu_id,
+		fatal("[ cpu%i: warning: write to unimplemented coproc%i "
+		    "register %i (%s), data = 0x%016llx ]\n", cpu->cpu_id,
 		    cp->coproc_nr, reg_nr, cp->coproc_nr==0?
 		    cop0_names[reg_nr] : "?", (long long)tmp);
 
@@ -968,8 +962,8 @@ hz = 100.0;
 	}
 
 	if (readonly) {
-		fatal("cpu%i: warning: write to READONLY coproc%i register "
-		    "%i ignored\n", cpu->cpu_id, cp->coproc_nr, reg_nr);
+		fatal("[ cpu%i: warning: write to READONLY coproc%i register "
+		    "%i ignored ]\n", cpu->cpu_id, cp->coproc_nr, reg_nr);
 		return;
 	}
 
@@ -1111,9 +1105,11 @@ static int fpu_op(struct cpu *cpu, struct mips_coproc *cp, int op, int fmt,
 		if (fabs(float_value[1].f) > 0.00000000001)
 			nf = float_value[0].f / float_value[1].f;
 		else {
-			fatal("DIV by zero !!!!\n");
-			nf = 0.0;	/*  TODO  */
-			nan = 1;
+			fatal("DIV by zero !!!! TODO\n");
+			// nf = 0.0;	/*  TODO  */
+			// nan = 1;
+			mips_cpu_exception(cpu, EXCEPTION_FPE, 0, 0, 1, 0, 0, 0);
+			return 0;
 		}
 		/*  debug("  div: %f / %f = %f\n",
 		    float_value[0].f, float_value[1].f, nf);  */
@@ -1266,7 +1262,7 @@ static int fpu_function(struct cpu *cpu, struct mips_coproc *cp,
 
 		if (cpu->machine->instruction_trace || unassemble_only)
 			debug("%s\t%i,0x%016llx\n", instr_mnem, cc,
-			    (long long) (cpu->pc + (imm << 2)));
+			    (long long) (cpu->pc + 4 + (imm << 2)));
 		if (unassemble_only)
 			return 1;
 
@@ -1497,8 +1493,12 @@ void coproc_tlbpr(struct cpu *cpu, int readflag)
 		} else {
 			/*  R4000:  */
 			i = cp->reg[COP0_INDEX] & INDEX_MASK;
-			if (i >= cp->nr_of_tlbs)	/*  TODO:  exception  */
+			if (i >= cp->nr_of_tlbs) {
+				/*  TODO:  exception?  */
+				fatal("[ warning: tlbr from index %i (too "
+				    "high) ]\n", i);
 				return;
+			}
 
 			cp->reg[COP0_PAGEMASK] = cp->tlbs[i].mask;
 			cp->reg[COP0_ENTRYHI]  = cp->tlbs[i].hi;
@@ -1628,19 +1628,19 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 	/*  Debug dump of the previous entry at that index:  */
 	fatal("{ old TLB entry at index %02x:", index);
 	if (cpu->cd.mips.cpu_type.mmu_model == MMU3K) {
-		fatal(" hi=%08"PRIx32, (uint32_t)cp->tlbs[index].hi);
-		fatal(" lo=%08"PRIx32, (uint32_t)cp->tlbs[index].lo0);
+		fatal(" hi=%08" PRIx32, (uint32_t)cp->tlbs[index].hi);
+		fatal(" lo=%08" PRIx32, (uint32_t)cp->tlbs[index].lo0);
 	} else {
 		if (cpu->is_32bit) {
-			fatal(" mask=%08"PRIx32,(uint32_t)cp->tlbs[index].mask);
-			fatal(" hi=%08"PRIx32, (uint32_t)cp->tlbs[index].hi);
-			fatal(" lo0=%08"PRIx32, (uint32_t)cp->tlbs[index].lo0);
-			fatal(" lo1=%08"PRIx32, (uint32_t)cp->tlbs[index].lo1);
+			fatal(" mask=%08" PRIx32,(uint32_t)cp->tlbs[index].mask);
+			fatal(" hi=%08" PRIx32, (uint32_t)cp->tlbs[index].hi);
+			fatal(" lo0=%08" PRIx32, (uint32_t)cp->tlbs[index].lo0);
+			fatal(" lo1=%08" PRIx32, (uint32_t)cp->tlbs[index].lo1);
 		} else {
-			fatal(" mask=%016"PRIx64, cp->tlbs[index].mask);
-			fatal(" hi=%016"PRIx64, cp->tlbs[index].hi);
-			fatal(" lo0=%016"PRIx64, cp->tlbs[index].lo0);
-			fatal(" lo1=%016"PRIx64, cp->tlbs[index].lo1);
+			fatal(" mask=%016" PRIx64, cp->tlbs[index].mask);
+			fatal(" hi=%016" PRIx64, cp->tlbs[index].hi);
+			fatal(" lo0=%016" PRIx64, cp->tlbs[index].lo0);
+			fatal(" lo1=%016" PRIx64, cp->tlbs[index].lo1);
 		}
 	}
 	fatal(" }\n");
@@ -1689,15 +1689,28 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 				oldvaddr |= 0x3fffff0000000000ULL;
 		}
 
-		/*
-		 *  TODO: non-4KB page sizes!
-		 */
-		if (cp->tlbs[index].lo0 & ENTRYLO_V)
-			cpu->invalidate_translation_caches(cpu, oldvaddr,
-			    INVALIDATE_VADDR);
-		if (cp->tlbs[index].lo1 & ENTRYLO_V)
-			cpu->invalidate_translation_caches(cpu, oldvaddr|0x1000,
-			    INVALIDATE_VADDR);
+		{
+			uint64_t mask = cp->tlbs[index].mask;
+			uint64_t pagesize = 0x1000;
+			uint64_t tmp = mask >> 13;
+			while ((tmp & 1)) {
+				tmp >>= 1;
+				pagesize <<= 1;
+			}
+			
+			mask |= 0x1fff;
+			oldvaddr &= ~mask;
+
+			// printf("pagesize = %016llx mask = %016llx\n", pagesize, mask);
+			
+			if (cp->tlbs[index].lo0 & ENTRYLO_V)
+				for (uint64_t ofs = 0; ofs < pagesize; ofs += 0x1000)
+					cpu->invalidate_translation_caches(cpu, oldvaddr + ofs, INVALIDATE_VADDR);
+			
+			if (cp->tlbs[index].lo1 & ENTRYLO_V)
+				for (uint64_t ofs = 0; ofs < pagesize; ofs += 0x1000)
+					cpu->invalidate_translation_caches(cpu, oldvaddr + ofs + pagesize, INVALIDATE_VADDR);
+		}
 	}
 
 #if 0
@@ -1825,6 +1838,8 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 			exit(1);
 		}
 
+		pfn_shift = vpn_shift;
+
 		paddr0 = ((cp->tlbs[index].lo0 & ENTRYLO_PFN_MASK)
 		    >> ENTRYLO_PFN_SHIFT) << pfn_shift
 		    >> vpn_shift << vpn_shift;
@@ -1871,14 +1886,17 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 
 		/*
 		 *  Invalidate any code translations, if we are writing Dirty
-		 *  pages to the TLB:  (TODO: 4KB hardcoded... ugly)
+		 *  pages to the TLB:
 		 */
 		psize = 1 << pfn_shift;
-		for (ptmp = 0; ptmp < psize; ptmp += 0x2000) {
-			if (wf0)
+
+		if (wf0) {
+			for (ptmp = 0; ptmp < psize; ptmp += 0x1000)
 				cpu->invalidate_code_translation(cpu,
 				    paddr0 + ptmp, INVALIDATE_PADDR);
-			if (wf1)
+		}
+		if (wf1) {
+			for (ptmp = 0; ptmp < psize; ptmp += 0x1000)
 				cpu->invalidate_code_translation(cpu,
 				    paddr1 + ptmp, INVALIDATE_PADDR);
 		}
@@ -1893,14 +1911,16 @@ void coproc_tlbwri(struct cpu *cpu, int randomflag)
 		 *             be too expensive to add e.g. 16MB pages like
 		 *             this.
 		 */
-		memblock = memory_paddr_to_hostaddr(cpu->mem, paddr0, 0);
-		if (memblock != NULL && cp->reg[COP0_ENTRYLO0] & ENTRYLO_V)
-			cpu->update_translation_table(cpu, vaddr0, memblock,
-			    wf0, paddr0);
-		memblock = memory_paddr_to_hostaddr(cpu->mem, paddr1, 0);
-		if (memblock != NULL && cp->reg[COP0_ENTRYLO1] & ENTRYLO_V)
-			cpu->update_translation_table(cpu, vaddr1, memblock,
-			    wf1, paddr1);
+		if (psize == 0x1000) {
+			memblock = memory_paddr_to_hostaddr(cpu->mem, paddr0, 0);
+			if (memblock != NULL && cp->reg[COP0_ENTRYLO0] & ENTRYLO_V)
+				cpu->update_translation_table(cpu, vaddr0, memblock,
+				    wf0, paddr0);
+			memblock = memory_paddr_to_hostaddr(cpu->mem, paddr1, 0);
+			if (memblock != NULL && cp->reg[COP0_ENTRYLO1] & ENTRYLO_V)
+				cpu->update_translation_table(cpu, vaddr1, memblock,
+				    wf1, paddr1);
+		}
 
 		/*  Set new last_written_tlb_index hint:  */
 		cpu->cd.mips.last_written_tlb_index = index;
@@ -2225,8 +2245,8 @@ void coproc_function(struct cpu *cpu, struct mips_coproc *cp, int cpnr,
 		return;
 	}
 
-	fatal("cpu%i: UNIMPLEMENTED coproc%i function %08"PRIx32" "
-	    "(pc = %016"PRIx64")\n", cpu->cpu_id, cp->coproc_nr,
+	fatal("cpu%i: UNIMPLEMENTED coproc%i function %08" PRIx32" "
+	    "(pc = %016" PRIx64")\n", cpu->cpu_id, cp->coproc_nr,
 	    (uint32_t)function, cpu->pc);
 
 	mips_cpu_exception(cpu, EXCEPTION_CPU, 0, 0, cp->coproc_nr, 0, 0, 0);

@@ -18,7 +18,7 @@ dev_dc7085.cc  DC7085 serial controller, used in some DECstation models
 dev_dec21030.cc  DEC 21030 "TGA" graphics card
 dev_dec21143.cc  DEC 21143 "Tulip" ethernet controller
 dev_dec5800.cc  DECsystem 58x0 devices
-dev_dec_ioasic.cc  IOASIC device used in the DECstation "3MIN" and "3MAX" machines
+dev_dec_ioasic.cc  IOASIC device used in some DECstation machines
 dev_disk.cc  A simple disk controller device, for the test machines
 dev_dreamcast_asic.cc  Dreamcast-specific ASIC
 dev_dreamcast_g2.cc  Dreamcast G2 bus
@@ -41,11 +41,13 @@ dev_irqc.cc  Generic IRQ controller for the test machines
 dev_jazz.cc  Microsoft Jazz-related stuff (Acer PICA-61, etc)
 dev_kn01.cc  DEC KN01 ("PMAX", DECstation type 1) control register and VDAC
 dev_kn02.cc  DEC KN02 mainbus (TurboChannel interrupt controller)
+dev_kn02ba.cc  DEC KN02BA "3min" TurboChannel interrupt controller
 dev_kn220.cc  DEC KN220 (DECsystem 5500) devices
 dev_kn230.cc  DEC KN230 (MIPSMATE 5100) stuff
 dev_lca.cc  LCA PCI bus, for Alpha machines
 dev_le.cc  LANCE ethernet, as used in DECstations
 dev_lpt.cc  LPT (parallel printer) controller
+dev_luna88k.cc  OMRON Luna 88K-specific devices and control registers
 dev_m8820x.cc  M88200/M88204 CMMU (Cache/Memory Management Unit)
 dev_malta_lcd.cc  Malta (evbmips) LCD display
 dev_mb8696x.cc  Fujitsu MB8696x Ethernet interface (used in the Dreamcast)
@@ -56,6 +58,7 @@ dev_mvme187.cc  MVME187-specific devices and control registers
 dev_ns16550.cc  NS16550 serial controller
 dev_ohci.cc  USB Open Host Controller Interface
 dev_osiop.cc  NCR 53C710 SCSI I/O Processor (SIOP)
+dev_palmbus.cc  VoCore Palmbus
 dev_pcc2.cc  Peripheral Channel Controller (PCC2) bus (used in MVME machines)
 dev_pccmos.cc  PC CMOS/RTC device (ISA ports 0x70 and 0x71)
 dev_pcic.cc  Intel 82365SL PC Card Interface Controller

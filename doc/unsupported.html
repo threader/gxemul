@@ -16,7 +16,7 @@
 
 <!--
 
-Copyright (C) 2003-2013  Anders Gavare.  All rights reserved.
+Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -45,17 +45,23 @@ SUCH DAMAGE.
 
 <p><br>
 <ul>
-  <li><a href="unsupported.html#mach">Mach/PMAX</a>
-  <li><a href="unsupported.html#declinuxredhat">Redhat Linux for DECstation</a>
-  <li><a href="unsupported.html#openbsdsgiinstall">OpenBSD/sgi</a>
-  <li><a href="unsupported.html#openbsdarcinstall">OpenBSD/arc 2.3</a>
-  <li><a href="unsupported.html#debiancats">Debian GNU/Linux for CATS</a>
-  <li><a href="unsupported.html#linux_malta">Linux/Malta</a> (variant 1)
-  <li><a href="unsupported.html#linux_malta2">Linux/Malta</a> (variant 2)
-  <li><a href="unsupported.html#linux_qemu_mips">Linux/QEMU_MIPS</a>
-  <li><a href="unsupported.html#windows_nt_mips">Windows NT/MIPS</a>
-  <li><a href="unsupported.html#netbsdplaystation2">NetBSD/playstation2</a>
-  <li><a href="unsupported.html#netbsdrpi">NetBSD/raspberrypi</a>
+  <li><a href="#helenosmaltabe">HelenOS/maltabe 0.7.2</a>
+  <li><a href="#helenosrpi">HelenOS/rpi 0.7.2</a>
+  <li><a href="#helenosppc">HelenOS/ppc 0.7.1</a>
+  <li><a href="#mach">Mach/PMAX</a>
+  <li><a href="#declinuxredhat">Redhat Linux for DECstation</a>
+  <li><a href="#openbsdsgiinstall">OpenBSD/sgi</a>
+  <li><a href="#openbsdarcinstall">OpenBSD/arc 2.3</a>
+  <li><a href="#openbsdluna88k">OpenBSD/luna88k</a>
+  <li><a href="#debiancats">Debian GNU/Linux for CATS</a>
+  <li><a href="#linux_malta">Linux/Malta</a> (variant 1)
+  <li><a href="#linux_malta2">Linux/Malta</a> (variant 2)
+  <li><a href="#linux_qemu_mips">Linux/QEMU_MIPS</a>
+  <li><a href="#windows_nt_mips">Windows NT/MIPS</a>
+  <li><a href="#netbsdplaystation2">NetBSD/playstation2</a>
+  <li><a href="#netbsdrpi">NetBSD/raspberrypi</a>
+  <li><a href="#linux_vocore">Linux/VoCore</a>
+  <li><a href="#freebsd_vocore">FreeBSD/VoCore</a>
 </ul>
 
 <p>NOTE: The guest operating systems listed on this page are here because
@@ -68,11 +74,72 @@ page</a>.
 cases, it contains notes about starting guest OSes that are not complete
 (i.e. just booting a kernel, not a full installation of a guest OS).
 
-<p>Also note that ALL modes on this page are
-<a href="guestoses.html#legacy"><font color="#dd2222"><b>legacy modes</b></font></a>.
-
 
 <p><hr>
+
+
+
+
+
+
+
+<p><br>
+<a name="helenosmaltabe"></a>
+<h3>HelenOS/maltabe:</h3>
+
+<p>Modern versions of HelenOS <i>almost</i> run in GXemul,
+using the Malta big-endian emulation mode, without a graphical framebuffer.
+The PCI devices in GXemul are not detected/supported yet.
+
+<p>To run HelenOS for Malta in GXemul:
+<ol>
+  <li>Download the HelenOS kernel:<pre>
+	<a href="http://www.helenos.org/releases/HelenOS-0.7.2-mips32-malta-be.boot">http://www.helenos.org/releases/HelenOS-0.7.2-mips32-malta-be.boot</a>
+  </pre>
+  <li>Start GXemul using the following command line:<pre>
+  	<b>gxemul -e maltabe HelenOS-0.7.2-mips32-malta-be.boot</b>
+  </pre>
+</ol>
+
+
+
+
+<p><br>
+<a name="helenosrpi"></a>
+<h3>HelenOS/rpi:</h3>
+
+<p>The Raspberry Pi mode in GXemul is just a dummy so far.
+These instructions are used as a reminder for me when I wish
+to experiment with the HelenOS kernel:
+
+<p>
+<ol>
+  <li>Download the HelenOS kernel:<pre>
+	<a href="http://www.helenos.org/releases/HelenOS-0.7.2-arm32-raspberrypi.bin">http://www.helenos.org/releases/HelenOS-0.7.2-arm32-raspberrypi.bin</a>
+  </pre>
+  <li>Start GXemul using the following command line:<pre>
+  	<b>gxemul -VE rpi -tv 0x8000:0x40:0x8000:HelenOS-0.7.2-arm32-raspberrypi.bin</b>
+  </pre>
+</ol>
+
+
+
+
+<p><br>
+<a name="helenosppc"></a>
+<h3>HelenOS/ppc:</h3>
+
+<p>This does not work yet.
+
+<p>
+<ol>
+  <li>Download the HelenOS PPC ISO image:<pre>
+	<a href="http://www.helenos.org/releases/HelenOS-0.7.1-ppc32.iso">http://www.helenos.org/releases/HelenOS-0.7.1-ppc32.iso</a>
+  </pre>
+  <li>Start GXemul using the following command line:<pre>
+  	<b>gxemul -M 256 -v -x -e g4 -d HelenOS-0.7.1-ppc32.iso  -j BOOT/image.boot</b>
+  </pre>
+</ol>
 
 
 
@@ -118,8 +185,9 @@ for DECstation in the emulator:
 </pre>
   <li>Load the contents of pmax.tar.Z onto the disk image. This is
 	complicated, and should be described in more detail some time.
-	For now, use your imagination. (For example using OpenBSD/pmax:
-	<i>disklabel -E rz1; newfs -O /dev/rz1a;
+	For now, use your imagination, for example using
+	<a href="guestoses.html#openbsdpmaxinstall">OpenBSD/pmax</a>:
+	<pre>	disklabel -E rz1; newfs -O /dev/rz1a;
 	mount /dev/rz1a /mnt; cd /mnt; download pmax.tar.Z using ftp;
 	tar xzvf pmax.tar.Z; mv pmax_mach/* .; rmdir pmax_mach;
 	mkdir mach_servers;
@@ -127,7 +195,7 @@ for DECstation in the emulator:
 	cp ../etc/mach_init .;
 	cp ../tests/test_service startup;
 	dd if=/dev/zero of=paging_file bs=65536 count=400;
-	cd /; sync; umount /mnt</i>)
+	cd /; sync; umount /mnt</pre>
 	<p>
   <li>Start the emulator with the following command:<pre>
 	<b>gxemul -c 'put w 0x800990e0, 0' -c 'put w 0x80099144, 0' \
@@ -492,6 +560,95 @@ happened on real hardware.
 
 
 
+<p><br>
+<a name="openbsdluna88k"></a>
+<h3>OpenBSD/luna88k:</h3>
+
+<p><font color="#ff0000">IT DOES <b>NOT</b> WORK YET!</font>
+
+<p>These instructions are here mostly for me to remember how to debug/proceed:
+
+<p>
+Download a RAMDISK kernel:
+
+<ul>
+	<li><a href="https://ftp.eu.openbsd.org/pub/OpenBSD/5.4/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/5.4/luna88k/bsd.rd</a>
+	<li><a href="https://ftp.eu.openbsd.org/pub/OpenBSD/5.9/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/5.9/luna88k/bsd.rd</a>
+	<li><a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/bsd.rd</a>
+</ul>
+
+<p>For 5.4 and below:
+<pre>
+	<b>gxemul -e luna-88k 0x20000:0x20:bsd.rd</b>
+</pre>
+or for the newer ones:
+<pre>
+	<b>gxemul -e luna-88k bsd.rd</b>
+</pre>
+
+<p>From 6.0 and newer, bugs are triggered (most likely in GXemul):
+<pre>
+	panic: amap_wipeout: corrupt amap
+</pre>
+
+<p>The 5.9 kernel gets further than 6.0 (reaching userland), but it 
+seems that OpenBSD was compiled with too heavy optimizations, so the 
+framebuffer scroll up routine does not contain any loads or stores.
+
+<p>Using a breakpoint
+<tt>-p om1_windowmove</tt> in both OpenBSD 5.9 and 6.2 indicates that 
+5.9 must have been optimized too heavily; it loops when trying to copy
+pixels to scroll up the text, but the loop contains "nothing":
+
+<pre>
+s001553b8: 64e70001	subu	r7,r7,1
+s001553bc: 61270001	addu	r9,r7,1
+s001553c0: ec4c0004	bcnd.n	eq0,r12,0x001553d0	; &lt;om1_windowmove+0x3b0>
+s001553c4: 59600000 (d)	or	r11,r0,0x0
+s001553c8: f1a08832	set	r13,r0,1&lt;18>
+s001553cc: f562600d	addu	r11,r2,r13
+s001553d0: 60420004	addu	r2,r2,4
+s001553d4: eda9fff9	bcnd.n	ne0,r9,0x001553b8	; &lt;om1_windowmove+0x398>
+s001553d8: 616b0004 (d)	addu	r11,r11,4
+s001553b8: 64e70001	subu	r7,r7,1
+...
+</pre>
+
+compared to what it looks like in 6.2:
+
+<pre>
+s001547a4: 64e70001	subu	r7,r7,1
+s001547a8: 61270001	addu	r9,r7,1
+s001547ac: 60420004	addu	r2,r2,4
+s001547b0: eda9fffa	bcnd.n	ne0,r9,0x00154798	; &lt;om1_windowmove+0x398>
+s001547b4: 616b0004 (d)	addu	r11,r11,4
+s00154798: edac003e	bcnd.n	ne0,r12,0x00154890	; &lt;om1_windowmove+0x490>
+s0015479c: f1208832 (d)	set	r9,r0,1&lt;18>
+s00154890: f5021409	ld	r8,r2,r9	; [0xb10c958c]
+s00154894: c7ffffc4	br.n	0x001547a4	; &lt;om1_windowmove+0x3a4>
+s00154898: f500240b (d)	st	r8,r0,r11	; [0xb1087f8c]
+s001547a4: 64e70001	subu	r7,r7,1
+</pre>
+
+<p>Note the actual loads and stores to video ram (0xb10.....).
+
+<p>Going back all the way to an old 5.4 kernel allows the framebuffer to 
+be used:
+<pre>
+	<b>gxemul -X -e luna-88k 0x20000:0x20:bsd.rd</b>
+</pre>
+
+<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="20180220-openbsd-luna88k-5.4.png"><img src="20180220-openbsd-luna88k-5.4-small.png"></a>
+
+
+<p>The following is not needed in order to experiment with booting OpenBSD,
+but can be interesting nonetheless: Download 
+<a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/boot">https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/boot</a> and try
+
+<pre>
+	<b>gxemul -v -e luna-88k 0x00700000:0x20:0x00700000:boot</b>
+</pre>
 
 
 
@@ -825,6 +982,75 @@ mdconfig -d -u 0
 
 
 </p>
+
+
+
+
+
+
+
+<p><br>
+<a name="linux_vocore"></a>
+<h3>Linux/VoCore:</h3>
+
+<p>This doesn't work yet. Only serial console output is implemented,
+nothing else. Starting point for development:
+
+<p>See <a href="http://vocore.io/v1d.html">http://vocore.io/v1d.html</a> for info about the first VoCore model. (There are some newer ones too.)
+
+<p>See <a href="https://openwrt.org/toh/vocore/vocore?datasrt=model">https://openwrt.org/toh/vocore/vocore?datasrt=model</a> for downloadable Linux kernel files etc.
+
+<p>To start debugging/development:
+<ol>
+	<li>Download <a href="http://downloads.lede-project.org/releases/17.01.4/targets/ramips/rt305x/lede-17.01.4-ramips-rt305x-vocore-16M-initramfs-kernel.bin">http://downloads.lede-project.org/releases/17.01.4/targets/ramips/rt305x/lede-17.01.4-ramips-rt305x-vocore-16M-initramfs-kernel.bin</a>
+
+	<li><pre>dd if=lede-17.01.4-ramips-rt305x-vocore-16M-initramfs-kernel.bin of=apa bs=64 iseek=1 oseek=0
+lzma -d &lt; apa &gt; apa2</pre>
+
+	<li><tt><b>gxemul -E vocore 0x80000000:0:0x80000000:apa2</b></tt>
+</pre>
+</ol>
+
+<p>ORIGINAL kernel (from vocore.io):
+<ol>
+	<li>Download <a href="http://vonger.cn/upload/vocore.dock2.bin">http://vonger.cn/upload/vocore.dock2.bin</a> (which may be corrupt? lzma complains...)
+
+	<li><pre>dd if=vocore.dock2.bin of=apa5 bs=64 iseek=1 oseek=0
+lzma -dv &lt; apa5 &gt; apa6</pre>
+
+	<li><tt><b>gxemul -E vocore 0x80000000:0:0x80000000:apa6</b></tt>
+</pre>
+</ol>
+
+
+<p>TODO: Pretty much Everything.
+
+
+
+
+
+<p><br>
+<a name="vreebsd_vocore"></a>
+<h3>FreeBSD/VoCore:</h3>
+
+<p>This doesn't work yet. See comments about Linux above.
+
+<p>According to <a href="https://lists.freebsd.org/pipermail/freebsd-mips/2016-January/004332.html">https://lists.freebsd.org/pipermail/freebsd-mips/2016-January/004332.html</a>,
+a kernel at <a href="https://www.dropbox.com/s/nkwzx5omtx3ye7t/kernel.uboot.rt5350?dl=0">https://www.dropbox.com/s/nkwzx5omtx3ye7t/kernel.uboot.rt5350?dl=0</a> can be experimented with:
+
+<pre>
+kernel.uboot.rt5350: u-boot legacy uImage, FreeBSD Kernel Image, Linux/MIPS, OS Kernel Image (gzip), 1467294 bytes, Tue Dec 29 17:04:13 2015, Load Address: 0x80001120, Entry Point: 0x80001120, Header CRC: 0x3F6D1694, Data CRC: 0x6AF182B5
+
+dd if=kernel.uboot.rt5350 of=apa3 bs=64 iseek=1 oseek=0
+gunzip &lt; apa3 &gt; apa4
+
+<b>gxemul -VEvocore 0x80001120:0:0x80001120:apa4</b>
+</pre>
+
+<p>TODO: Pretty much Everything.
+
+
+
 
 <p><br>
 <hr>

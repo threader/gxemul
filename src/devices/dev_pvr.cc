@@ -28,7 +28,7 @@
  *  COMMENT: PowerVR CLX2 (graphics controller used in the Dreamcast)
  *
  *  Implemented by reading http://www.ludd.luth.se/~jlo/dc/powervr-reg.txt and
- *  http://mc.pp.se/dc/pvr.html, source code of various demos and KalistOS,
+ *  http://mc.pp.se/dc/pvr.html, source code of various demos and KallistiOS,
  *  attempting to run the PROM from my own Dreamcast, and doing a lot of
  *  guessing.
  *
@@ -637,7 +637,14 @@ static void simpleline(struct pvr_data *d, int y, double x1, double x2,
 		tmpf = g1; g1 = g2; g2 = tmpf;
 		tmpf = b1; b1 = b2; b2 = tmpf;
 	}
-	
+
+	// uint32_t fogDensity = REG(PVRREG_FOG_DENSITY);
+	// double scale_factor = 255.0;	// TODO: take fogDensity into account.
+	// uint32_t fogColor = REG(PVRREG_FOG_TABLE_COL);
+	// int fog_r = (fogColor >> 16) & 255;
+	// int fog_g = (fogColor >> 8) & 255;
+	// int fog_b = fogColor & 255;
+
 	double dz12 = (x2 - x1 != 0) ? ( (double)(z2 - z1) / (double)(x2 - x1) ) : 0;
 	double dr12 = (x2 - x1 != 0) ? ( (double)(r2 - r1) / (double)(x2 - x1) ) : 0;
 	double dg12 = (x2 - x1 != 0) ? ( (double)(g2 - g1) / (double)(x2 - x1) ) : 0;
@@ -649,8 +656,23 @@ static void simpleline(struct pvr_data *d, int y, double x1, double x2,
 			if (d->vram_z[ofs] <= z) {
 				d->vram_z[ofs] = z;
 
+				// z = 1/w
+				// int v = z * scale_factor;
+				// printf("z=%f v=%i\n", z, v);
+				// if (v < 0) v = 0;
+				// if (v > 255) v = 255;
+				// v >>= 1;
+
+				// int fogvalues = d->reg[PVRREG_FOG_TABLE  / sizeof(uint32_t) + v];
+				// printf("fogv = %04x\n", fogvalues);
+
 				// NOTE/TODO: Hardcoded for 565 pixelformat.
 				int ri = r, gi = g, bi = b;
+				// int a = (fogvalues >> 8) & 255;
+				// ri = ((fog_r * a) + (ri * (255 - a))) >> 8;
+				// gi = ((fog_g * a) + (gi * (255 - a))) >> 8;
+				// bi = ((fog_b * a) + (bi * (255 - a))) >> 8;
+
 				if (ri < 0) ri = 0; if (ri > 255) ri = 255;
 				if (gi < 0) gi = 0; if (gi > 255) gi = 255;
 				if (bi < 0) bi = 0; if (bi > 255) bi = 255;
@@ -1052,6 +1074,7 @@ void pvr_render(struct cpu *cpu, struct pvr_data *d)
 	bool dcalcexact;
 
 	// Word 2:
+	int fog = 0;
 	int texture_usize = 0, texture_vsize = 0;
 
 	// Word 3:
@@ -1178,7 +1201,7 @@ void pvr_render(struct cpu *cpu, struct pvr_data *d)
 			// TODO: dstblend (28-26)
 			// TODO: srcmode (25)
 			// TODO: dstmode (24)
-			// TODO: fog (23-22)
+			fog = (list[2] >> 22) & 3;
 			// TODO: clamp (21)
 			// TODO: alpha (20)
 			// TODO: texture alpha (19)
@@ -1206,6 +1229,9 @@ void pvr_render(struct cpu *cpu, struct pvr_data *d)
 			fatal("            stride %s, ", texture_stride ? "TRUE" : "false");
 			fatal("textureAddr 0x%08x\n", textureAddr);
 #endif
+
+			if (fog != 2)
+				fatal("[ pvr: fog type %i not yet implemented ]\n", fog);
 
 			if (texture_vq_compression) {
 				fatal("pvr: texture_vq_compression not supported yet\n");
@@ -1595,11 +1621,11 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_OB_ADDR:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: OB_ADDR set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: OB_ADDR set to 0x%08" PRIx32" ]\n",
 			    (uint32_t)(idata & PVR_OB_ADDR_MASK));
 			if (idata & ~PVR_OB_ADDR_MASK) {
 				fatal("[ pvr: OB_ADDR: Fatal error: Unknown"
-				    " bits set: 0x%08"PRIx32" ]\n",
+				    " bits set: 0x%08" PRIx32" ]\n",
 				    (uint32_t)(idata & ~PVR_OB_ADDR_MASK));
 				exit(1);
 			}
@@ -1610,11 +1636,11 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_TILEBUF_ADDR:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: TILEBUF_ADDR set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: TILEBUF_ADDR set to 0x%08" PRIx32" ]\n",
 			    (uint32_t)(idata & PVR_TILEBUF_ADDR_MASK));
 			if (idata & ~PVR_TILEBUF_ADDR_MASK) {
 				fatal("[ pvr: TILEBUF_ADDR: Unknown"
-				    " bits set: 0x%08"PRIx32" ]\n",
+				    " bits set: 0x%08" PRIx32" ]\n",
 				    (uint32_t)(idata & ~PVR_TILEBUF_ADDR_MASK));
 				exit(1);
 			}
@@ -1640,7 +1666,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_BRDCOLR:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: BRDCOLR set to 0x%06"PRIx32" ]\n",
+			debug("[ pvr: BRDCOLR set to 0x%06" PRIx32" ]\n",
 			    (int)idata);
 			DEFAULT_WRITE;
 			d->border_updated = 1;
@@ -1701,7 +1727,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_FB_RENDER_ADDR1:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FB_RENDER_ADDR1 set to 0x%08"PRIx32
+			debug("[ pvr: FB_RENDER_ADDR1 set to 0x%08" PRIx32
 			    " ]\n", (int) idata);
 			DEFAULT_WRITE;
 		}
@@ -1709,7 +1735,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_FB_RENDER_ADDR2:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FB_RENDER_ADDR2 set to 0x%08"PRIx32
+			debug("[ pvr: FB_RENDER_ADDR2 set to 0x%08" PRIx32
 			    " ]\n", (int) idata);
 			DEFAULT_WRITE;
 		}
@@ -1802,10 +1828,10 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_VRAM_CFG1:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: VRAM_CFG1 set to 0x%08"PRIx32,
+			debug("[ pvr: VRAM_CFG1 set to 0x%08" PRIx32,
 			    (int) idata);
 			if (idata != VRAM_CFG1_GOOD_REFRESH_VALUE)
-				fatal("{ VRAM_CFG1 = 0x%08"PRIx32" is not "
+				fatal("{ VRAM_CFG1 = 0x%08" PRIx32" is not "
 				    "yet implemented! }", (int) idata);
 			debug(" ]\n");
 			DEFAULT_WRITE;
@@ -1814,10 +1840,10 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_VRAM_CFG2:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: VRAM_CFG2 set to 0x%08"PRIx32,
+			debug("[ pvr: VRAM_CFG2 set to 0x%08" PRIx32,
 			    (int) idata);
 			if (idata != VRAM_CFG2_UNKNOWN_MAGIC)
-				fatal("{ VRAM_CFG2 = 0x%08"PRIx32" is not "
+				fatal("{ VRAM_CFG2 = 0x%08" PRIx32" is not "
 				    "yet implemented! }", (int) idata);
 			debug(" ]\n");
 			DEFAULT_WRITE;
@@ -1826,10 +1852,10 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_VRAM_CFG3:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: VRAM_CFG3 set to 0x%08"PRIx32,
+			debug("[ pvr: VRAM_CFG3 set to 0x%08" PRIx32,
 			    (int) idata);
 			if (idata != VRAM_CFG3_UNKNOWN_MAGIC)
-				fatal("{ VRAM_CFG3 = 0x%08"PRIx32" is not "
+				fatal("{ VRAM_CFG3 = 0x%08" PRIx32" is not "
 				    "yet implemented! }", (int) idata);
 			debug(" ]\n");
 			DEFAULT_WRITE;
@@ -1837,40 +1863,45 @@ DEVICE_ACCESS(pvr)
 		break;
 
 	case PVRREG_FOG_TABLE_COL:
+		// e.g. 0x007f7f7f
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FOG_TABLE_COL set to 0x%06"PRIx32" ]\n",
+			debug("[ pvr: FOG_TABLE_COL set to 0x%06" PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
 		break;
 
 	case PVRREG_FOG_VERTEX_COL:
+		// e.g. 0x007f7f7f
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FOG_VERTEX_COL set to 0x%06"PRIx32" ]\n",
+			debug("[ pvr: FOG_VERTEX_COL set to 0x%06" PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
 		break;
 
 	case PVRREG_FOG_DENSITY:
+		// e.g. 0x0000ff07
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: FOG_DENSITY set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: FOG_DENSITY set to 0x%08" PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
 		break;
 
 	case PVRREG_CLAMP_MAX:
+		// e.g. 0xffffffff
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: CLAMP_MAX set to 0x%06"PRIx32" ]\n",
+			debug("[ pvr: CLAMP_MAX set to 0x%06" PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
 		break;
 
 	case PVRREG_CLAMP_MIN:
+		// e.g. 0x00000000
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: CLAMP_MIN set to 0x%06"PRIx32" ]\n",
+			debug("[ pvr: CLAMP_MIN set to 0x%06" PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
@@ -1896,7 +1927,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_DIWADDRL:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: DIWADDRL set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: DIWADDRL set to 0x%08" PRIx32" ]\n",
 			    (int) idata);
 			pvr_fb_invalidate(d, -1, -1);
 			DEFAULT_WRITE;
@@ -1905,7 +1936,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_DIWADDRS:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: DIWADDRS set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: DIWADDRS set to 0x%08" PRIx32" ]\n",
 			    (int) idata);
 			pvr_fb_invalidate(d, -1, -1);
 			DEFAULT_WRITE;
@@ -2056,10 +2087,10 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_MAGIC_110:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: MAGIC_110 set to 0x%08"PRIx32,
+			debug("[ pvr: MAGIC_110 set to 0x%08" PRIx32,
 			    (int) idata);
 			if (idata != MAGIC_110_VALUE)
-				fatal("{ MAGIC_110 = 0x%08"PRIx32" is not "
+				fatal("{ MAGIC_110 = 0x%08" PRIx32" is not "
 				    "yet implemented! }", (int) idata);
 			debug(" ]\n");
 			DEFAULT_WRITE;
@@ -2068,7 +2099,7 @@ DEVICE_ACCESS(pvr)
 
 	case PVRREG_TA_LUMINANCE:
 		if (writeflag == MEM_WRITE) {
-			debug("[ pvr: TA_LUMINANCE set to 0x%08"PRIx32" ]\n",
+			debug("[ pvr: TA_LUMINANCE set to 0x%08" PRIx32" ]\n",
 			    (int) idata);
 			DEFAULT_WRITE;
 		}
@@ -2175,7 +2206,7 @@ DEVICE_ACCESS(pvr)
 				pvr_ta_init(cpu, d);
 
 			if (idata != PVR_TA_INIT && idata != 0)
-				fatal("{ TA_INIT = 0x%08"PRIx32" is not "
+				fatal("{ TA_INIT = 0x%08" PRIx32" is not "
 				    "yet implemented! }", (int) idata);
 
 			/*  Always reset to 0.  */

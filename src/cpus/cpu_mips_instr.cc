@@ -1262,6 +1262,8 @@ X(div)
 	int32_t res, rem;
 	if (b == 0)
 		res = 0, rem = a;
+	else if (a == (int32_t)0x80000000U && b == -1)
+		res = 0, rem = 0;
 	else
 		res = a / b, rem = a - b*res;
 	cpu->cd.mips.lo = (int32_t)res;
@@ -1283,6 +1285,8 @@ X(ddiv)
 	int64_t a = reg(ic->arg[0]), b = reg(ic->arg[1]);
 	int64_t res, rem;
 	if (b == 0)
+		res = 0;
+	else if (a == (int64_t)0x8000000000000000ULL && b == -1)
 		res = 0;
 	else
 		res = a / b;
@@ -1579,6 +1583,16 @@ X(ror)
 {
 	uint32_t result = reg(ic->arg[0]);
 	int sa = ic->arg[1];
+
+	result = (result >> sa) | (result << (32-sa));
+
+	reg(ic->arg[2]) = (int32_t) result;
+}
+
+X(rorv)
+{
+	uint32_t result = reg(ic->arg[0]);
+	int sa = reg(ic->arg[1]);
 
 	result = (result >> sa) | (result << (32-sa));
 
@@ -2243,13 +2257,24 @@ X(wait)
 
 
 /*
- *  rdhwr: Read hardware register into gpr (MIPS32/64 rev 2).
+ *  rdhwr: Read CPUNum hardware register into gpr (MIPS32/64 rev 2).
  *
  *  arg[0] = ptr to rt (destination register)
  */
 X(rdhwr_cpunum)
 {
 	reg(ic->arg[0]) = cpu->cpu_id;
+}
+
+
+/*
+ *  rdhwr: Read CC (cycle count) register into gpr (MIPS32/64 rev 2).
+ *
+ *  arg[0] = ptr to rt (destination register)
+ */
+X(rdhwr_cc)
+{
+	reg(ic->arg[0]) = cpu->cd.mips.coproc[0]->reg[COP0_COUNT];
 }
 
 
@@ -3602,7 +3627,7 @@ X(to_be_translated)
 				switch (rs) {
 				case 0x01:
 					switch (s6) {
-					case SPECIAL_SRL:	/*  ror  */
+					case SPECIAL_SRL:	/*  ror (aka. rotr?) */
 						ic->f = instr(ror);
 						break;
 					default:goto bad;
@@ -3612,10 +3637,17 @@ X(to_be_translated)
 				}
 			}
 			if (sa < 0 && (s10 & 0x1f) != 0) {
-				switch (s10 & 0x1f) {
-				/*  TODO: [d]rorv, etc.  */
+				int orig_sa = (iword >>  6) & 31;
+				switch (s6) {
+				case SPECIAL_SRLV:	/*  rorv (aka. rotrv?) */
+					if (orig_sa == 0x01) {
+						ic->arg[1] = (size_t)&cpu->cd.mips.gpr[rs];
+						ic->f = instr(rorv);
+					}
+					break;
 				default:goto bad;
 				}
+				break;
 			}
 
 			if (rd == MIPS_GPR_ZERO)
@@ -3983,7 +4015,7 @@ X(to_be_translated)
 		if (cpu->delay_slot) {
 			if (!cpu->translation_readahead)
 				fatal("TODO: branch in delay slot (=%i)? (3);"
-				    " addr=%016"PRIx64" iword=%08"PRIx32"\n",
+				    " addr=%016" PRIx64" iword=%08" PRIx32"\n",
 				    cpu->delay_slot, (uint64_t)addr, iword);
 			goto bad;
 		}
@@ -4724,6 +4756,11 @@ X(to_be_translated)
 					ic->f = instr(nop);
 				break;
 
+			case 2:	ic->f = instr(rdhwr_cc);
+				if (rt == MIPS_GPR_ZERO)
+					ic->f = instr(nop);
+				break;
+
                         case 29: ic->f = instr(reserved);
                                  break;
 
@@ -4753,7 +4790,7 @@ X(to_be_translated)
 		if (!has_warned && !cpu->translation_readahead) {
 			fatal("[ WARNING/NOTE: attempt to execute a 64-bit"
 			    " instruction on an emulated 32-bit processor; "
-			    "pc=0x%08"PRIx32" ]\n", (uint32_t)cpu->pc);
+			    "pc=0x%08" PRIx32" ]\n", (uint32_t)cpu->pc);
 			has_warned = 1;
 		}
 		if (cpu->translation_readahead)
@@ -4762,7 +4799,7 @@ X(to_be_translated)
 			ic->f = instr(reserved);
 	}
 #else
-	x64 = x64; // avoid compiler warning
+	(void)x64; // avoid compiler warning
 #endif
 
 

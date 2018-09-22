@@ -4625,3 +4625,93 @@ Changelog for GXemul:
 20140816	Fixing console.cc so that it doesn't complain about buffer
 		overrun when pasting a lot of data.
 
+==============  RELEASE 0.6.0.1  ==============
+
+20150312	Making old framework config files work again (@filename).
+20180203	Reviving the (dummy) Luna 88K machine mode from r5458.
+20180204	Continuing on LUNA 88K stuff; some initial fake PROM putchar
+		functionality for experimenting with OpenBSD/luna88k.
+20180205	Some initial OpenBSD/luna88k syscnputc() output works (hack).
+20180206	Adding enough of a hack to let OpenBSD/luna88k distinguish
+		between LUNA 88K and 88K2, by faking FUSE_ROM string.
+20180207	Adding a semi-broken framebuffer for LUNA 88K.
+20180208	Making the code build with reasonably modern GNU C++ (6.4)
+		and clang (3.4.1), although there are lots of warnings.
+		Updating NetBSD/pmax install instructions: 6.1.4 -> 7.1.1.
+20180209	Making OpenBSD/luna88k print some more things, by faking
+		more things in dev_luna88k.cc.
+20180214	Minor fixes for LUNA 88K.
+		88K disasm shows "nop" instead of "or r0,r0,r0" now.
+		OpenBSD/luna88k 5.2 (an older version) now reaches userland
+		:-) issuing syscalls, but not 6.2 yet :-( and since no
+		interrupts are implemented yet, it doesn't really do much.
+		Removing notes about "legacy modes" in the documentation,
+		since it was too ugly and those modes are pretty much the
+		main focus of end-users of GXemul still.
+20180219	Basic interrupt controller and timer interrupt for LUNA88K.
+20180220	Minor progress on the LUNA88K framebuffer.
+20180223	Serial controller interrupt progress for LUNA88K; some
+		interaction can be done with OpenBSD/luna88k ramdisk user-
+		land but it is shaky.
+20180302	Fixing bug in dev_mp when returning amount of memory (it
+		was truncated to 32 bits). Found during YCX5 development.
+20180410	Adding a dummy skeleton for an Intel i960 CPU component
+		using the new framework.
+20180418	Adding dummy skeletons for a Cyclone/VH (i960VH) evaluation
+		board, and the HP 700/RX X-terminal (i960CA).
+20180419	Implementing basic disassembly of some i960 instructions
+		(only the CTRL group so far), and basic register dump
+		functionality.
+20180420	i960 MEM and COBR instruction group disassembly has now
+		been implemented.
+20180422	Adding a simple b.out file loader for i960 binaries, but
+		no support for symbols yet.
+		Beginning to add some REG instruction disassembly (i960).
+20180423	Implementing the rest of i960CA REG instruction disasm.
+20180424	Beginning to implement i960 dyntrans instructions (a simple
+		'b' branch and a simple 'mov lit,reg' so far).
+20180428	Implementing happy case of an "lda" i960 instruction which has
+		an extra displacement word, i.e. non-standard dyntrans
+		instruction length.
+20180503	Implementing i960 lda with immediate 12-bit offset, and
+		dummy (nop) sysctl cache invalidation (msg type 0x01).
+20180613	Fixing an old TODO for invalidating translation caches when
+		using non-4KB pages for MIPS. This makes HelenOS 0.7.1/malta
+		boot further than before.
+20180614	Removing an old TODO regarding MIPS count/compare interrupts;
+		this causes HelenOS on Malta to run much faster (while
+		NetBSD/evbmips (malta) and /cobalt are not worse off than
+		before).
+		Updating NetBSD/evmbips and /cobalt installation instructions
+		to 7.1.2 (with a note about clock not being correct).
+		More work on the other-than-4KB bug fix.
+20180618	Doubling DEFAULT_DYNTRANS_CACHE_SIZE from 48 to 96 MB.
+		Updating more NetBSD install instructions to 7.1.2.
+20180619	When reading disk sectors from the 'disk' device (for e.g.
+		testmips), automatically move to the next sector after
+		reading (or writing).
+		Allow testmips programs to detect whether the X11 framebuffer
+		is in use or not (returns 0x0 as resolution if not).
+20180706	Adding a dummy VoCore machine skeleton using the old framework
+		(with the wrong CPU type 4KEc instead of 24K).
+20180707	Implementing the rorv (aka rotrv?) MIPS instruction.
+20180725	More clang fixes.
+20180726	Minor progress on booting Linux/VoCore. MIPS rdhwr CC is
+		implemented as reading the COP0_COUNT register.
+20180819	Applying a patch from Andreas Gustafsson (gson) for the MIPS
+		div and ddiv instructions, which checks for divide overflow
+		manually before doing the divide.
+20180820	Updating the Sprite/DECstation URLs.
+20180821	DECstation 5000/125 "3MIN" mode has been broken for quite
+		a while; attempting to rewrite/resurrect it.
+20180822	Rewrote/refactored enough of the dec_ioasic code to make the
+		5000/125's original PROM output its first boot messages again
+		(and NetBSD/pmax and OpenBSD/pmax too).
+20180823	Continuing on making 5000/125 emulation work again: rewriting
+		the interrupt code for the scc serial controller, and
+		connecting TURBOchannel graphics cards.
+		Fixing the LK201 keyboard self-test codes so that the 5000/125
+		PROM doesn't complain.
+
+==============  RELEASE 0.6.0.2  ==============
+
