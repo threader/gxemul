@@ -12,7 +12,7 @@ else
 endif
 
 override_dh_auto_configure:
-	CFLAGS="${CFLAGS}" PREFIX="/usr" ./configure
+	CFLAGS="${CFLAGS}" PREFIX="/usr" DESTDIR=$(shell pwd)/debian/tmp ./configure
 	touch configure-stamp
 
 override_dh_install:
@@ -21,6 +21,10 @@ override_dh_install:
 
 override_dh_installchangelogs:
 	dh_installchangelogs HISTORY
+
+override_dh_clean:
+	dh_clean
+	if [ -f Makefile ]; then make clean_all; fi
 
 %:
 	dh $@
