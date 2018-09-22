@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2006-2011  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -45,14 +45,15 @@
 
 
 #ifdef UNSTABLE_DEVEL
-#define debug fatal
+// #define debug fatal
 #endif
 
-#define	NREGS		(0x100/sizeof(uint32_t))
+#define	NREGS_EXT_DMA		(0x80/sizeof(uint32_t))
+#define	NREGS_MISC		(0x80/sizeof(uint32_t))
 
 struct dreamcast_g2_data {
-	uint32_t	extdma_reg[NREGS];
-	uint32_t	unknown_reg[NREGS];
+	uint32_t	extdma_reg[NREGS_EXT_DMA];
+	uint32_t	misc_reg[NREGS_MISC];
 };
 
 
@@ -157,6 +158,10 @@ DEVICE_ACCESS(dreamcast_g2_extdma)
 		if (writeflag == MEM_WRITE) {
 			debug("[ dreamcast_g2_extdma: write to channel %i:"
 			    " CHAN_ENABLE = 0x%08x ]\n", channel, (int) idata);
+			if (idata != 0) {
+				fatal("EXTDMA_CTRL_CHAN_ENABLE: todo\n");
+				exit(1);
+			}
 		}
 		break;
 
@@ -165,8 +170,8 @@ DEVICE_ACCESS(dreamcast_g2_extdma)
 			debug("[ dreamcast_g2_extdma: write to channel %i:"
 			    " XFER_ENABLE = 0x%08x ]\n", channel, (int) idata);
 			if (idata != 0) {
-fatal("dma xfer: todo\n");
-exit(1);
+				fatal("EXTDMA_CTRL_XFER_ENABLE: todo\n");
+				exit(1);
 			}
 		}
 		break;
@@ -175,6 +180,12 @@ exit(1);
 		if (writeflag == MEM_WRITE) {
 			debug("[ dreamcast_g2_extdma: write to channel %i:"
 			    " STATUS = 0x%08x ]\n", channel, (int) idata);
+			if (idata != 0) {
+				fatal("[ dreamcast_g2_extdma: write to channel %i:"
+				    " STATUS = 0x%08x: TODO (start transfer?) ]\n",
+				    channel, (int) idata);
+				exit(1);
+			}
 		}
 		break;
 
@@ -227,7 +238,7 @@ exit(1);
 }
 
 
-DEVICE_ACCESS(dreamcast_g2_unknown)
+DEVICE_ACCESS(dreamcast_g2_misc)
 {
 	struct dreamcast_g2_data *d = (struct dreamcast_g2_data *) extra;
 	uint64_t idata = 0, odata = 0;
@@ -237,46 +248,23 @@ DEVICE_ACCESS(dreamcast_g2_unknown)
 
 	/*  Default read:  */
 	if (writeflag == MEM_READ)
-		odata = d->unknown_reg[relative_addr / sizeof(uint32_t)];
+		odata = d->misc_reg[relative_addr / sizeof(uint32_t)];
 
 	switch (relative_addr) {
 
-	case 0x80:
-		if (writeflag != MEM_WRITE || idata != 0x400) {
-			fatal("[ dreamcast_g2_unknown: unimplemented 0x80 ]\n");
-			exit(1);
-		}
-		break;
-
-	case 0x90:
-	case 0x94:
-/*		if (writeflag != MEM_WRITE || idata != 0x222) {
-			fatal("[ dreamcast_g2_unknown: unimplemented 0x90 ]\n");
-			exit(1);
-		}
-*/		break;
-
-	case 0xa0:
-	case 0xa4:
-		if (writeflag != MEM_WRITE || idata != 0x2001) {
-			fatal("[ dreamcast_g2_unknown: unimplemented 0xa0 ]\n");
-			exit(1);
-		}
-		break;
-
-	case 0xe4:
-		/*  Writing 0x1fffff resets a disabled GD-ROM drive?  */
+	case 0x64:
+		/*  Writing 0x1fffff to 0x5f74e4 resets a disabled GD-ROM drive?  */
 		if (writeflag != MEM_WRITE || idata != 0x1fffff) {
-			fatal("[ dreamcast_g2_unknown: unimplemented 0xe4 ]\n");
+			fatal("[ dreamcast_g2_misc: unimplemented 0xe4 ]\n");
 			exit(1);
 		}
 		break;
 
 	default:if (writeflag == MEM_READ) {
-			fatal("[ dreamcast_g2_unknown: read from addr 0x%x ]\n",
+			debug("[ dreamcast_g2_misc: read from addr 0x%x ]\n",
 			    (int)relative_addr);
 		} else {
-			fatal("[ dreamcast_g2_unknown: write to addr 0x%x: "
+			debug("[ dreamcast_g2_misc: write to addr 0x%x: "
 			    "0x%x ]\n", (int)relative_addr, (int)idata);
 		}
 
@@ -285,7 +273,7 @@ DEVICE_ACCESS(dreamcast_g2_unknown)
 
 	/*  Default write:  */
 	if (writeflag == MEM_WRITE)
-		d->unknown_reg[relative_addr / sizeof(uint32_t)] = idata;
+		d->misc_reg[relative_addr / sizeof(uint32_t)] = idata;
 
 	if (writeflag == MEM_READ)
 		memory_writemax64(cpu, data, len, odata);
@@ -303,10 +291,10 @@ DEVINIT(dreamcast_g2)
 	    malloc(sizeof(struct dreamcast_g2_data)));
 	memset(d, 0, sizeof(struct dreamcast_g2_data));
 
-	memory_device_register(machine->memory, devinit->name, 0x005f7400,
-	    0x100, dev_dreamcast_g2_unknown_access, d, DM_DEFAULT, NULL);
+	memory_device_register(machine->memory, "g2_misc", 0x005f7480,
+	    0x80, dev_dreamcast_g2_misc_access, d, DM_DEFAULT, NULL);
 
-	memory_device_register(machine->memory, devinit->name, 0x005f7800,
+	memory_device_register(machine->memory, "g2_extdma", 0x005f7800,
 	    0x100, dev_dreamcast_g2_extdma_access, d, DM_DEFAULT, NULL);
 
 	return 1;

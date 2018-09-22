@@ -552,7 +552,7 @@ DEVICE_ACCESS(wdc)
 			idata = memory_readmax64(cpu, data, len);
 		else {
 			if (len != 1)
-				fatal("[ wdc: WARNING! non-8-bit access! ]\n");
+				fatal("[ wdc: WARNING! non-8-bit access on WRITE! ]\n");
 			idata = data[0];
 		}
 	}
@@ -580,13 +580,13 @@ DEVICE_ACCESS(wdc)
 			}
 
 			if (d->data_debug) {
-				const char *s = "0x%04"PRIx64" ]\n";
+				const char *s = "0x%04" PRIx64" ]\n";
 				if (len == 1)
-					s = "0x%02"PRIx64" ]\n";
+					s = "0x%02" PRIx64" ]\n";
 				if (len == 4)
-					s = "0x%08"PRIx64" ]\n";
+					s = "0x%08" PRIx64" ]\n";
 				if (len == 8)
-					s = "0x%016"PRIx64" ]\n";
+					s = "0x%016" PRIx64" ]\n";
 				debug("[ wdc: read from DATA: ");
 				debug(s, (uint64_t) odata);
 			}
@@ -621,13 +621,13 @@ DEVICE_ACCESS(wdc)
 		} else {
 			int inbuf_len;
 			if (d->data_debug) {
-				const char *s = "0x%04"PRIx64" ]\n";
+				const char *s = "0x%04" PRIx64" ]\n";
 				if (len == 1)
-					s = "0x%02"PRIx64" ]\n";
+					s = "0x%02" PRIx64" ]\n";
 				if (len == 4)
-					s = "0x%08"PRIx64" ]\n";
+					s = "0x%08" PRIx64" ]\n";
 				if (len == 8)
-					s = "0x%016"PRIx64" ]\n";
+					s = "0x%016" PRIx64" ]\n";
 				debug("[ wdc: write to DATA: ");
 				debug(s, (uint64_t) idata);
 			}
@@ -713,14 +713,11 @@ DEVICE_ACCESS(wdc)
 
 				if (res == 1) {
 					if (d->atapi_st->data_in != NULL) {
-						int i;
 						d->atapi_phase = PHASE_DATAIN;
-						d->atapi_len = d->atapi_st->
-						    data_in_len;
-						for (i=0; i<d->atapi_len; i++)
-							wdc_addtoinbuf(d,
-							    d->atapi_st->
-							    data_in[i]);
+						d->atapi_len = d->atapi_st->data_in_len;
+						for (int j=0; j<d->atapi_len; j++)
+							wdc_addtoinbuf(d, d->atapi_st->data_in[j]);
+
 						if (d->atapi_len > 32768)
 							d->atapi_len = 32768;
 					} else {
@@ -895,8 +892,11 @@ ret:
 	if (writeflag == MEM_READ) {
 		if (relative_addr == wd_data)
 			memory_writemax64(cpu, data, len, odata);
-		else
+		else {
+			if (len != 1)
+				fatal("[ wdc: WARNING! non-8-bit access on READ! ]\n");
 			data[0] = odata;
+		}
 	}
 
 	return 1;

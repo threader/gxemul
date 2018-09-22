@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -27,9 +27,9 @@
  *
  *  ISO9660 CD-ROM "bootblock" handling.
  *
- *  There is really no bootblock; instead, the file which is to be booted
- *  is extracted into a temporary file, and started as if it was given
- *  as a normal file argument on the command line.
+ *  Despite the name, there is actually no bootblock; instead, the file which
+ *  is to be booted is extracted into a temporary file, and started as if it
+ *  was given as a normal file argument on the command line.
  *
  *  TODO: This is really ugly. It's a quick hack. All the magic constants
  *        need to be replaced with real code!
@@ -49,6 +49,7 @@
 #include "diskimage.h"
 #include "machine.h"
 #include "misc.h"
+
 
 /*  #define ISO_DEBUG  */
 
@@ -119,6 +120,44 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 
 	debug_print_volume_id_and_filename(iso_type, buf, filename);
 
+
+	/*
+	 *  Hack: If there is something like this at offset 0x9000:
+	 *
+	 *  "MKI Wed Nov 29 17:56:55 2000\n"
+	 *  "mkisofs 1.13 -r -l -C 0,11702 /home/LC2000-CDR"
+	 *
+	 *  and the disk offset is zero, then it can PROBABLY be assumed that
+	 *  offset 11702 is better. (This is counted in 2048 byte sectors.)
+	 */
+	{
+		unsigned char tmpbuf[0x800];
+		uint64_t base_offset = diskimage_get_baseoffset(m, disk_id, disk_type);
+		res2 = diskimage_access(m, disk_id, disk_type, 0, base_offset + 0x9000, tmpbuf, 0x800);
+		if (!res2) {
+			fatal("Couldn't read MKI part after the ISO header of the disk image. Aborting.\n");
+			goto ret;
+		}
+
+		int64_t suggestedBaseOffset = 0;
+		tmpbuf[sizeof(tmpbuf)-1] = '\0';
+		char* found = strstr((char*)tmpbuf, "MKI ");
+		if (found != NULL) {
+			found = strstr(found, " -C 0,");
+			if (found != NULL) {
+				suggestedBaseOffset = strtoll(found + 6, NULL, 0);
+			}
+		}
+
+		int64_t currentBaseOffset = diskimage_get_baseoffset(m, disk_id, disk_type);
+		suggestedBaseOffset *= 2048;
+		if (currentBaseOffset == 0 && suggestedBaseOffset != currentBaseOffset) 
+		{
+			debug("NOTE: automagically adjusting to use base offset %lli\n", (long long)suggestedBaseOffset);
+			diskimage_set_baseoffset(m, disk_id, disk_type, suggestedBaseOffset);
+		}
+	}
+	
 
 	/*
 	 *  Traverse the directory structure to find the kernel.
@@ -192,7 +231,7 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 
 		dp += nlen;
 
-		/*  16-bit aligned lenght:  */
+		/*  16-bit aligned length:  */
 		if (nlen & 1)
 			dp ++;
 
@@ -206,7 +245,7 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 	if (p != NULL) {
 		char *blah = filename_orig;
 
-		fatal("could not find '%s' in /", filename);
+		fatal("could not find '%s' (1) in /", filename);
 
 		/*  Print the first part of the filename:  */
 		while (blah != filename)
@@ -231,6 +270,7 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 			/*  debug("realign dirofs = 0x%llx\n", dirofs);  */
 		}
 
+		// debug("dirofs = %lli\n", (long long)dirofs);
 		res2 = diskimage_access(m, disk_id, disk_type, 0, dirofs,
 		    dirbuf, 256);
 		if (!res2) {
@@ -240,8 +280,10 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 
 		dp = dirbuf;
 		len = dp[0];
-		if (len < 2)
+		if (len < 2) {
+			// debug("dir too short\n");
 			break;
+		}
 
 		/*
 		 *  TODO: Actually parse the directory entry!
@@ -249,15 +291,18 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 		 *  Haha, this must be rewritten.
 		 */
 
-#if 0
+#ifdef ISO_DEBUG
 /*  hahahaha  */
 printf("filename = '%s'\n", filename);
 {
-int j;
+size_t j;
 for (j=32; j<len; j++)
 	printf("%c", dp[j] >= ' ' && dp[j] < 128? dp[j] : '.');
 printf("\n");
 }
+
+// Hahaha. Yes, it's horrible. (Updated 2011-06-09.)
+// Yes it is. (2018-06-18.) :-(
 #endif
 
 		for (i=32; i<len; i++) {
@@ -289,7 +334,7 @@ printf("\n");
 	if (match_entry == NULL) {
 		char *blah = filename_orig;
 
-		fatal("could not find '%s' in /", filename);
+		fatal("could not find '%s' (2) in /", filename);
 
 		/*  Print the first part of the filename:  */
 		while (blah != filename)
@@ -323,13 +368,13 @@ printf("\n");
 	tmpfile_handle = mkstemp(tmpfname);
 	if (tmpfile_handle < 0) {
 		fatal("could not create %s\n", tmpfname);
-		exit(1);
+		goto ret;
 	}
 
 	if (write(tmpfile_handle, filebuf, filelen) != filelen) {
 		fatal("could not write to %s\n", tmpfname);
 		perror("write");
-		exit(1);
+		goto ret;
 	}
 
 	close(tmpfile_handle);

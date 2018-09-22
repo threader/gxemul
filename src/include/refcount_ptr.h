@@ -2,7 +2,7 @@
 #define	REFCOUNT_PTR_H
 
 /*
- *  Copyright (C) 2007-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2007-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -27,6 +27,11 @@
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
  */
+
+
+template <class T>
+class refcount_ptr;
+
 
 /**
  * \brief Base class for reference countable objects.
@@ -68,7 +73,14 @@ public:
 
 	~ReferenceCountable()
 	{
+		if (m_refCount != 0) {
+			std::cerr << "TODO: ~ReferenceCountable count != 0!\n";
+			std::terminate();
+		}
 	}
+
+private:
+	template<class T> friend class refcount_ptr;
 
 	/**
 	 * \brief Increases the reference count of the object.
@@ -160,22 +172,8 @@ public:
 			if ((m_p = other.m_p) != NULL)
 				m_p->increase_refcount();
 		}
-		return *this;
-	}
 
-	/**
-	 * Releases the currently references object, if any, by
-	 * decreasing its reference count. If the count reaches zero,
-	 * that means that no others have pointers to the object,
-	 * and it is freed.
-	 */
-	void release()
-	{
-		if (m_p != NULL) {
-			if (m_p->decrease_refcount() <= 0)
-				delete m_p;
-			m_p = NULL;
-		}
+		return *this;
 	}
 
 	operator T* ()
@@ -230,7 +228,7 @@ public:
 	 */
 	bool operator < (const refcount_ptr& other) const
 	{
-		ptrdiff_t diff = m_p - other.m_p;
+		std::ptrdiff_t diff = m_p - other.m_p;
 		return diff < 0;
 	}
 
@@ -258,6 +256,22 @@ public:
 	bool operator != (const refcount_ptr& other) const
 	{
 		return m_p != other.m_p;
+	}
+
+private:
+	/**
+	 * Releases the currently references object, if any, by
+	 * decreasing its reference count. If the count reaches zero,
+	 * that means that no others have pointers to the object,
+	 * and it is freed.
+	 */
+	void release()
+	{
+		if (m_p != NULL) {
+			if (m_p->decrease_refcount() <= 0)
+				delete m_p;
+			m_p = NULL;
+		}
 	}
 
 private:

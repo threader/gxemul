@@ -36,59 +36,7 @@
 #include "ComponentFactory.h"
 #include "EscapedString.h"
 #include "GXemul.h"
-
-
-/*****************************************************************************/
-
-
-// This is basically strtoull(), but it needs to be explicitly implemented
-// since some systems lack it. (Also, compiling with GNU C++ in ANSI mode
-// does not work with strtoull.)
-static uint64_t parse_number(const char* str, bool& error)
-{
-	int base = 10;
-	uint64_t result = 0;
-	bool negative = false;
-
-	error = false;
-
-	if (str == NULL)
-		return 0;
-
-	while (*str == ' ')
-		++str;
-
-	if (*str == '-') {
-		negative = true;
-		++str;
-	}
-
-	while ((*str == 'x' || *str == 'X') || (*str >= '0' && *str <= '9')
-	    || (*str >= 'a' && *str <= 'f') || (*str >= 'A' && *str <= 'F')) {
-		if (*str == 'x' || *str == 'X') {
-			base = 16;
-		} else {
-			int n = *str - '0';
-			if (*str >= 'a' && *str <= 'f')
-				n = *str - 'a' + 10;
-			if (*str >= 'A' && *str <= 'F')
-				n = *str - 'A' + 10;
-			result = result * base + n;
-		}
-		++str;
-	}
-
-	if (*str)
-		error = true;
-
-	if (negative)
-		return -result;
-	else
-		return result;
-}
-
-
-/*****************************************************************************/
+#include "StringHelper.h"
 
 
 Component::Component(const string& className, const string& visibleClassName)
@@ -100,11 +48,6 @@ Component::Component(const string& className, const string& visibleClassName)
 	AddVariable("name", &m_name);
 	AddVariable("template", &m_template);
 	AddVariable("step", &m_step);
-}
-
-
-Component::~Component()
-{
 }
 
 
@@ -471,10 +414,52 @@ void Component::ExecuteMethod(GXemul* gxemul,
 }
 
 
+string Component::GenerateDetails() const
+{
+	stringstream ss;
+
+	// If this component has a "model", then show that.
+	const StateVariable* model = GetVariable("model");
+	if (model != NULL && !model->ToString().empty()) {
+		if (!ss.str().empty())
+			ss << ", ";
+		ss << model->ToString();
+	}
+
+	// If this component has a frequency (i.e. it is runnable), then
+	// show the frequency:
+	double freq = GetCurrentFrequency();
+	if (freq != 0.0) {
+		if (!ss.str().empty())
+			ss << ", ";
+
+		if (freq >= 1e9)
+			ss << freq/1e9 << " GHz";
+		else if (freq >= 1e6)
+			ss << freq/1e6 << " MHz";
+		else if (freq >= 1e3)
+			ss << freq/1e3 << " kHz";
+		else
+			ss << freq << " Hz";
+	}
+
+	const StateVariable* paused = GetVariable("paused");
+	// TODO: ToBool :)
+	if (paused != NULL && paused->ToInteger() > 0) {
+		if (!ss.str().empty())
+			ss << ", ";
+
+		ss << "paused";
+	}
+
+	return ss.str();
+}
+
+
 string Component::GenerateTreeDump(const string& branchTemplate,
 	bool htmlLinksForClassNames, string prefixForComponentUrls) const
 {
-	// Basically, this generates a string which looks like:
+	// This generates an ASCII string which looks like:
 	//
 	//	root
 	//	|-- child1
@@ -482,8 +467,6 @@ string Component::GenerateTreeDump(const string& branchTemplate,
 	//	|   \-- child1's child2
 	//	\-- child2
 	//	    \-- child2's child
-	//
-	// TODO: Comment this better.
 
 	string branch;
 	for (size_t pos=0; pos<branchTemplate.length(); pos++) {
@@ -533,75 +516,35 @@ string Component::GenerateTreeDump(const string& branchTemplate,
 	const StateVariable* templateName;
 	if ((templateName = GetVariable("template")) != NULL &&
 	    !templateName->ToString().empty())
-		str += "  [" + templateName->ToString() + "]";
+	{
+		string tName = templateName->ToString();
 
-	stringstream ss;
+		str += "  [";
 
-	// If this component has a "model", then show that.
-	const StateVariable* model = GetVariable("model");
-	if (model != NULL && !model->ToString().empty()) {
-		if (!ss.str().empty())
-			ss << ", ";
-		ss << model->ToString();
+		if (htmlLinksForClassNames) {
+			// See if this class/template name has its own HTML page.
+			// (Usually machines. TODO: also other components.)
+			std::ifstream documentationMachineFile((
+			    "doc/machines/machine_"
+			    + tName + ".html").c_str());
+
+			if (documentationMachineFile.is_open())
+				str += "<a href=\"" + prefixForComponentUrls +
+				    "machines/machine_" +
+				    tName + ".html\">" + tName + "</a>";
+			else
+				str += tName;
+		} else {
+			str += tName;
+		}
+
+		str += "]";
 	}
 
-	// If this component has a frequency (i.e. it is runnable), then
-	// show the frequency:
-	double freq = GetCurrentFrequency();
-	if (freq != 0.0) {
-		if (!ss.str().empty())
-			ss << ", ";
-
-		if (freq >= 1e9)
-			ss << freq/1e9 << " GHz";
-		else if (freq >= 1e6)
-			ss << freq/1e6 << " MHz";
-		else if (freq >= 1e3)
-			ss << freq/1e3 << " kHz";
-		else
-			ss << freq << " Hz";
-	}
-
-	const StateVariable* paused = GetVariable("paused");
-	// TODO: ToBool :)
-	if (paused != NULL && paused->ToInteger() > 0) {
-		if (!ss.str().empty())
-			ss << ", ";
-
-		ss << "paused";
-	}
-
-	const StateVariable* memoryMappedBase = GetVariable("memoryMappedBase");
-	const StateVariable* memoryMappedSize = GetVariable("memoryMappedSize");
-	const StateVariable* memoryMappedAddrMul =
-	    GetVariable("memoryMappedAddrMul");
-	if (memoryMappedBase != NULL && memoryMappedSize != NULL) {
-		if (!ss.str().empty())
-			ss << ", ";
-
-		uint64_t nBytes = memoryMappedSize->ToInteger();
-		if (nBytes >= (1 << 30))
-			ss << (nBytes >> 30) << " GB";
-		else if (nBytes >= (1 << 20))
-			ss << (nBytes >> 20) << " MB";
-		else if (nBytes >= (1 << 10))
-			ss << (nBytes >> 10) << " KB";
-		else if (nBytes != 1)
-			ss << nBytes << " bytes";
-		else
-			ss << nBytes << " byte";
-
-		ss << " at offset ";
-		ss.flags(std::ios::hex | std::ios::showbase);
-		ss << memoryMappedBase->ToInteger();
-
-		if (memoryMappedAddrMul != NULL &&
-		    memoryMappedAddrMul->ToInteger() != 1)
-			ss << ", addrmul " << memoryMappedAddrMul->ToInteger();
-	}
-
-	if (!ss.str().empty())
-		str += "  (" + ss.str() + ")";
+	// Get any additional details (CPU model, memory mapped address, etc.):
+	string details = GenerateDetails();
+	if (!details.empty())
+		str += "  (" + details + ")";
 
 	// Show the branch of the tree...
 	string result = "  " + str + "\n";
@@ -1036,7 +979,7 @@ bool Component::CheckVariableWrite(StateVariable& var, const string& oldValue)
 			// has special meaning:
 			if (GetParent() == NULL) {
 				bool error = false;
-				int64_t oldStep = parse_number(oldValue.c_str(), error);
+				int64_t oldStep = StringHelper::ParseNumber(oldValue.c_str(), error);
 				int64_t newStep = var.ToInteger();
 
 				// 0. Value is the same as before. Simply return.

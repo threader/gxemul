@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -79,10 +79,10 @@ static void gather_statistics(struct cpu *cpu)
 			a += low_pc << DYNTRANS_INSTR_ALIGNMENT_SHIFT;
 			if (cpu->is_32bit)
 				snprintf(buf + strlen(buf), sizeof(buf),
-				    "0x%08"PRIx32, (uint32_t)a);
+				    "0x%08" PRIx32, (uint32_t)a);
 			else
 				snprintf(buf + strlen(buf), sizeof(buf),
-				    "0x%016"PRIx64, (uint64_t)a);
+				    "0x%016" PRIx64, (uint64_t)a);
 			break;
 		case 'v':
 			/*  Virtual program counter address:  */
@@ -92,10 +92,10 @@ static void gather_statistics(struct cpu *cpu)
 			a += low_pc << DYNTRANS_INSTR_ALIGNMENT_SHIFT;
 			if (cpu->is_32bit)
 				snprintf(buf + strlen(buf), sizeof(buf),
-				    "0x%08"PRIx32, (uint32_t)a);
+				    "0x%08" PRIx32, (uint32_t)a);
 			else
 				snprintf(buf + strlen(buf), sizeof(buf),
-				    "0x%016"PRIx64, (uint64_t)a);
+				    "0x%016" PRIx64, (uint64_t)a);
 			break;
 		}
 		i++;
@@ -141,7 +141,7 @@ static void gather_statistics(struct cpu *cpu)
 			cpu->pc &= ~((DYNTRANS_IC_ENTRIES_PER_PAGE-1) << \
 			    DYNTRANS_INSTR_ALIGNMENT_SHIFT);		\
 			cpu->pc += (low_pc << DYNTRANS_INSTR_ALIGNMENT_SHIFT);\
-			printf("Crash at %016"PRIx64"\n", cpu->pc);	\
+			printf("Crash at %016" PRIx64"\n", cpu->pc);	\
 			printf("nr of I calls: %lli\n", nr_of_I_calls);	\
 			printf("Next ic = %p\n", cpu->cd.		\
 				DYNTRANS_ARCH.next_ic);			\
@@ -248,6 +248,14 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 			sh_exception(cpu, 0, cpu->cd.sh.int_to_assert, 0);
 #endif
 	}
+
+#ifdef DYNTRANS_ARM
+	if (cpu->cd.arm.cpsr & ARM_FLAG_T) {
+		fatal("THUMB execution not implemented.\n");
+		cpu->running = false;
+		return 0;
+	}
+#endif
 
 	cached_pc = cpu->pc;
 
@@ -389,9 +397,12 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 #ifdef DYNTRANS_MIPS
 	/*  Update the count register (on everything except EXC3K):  */
 	if (cpu->cd.mips.cpu_type.exc_model != EXC3K) {
-		uint32_t old = cpu->cd.mips.coproc[0]->reg[COP0_COUNT];
-		int32_t diff1 = cpu->cd.mips.coproc[0]->reg[COP0_COMPARE] - old;
-		int32_t diff2;
+		uint32_t old;
+		int32_t diff1, diff2;
+		cpu->cd.mips.coproc[0]->reg[COP0_COUNT] -= cpu->cd.mips.count_register_read_count;
+		cpu->cd.mips.count_register_read_count = 0;
+		old = cpu->cd.mips.coproc[0]->reg[COP0_COUNT];
+		diff1 = cpu->cd.mips.coproc[0]->reg[COP0_COMPARE] - old;
 		cpu->cd.mips.coproc[0]->reg[COP0_COUNT] =
 		    (int32_t) (old + n_instrs);
 		diff2 = cpu->cd.mips.coproc[0]->reg[COP0_COMPARE] -
@@ -453,10 +464,14 @@ void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 	char *symbol;
 	uint64_t ot;
 	int x, print_dots = 1, n_args_to_print =
+#if defined(DYNTRANS_ALPHA)
+	    6
+#else
 #if defined(DYNTRANS_SH) || defined(DYNTRANS_M88K)
 	    8	/*  Both for 32-bit and 64-bit SuperH, and M88K  */
 #else
 	    4	/*  Default value for most archs  */
+#endif
 #endif
 	    ;
 
@@ -485,6 +500,9 @@ void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 	 */
 	for (x=0; x<n_args_to_print; x++) {
 		int64_t d = cpu->cd.DYNTRANS_ARCH.
+#ifdef DYNTRANS_ALPHA
+		    r[ALPHA_A0
+#endif
 #ifdef DYNTRANS_ARM
 		    r[0
 #endif
@@ -515,9 +533,9 @@ void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 			fatal("&%s", symbol);
 		else {
 			if (cpu->is_32bit)
-				fatal("0x%"PRIx32, (uint32_t)d);
+				fatal("0x%" PRIx32, (uint32_t)d);
 			else
-				fatal("0x%"PRIx64, (uint64_t)d);
+				fatal("0x%" PRIx64, (uint64_t)d);
 		}
 
 		if (x < n_args_to_print - 1)
@@ -594,7 +612,7 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 	x1 = (cached_pc >> (64-DYNTRANS_L1N)) & mask1;
 	x2 = (cached_pc >> (64-DYNTRANS_L1N-DYNTRANS_L2N)) & mask2;
 	x3 = (cached_pc >> (64-DYNTRANS_L1N-DYNTRANS_L2N-DYNTRANS_L3N)) & mask3;
-	/*  fatal("X3: cached_pc=%016"PRIx64" x1=%x x2=%x x3=%x\n",
+	/*  fatal("X3: cached_pc=%016" PRIx64" x1=%x x2=%x x3=%x\n",
 	    (uint64_t)cached_pc, (int)x1, (int)x2, (int)x3);  */
 	l2 = cpu->cd.DYNTRANS_ARCH.l1_64[x1];
 	/*  fatal("  l2 = %p\n", l2);  */
@@ -639,8 +657,8 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 			 *  exception handler.
 			 */
 			/*  fatal("TODO: instruction vaddr=>paddr translation "
-			    "failed. vaddr=0x%"PRIx64"\n", (uint64_t)cached_pc);
-			fatal("!! cpu->pc=0x%"PRIx64"\n", (uint64_t)cpu->pc); */
+			    "failed. vaddr=0x%" PRIx64"\n", (uint64_t)cached_pc);
+			fatal("!! cpu->pc=0x%" PRIx64"\n", (uint64_t)cpu->pc); */
 
 			/*  If there was an exception, the PC has changed.
 			    Update cached_pc:  */
@@ -673,7 +691,7 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 
 			/*  printf("EXCEPTION HANDLER: vaddr = 0x%x ==> "
 			    "paddr = 0x%x\n", (int)cpu->pc, (int)paddr);
-			fatal("!? cpu->pc=0x%"PRIx64"\n", (uint64_t)cpu->pc); */
+			fatal("!? cpu->pc=0x%" PRIx64"\n", (uint64_t)cpu->pc); */
 
 			if (!ok) {
 				fatal("FATAL: could not find physical"
@@ -736,7 +754,7 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 	if (physpage_ofs == 0) {
 		uint32_t previous_first_page_in_chain;
 
-		/*  fatal("CREATING page %lli (physaddr 0x%"PRIx64"), table "
+		/*  fatal("CREATING page %lli (physaddr 0x%" PRIx64"), table "
 		    "index %i\n", (long long)pagenr, (uint64_t)physaddr,
 		    (int)table_index);  */
 
@@ -781,8 +799,8 @@ void DYNTRANS_PC_TO_POINTERS_GENERIC(struct cpu *cpu)
 	cpu->cd.DYNTRANS_ARCH.next_ic = cpu->cd.DYNTRANS_ARCH.cur_ic_page +
 	    DYNTRANS_PC_TO_IC_ENTRY(cached_pc);
 
-	/*  printf("cached_pc=0x%016"PRIx64"  pagenr=%lli  table_index=%lli, "
-	    "physpage_ofs=0x%016"PRIx64"\n", (uint64_t)cached_pc, (long long)
+	/*  printf("cached_pc=0x%016" PRIx64"  pagenr=%lli  table_index=%lli, "
+	    "physpage_ofs=0x%016" PRIx64"\n", (uint64_t)cached_pc, (long long)
 	    pagenr, (long long)table_index, (uint64_t)physpage_ofs);  */
 }
 
@@ -843,8 +861,8 @@ have_it:
 	cpu->cd.DYNTRANS_ARCH.next_ic = cpu->cd.DYNTRANS_ARCH.cur_ic_page +
 	    DYNTRANS_PC_TO_IC_ENTRY(cached_pc);
 
-	/*  printf("cached_pc=0x%016"PRIx64"  pagenr=%lli  table_index=%lli, "
-	    "physpage_ofs=0x%016"PRIx64"\n", (uint64_t)cached_pc, (long long)
+	/*  printf("cached_pc=0x%016" PRIx64"  pagenr=%lli  table_index=%lli, "
+	    "physpage_ofs=0x%016" PRIx64"\n", (uint64_t)cached_pc, (long long)
 	    pagenr, (long long)table_index, (uint64_t)physpage_ofs);  */
 }
 #endif	/*  DYNTRANS_PC_TO_POINTERS_FUNC  */
@@ -1051,6 +1069,34 @@ static void DYNTRANS_INVALIDATE_TLB_ENTRY(struct cpu *cpu,
 }
 #endif
 
+/*
+	int found = -1;
+	for (int q = 0; q < 192; ++q)
+	{
+		if (cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[q].vaddr_page == vaddr_page &&
+			cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[q].valid)
+		{
+			if (found >= 0)
+			{
+				printf("ALREADY FOUND = %i\n", found);
+				int zz = found;
+				printf("%03i: ", zz);
+				printf("vaddr=%016llx\n", (long long)cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].vaddr_page);
+				printf("valid=%i\n", cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].valid);
+
+				zz = q;
+				printf("%03i: ", zz);
+				printf("vaddr=%016llx\n", (long long)cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].vaddr_page);
+				printf("valid=%i\n", cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].valid);
+
+				exit(1);
+			}
+			
+			found = q;
+		}
+	}
+*/
+
 	l3->host_load[x3] = NULL;
 	l3->host_store[x3] = NULL;
 	l3->phys_addr[x3] = 0;
@@ -1059,6 +1105,16 @@ static void DYNTRANS_INVALIDATE_TLB_ENTRY(struct cpu *cpu,
 		cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[
 		    l3->vaddr_to_tlbindex[x3] - 1].valid = 0;
 		l3->refcount --;
+	} else {/*
+		printf("APA: vaddr_page=%016llx l3->refcount = %i\n", (long long)vaddr_page, l3->refcount);
+		for (int zz = 0; zz < 128; ++zz)
+		{
+			printf("%03i: ", zz);
+			printf("vaddr=%016llx\n", (long long)cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].vaddr_page);
+			printf("valid=%i\n", cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[zz].valid);
+		}
+		
+		exit(1);*/
 	}
 	l3->vaddr_to_tlbindex[x3] = 0;
 
@@ -1273,6 +1329,8 @@ void DYNTRANS_INVALIDATE_TC_CODE(struct cpu *cpu, uint64_t addr, int flags)
 				*physpage_entryp = ppp->next_ofs;
 		}
 #else
+		(void)prev_ppp;	// shut up compiler warning
+
 		/*
 		 *  Instead of removing the page from the code cache, each
 		 *  entry can be set to "to_be_translated". This is slow in
@@ -1381,8 +1439,8 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 	vaddr_page &= 0xffffffffULL;
 
 	if (paddr_page > 0xffffffffULL) {
-		fatal("update_translation_table(): v=0x%016"PRIx64", h=%p w=%i"
-		    " p=0x%016"PRIx64"\n", vaddr_page, host_page, writeflag,
+		fatal("update_translation_table(): v=0x%016" PRIx64", h=%p w=%i"
+		    " p=0x%016" PRIx64"\n", vaddr_page, host_page, writeflag,
 		    paddr_page);
 		exit(1);
 	}
@@ -1398,8 +1456,8 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 	struct DYNTRANS_L2_64_TABLE *l2;
 	struct DYNTRANS_L3_64_TABLE *l3;
 
-	/*  fatal("update_translation_table(): v=0x%016"PRIx64", h=%p w=%i"
-	    " p=0x%016"PRIx64"\n", (uint64_t)vaddr_page, host_page, writeflag,
+	/*  fatal("update_translation_table(): v=0x%016" PRIx64", h=%p w=%i"
+	    " p=0x%016" PRIx64"\n", (uint64_t)vaddr_page, host_page, writeflag,
 	    (uint64_t)paddr_page);  */
 #endif
 
@@ -1410,6 +1468,8 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 		writeflag &= ~MEMORY_USER_ACCESS;
 		useraccess = 1;
 	}
+
+	(void)useraccess;  // shut up compiler warning about unused var
 
 #ifdef DYNTRANS_M88K
 	/*  TODO  */
@@ -1613,6 +1673,10 @@ void DYNTRANS_UPDATE_TRANSLATION_TABLE(struct cpu *cpu, uint64_t vaddr_page,
 			l3->host_store[x3] = writeflag? host_page : NULL;
 			l3->phys_addr[x3] = paddr_page;
 		}
+		
+		/*  HM!  /2013-11-17  */
+		/*  Should this be here?  2014-08-02  */
+		//l3->phys_page[x3] = NULL;
 
 #ifdef BUGHUNT
 /*  Count how many pages are actually in use:  */
@@ -1660,17 +1724,17 @@ cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid);
 			if (curpc == (MODE_uint_t)
 			    cpu->machine->breakpoints.addr[i]) {
 				if (!cpu->machine->instruction_trace) {
-					int old_quiet_mode = quiet_mode;
+					int tmp_old_quiet_mode = quiet_mode;
 					quiet_mode = 0;
 					DISASSEMBLE(cpu, ib, 1, 0);
-					quiet_mode = old_quiet_mode;
+					quiet_mode = tmp_old_quiet_mode;
 				}
 #ifdef MODE32
-				fatal("BREAKPOINT: pc = 0x%"PRIx32"\n(The "
+				fatal("BREAKPOINT: pc = 0x%" PRIx32"\n(The "
 				    "instruction has not yet executed.)\n",
 				    (uint32_t)cpu->pc);
 #else
-				fatal("BREAKPOINT: pc = 0x%"PRIx64"\n(The "
+				fatal("BREAKPOINT: pc = 0x%" PRIx64"\n(The "
 				    "instruction has not yet executed.)\n",
 				    (uint64_t)cpu->pc);
 #endif
@@ -1830,9 +1894,9 @@ bad:	/*
 
 	if (cpu->machine->instruction_trace) {
 		if (cpu->is_32bit)
-			fatal(" at 0x%"PRIx32"\n", (uint32_t)cpu->pc);
+			fatal(" at 0x%" PRIx32"\n", (uint32_t)cpu->pc);
 		else
-			fatal(" at 0x%"PRIx64"\n", (uint64_t)cpu->pc);
+			fatal(" at 0x%" PRIx64"\n", (uint64_t)cpu->pc);
 	} else {
 		fatal(":\n");
 		DISASSEMBLE(cpu, ib, 1, 0);

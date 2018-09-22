@@ -37,53 +37,7 @@ using std::ifstream;
 #include "AddressDataBus.h"
 #include "components/CPUComponent.h"
 #include "FileLoader_raw.h"
-
-
-// This is basically strtoull(), but it needs to be explicitly implemented
-// since some systems lack it. (Also, compiling with GNU C++ in ANSI mode
-// does not work with strtoull.)
-static uint64_t parse_number(const char* str, bool& error)
-{
-	int base = 10;
-	uint64_t result = 0;
-	bool negative = false;
-
-	error = false;
-
-	if (str == NULL)
-		return 0;
-
-	while (*str == ' ')
-		++str;
-
-	if (*str == '-') {
-		negative = true;
-		++str;
-	}
-
-	while ((*str == 'x' || *str == 'X') || (*str >= '0' && *str <= '9')
-	    || (*str >= 'a' && *str <= 'f') || (*str >= 'A' && *str <= 'F')) {
-		if (*str == 'x' || *str == 'X') {
-			base = 16;
-		} else {
-			int n = *str - '0';
-			if (*str >= 'a' && *str <= 'f')
-				n = *str - 'a' + 10;
-			if (*str >= 'A' && *str <= 'F')
-				n = *str - 'A' + 10;
-			result = result * base + n;
-		}
-		++str;
-	}
-
-	if (*str)
-		error = true;
-
-	if (negative)
-		return -result;
-	else
-		return result;
-}
+#include "StringHelper.h"
 
 
 FileLoader_raw::FileLoader_raw(const string& filename)
@@ -92,33 +46,11 @@ FileLoader_raw::FileLoader_raw(const string& filename)
 }
 
 
-static vector<string> SplitStringIntoVector(const string &str, const char splitter)
-{
-	// This is slow and hackish, but works.
-	vector<string> strings;
-	string word;
-
-	for (size_t i=0, n=str.length(); i<n; i++) {
-		char ch = str[i];
-		if (ch == splitter) {
-			strings.push_back(word);
-			word = "";
-		} else {
-			word += ch;
-		}
-	}
-
-	strings.push_back(word);
-
-	return strings;
-}
-
-
 string FileLoader_raw::DetectFileType(unsigned char *buf, size_t buflen, float& matchness) const
 {
 	matchness = 0.0;
 
-	vector<string> parts = SplitStringIntoVector(Filename(), ':');
+	vector<string> parts = StringHelper::SplitStringIntoVector(Filename(), ':');
 
 	// Possible variants:
 	//
@@ -150,7 +82,7 @@ bool FileLoader_raw::LoadIntoComponent(refcount_ptr<Component> component, ostrea
 	// raw:vaddr:filename
 	// raw:vaddr:skiplen:filename
 	// raw:vaddr:skiplen:initialpc:filename  e.g. 0xbfc00000:0x100:0xbfc00884:rom.bin
-	vector<string> parts = SplitStringIntoVector(Filename(), ':');
+	vector<string> parts = StringHelper::SplitStringIntoVector(Filename(), ':');
 	if (parts.size() < 3 || parts.size() > 5) {
 		messages << "Syntax is raw:vaddr:[skiplen:[initialpc:]]filename.\n";
 		return false;
@@ -162,7 +94,7 @@ bool FileLoader_raw::LoadIntoComponent(refcount_ptr<Component> component, ostrea
 	string fname = parts[parts.size() - 1];
 
 	bool error;
-	uint64_t vaddr = parse_number(strvaddr.c_str(), error);
+	uint64_t vaddr = StringHelper::ParseNumber(strvaddr.c_str(), error);
 	if (error) {
 		messages << "could not parse vaddr.\n";
 		return false;
@@ -170,7 +102,7 @@ bool FileLoader_raw::LoadIntoComponent(refcount_ptr<Component> component, ostrea
 
 	uint64_t skiplen = 0;
 	if (strskiplen != "") {
-		skiplen = parse_number(strskiplen.c_str(), error);
+		skiplen = StringHelper::ParseNumber(strskiplen.c_str(), error);
 		if (error) {
 			messages << "could not parse skiplen\n";
 			return false;
@@ -179,7 +111,7 @@ bool FileLoader_raw::LoadIntoComponent(refcount_ptr<Component> component, ostrea
 
 	uint64_t initialpc = vaddr;
 	if (strinitialpc != "") {
-		initialpc = parse_number(strinitialpc.c_str(), error);
+		initialpc = StringHelper::ParseNumber(strinitialpc.c_str(), error);
 		if (error) {
 			messages << "could not parse initialpc\n";
 			return false;

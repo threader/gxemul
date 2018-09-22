@@ -2,7 +2,7 @@
 #define	CPUDYNTRANSCOMPONENT_H
 
 /*
- *  Copyright (C) 2008-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2008-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -105,11 +105,11 @@ public:
 protected:
 	// Implemented by specific CPU families:
 	virtual int GetDyntransICshift() const = 0;
-	virtual void (*GetDyntransToBeTranslated())(CPUDyntransComponent* cpu, DyntransIC* ic) const = 0;
+	virtual void (*GetDyntransToBeTranslated())(CPUDyntransComponent* cpu, DyntransIC* ic) = 0;
 
 	void DyntransToBeTranslatedBegin(struct DyntransIC*);
 	bool DyntransReadInstruction(uint16_t& iword);
-	bool DyntransReadInstruction(uint32_t& iword);
+	bool DyntransReadInstruction(uint32_t& iword, int offset = 0);
 	void DyntransToBeTranslatedDone(struct DyntransIC*);
 
 	/**
@@ -270,6 +270,7 @@ private:
 
 		void ValidateConsistency()
 		{
+#ifndef NDEBUG
 			vector<bool> pageIsInMRUList;
 			vector<bool> pageIsInFreeList;
 			vector<bool> pageIsInMRUListReverse;
@@ -382,6 +383,7 @@ private:
 					throw std::exception();
 				}
 			}
+#endif
 		}
 
 		void FreeLeastRecentlyUsedPage()

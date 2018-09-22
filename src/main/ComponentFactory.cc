@@ -30,6 +30,7 @@
 
 #include "ComponentFactory.h"
 #include "GXemul.h"
+#include "StringHelper.h"
 
 
 struct ComponentListEntry {
@@ -43,14 +44,14 @@ struct ComponentListEntry {
 #include "../../components_h.h"
 static struct ComponentListEntry componentList[] = {
 #include "../../components.h"
-	{ NULL }
+	{ NULL, NULL, NULL }
 };
 
 // List of components that are added dynamically at runtime:
-static vector<ComponentListEntry> componentListRunTime;
+static vector<ComponentListEntry>* componentListRunTime = NULL;
 
 
-bool ComponentFactory::RegisterComponentClass(const string& name,
+bool ComponentFactory::RegisterComponentClass(const char* name,
 	refcount_ptr<Component> (*createFunc)(const ComponentCreateArgs& args),
 	string (*getAttributeFunc)(const string& attributeName))
 {
@@ -62,37 +63,24 @@ bool ComponentFactory::RegisterComponentClass(const string& name,
 		return false;
 	}
 
+	if (componentListRunTime == NULL)
+		componentListRunTime = new vector<ComponentListEntry>();
+
 	ComponentListEntry cle;
-	cle.componentName = strdup(name.c_str());
+	cle.componentName = name;
 	cle.Create = createFunc;
 	cle.GetAttribute = getAttributeFunc;
 
-	componentListRunTime.push_back(cle);
+	componentListRunTime->push_back(cle);
 
 	return true;
 }
 
 
-static vector<string> SplitStringIntoVector(const string &str, const char splitter)
+void ComponentFactory::UnregisterAllComponentClasses()
 {
-	// This is slow and hackish, but works.
-	vector<string> strings;
-	string word;
-
-	for (size_t i=0, n=str.length(); i<n; i++) {
-		char ch = str[i];
-		if (ch == splitter) {
-			strings.push_back(word);
-			word = "";
-		} else {
-			word += ch;
-		}
-	}
-
-	if (word != "")
-		strings.push_back(word);
-
-	return strings;
+	delete componentListRunTime;
+	componentListRunTime = NULL;
 }
 
 
@@ -122,11 +110,11 @@ refcount_ptr<Component> ComponentFactory::CreateComponent(
 		// argstring is now e.g. "cpu=R4400,ncpus=4"
 
 		// Split into assignments:
-		vector<string> assignments = SplitStringIntoVector(argstring, ',');
+		vector<string> assignments = StringHelper::SplitStringIntoVector(argstring, ',');
 
 		// Split each assignment into key and value:
 		for (size_t i=0; i<assignments.size(); ++i) {
-			vector<string> keyAndValue = SplitStringIntoVector(assignments[i], '=');
+			vector<string> keyAndValue = StringHelper::SplitStringIntoVector(assignments[i], '=');
 			if (keyAndValue.size() != 2) {
 				if (gxemul != NULL)
 					gxemul->GetUI()->ShowDebugMessage("Not a key=value pair: " + assignments[i]);
@@ -152,13 +140,13 @@ refcount_ptr<Component> ComponentFactory::CreateComponent(
 		++ i;
 	}
 
-	for (i=0; i<componentListRunTime.size(); ++i) {
-		if (componentName == componentListRunTime[i].componentName
+	for (i=0; componentListRunTime != NULL && i<componentListRunTime->size(); ++i) {
+		if (componentName == (*componentListRunTime)[i].componentName
 #ifndef UNSTABLE_DEVEL
-		    && !componentListRunTime[i].GetAttribute("stable").empty()
+		    && !(*componentListRunTime)[i].GetAttribute("stable").empty()
 #endif
 		    )
-			return componentListRunTime[i].Create(args);
+			return (*componentListRunTime)[i].Create(args);
 	}
 
 	return NULL;
@@ -209,9 +197,9 @@ string ComponentFactory::GetAttribute(const string& name,
 		++ i;
 	}
 	
-	for (i=0; i<componentListRunTime.size(); ++i) {
-		if (name == componentListRunTime[i].componentName)
-			return componentListRunTime[i].GetAttribute(
+	for (i=0; componentListRunTime!=NULL && i<componentListRunTime->size(); ++i) {
+		if (name == (*componentListRunTime)[i].componentName)
+			return (*componentListRunTime)[i].GetAttribute(
 			    attributeName);
 	}
 	
@@ -242,14 +230,14 @@ vector<string> ComponentFactory::GetAllComponentNames(bool onlyTemplates)
 		++ i;
 	}
 
-	for (i=0; i<componentListRunTime.size(); ++i) {
+	for (i=0; componentListRunTime!=NULL && i<componentListRunTime->size(); ++i) {
 		if ((!onlyTemplates ||
-		    componentListRunTime[i].GetAttribute("template") == "yes")
+		    (*componentListRunTime)[i].GetAttribute("template") == "yes")
 #ifndef UNSTABLE_DEVEL
-		    && !componentListRunTime[i].GetAttribute("stable").empty()
+		    && !(*componentListRunTime)[i].GetAttribute("stable").empty()
 #endif
 		    )
-			result.push_back(componentListRunTime[i].componentName);
+			result.push_back((*componentListRunTime)[i].componentName);
 	}
 
 	return result;

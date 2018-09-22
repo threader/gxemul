@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "ComponentFactory.h"
 #include "console.h"
 #include "cpu.h"
 #include "debugger.h"
@@ -192,7 +193,22 @@ void internal_w(char *arg)
 		exit(0);
 		break;
 	case 'U':
-		exit(UnitTest::RunTests());
+		{
+			int result = UnitTest::RunTests();
+
+			// Hack to prevent leaks:
+			ComponentFactory::UnregisterAllComponentClasses();
+
+#ifndef NDEBUG
+			int leaks = check_leaks();
+			if (leaks > 0) {
+				cerr << "Having memory leaks counts as failure to run the tests!\n";
+				exit(1);
+			}
+#endif
+
+			exit(result);
+		}
 		break;
 	default:
 		fprintf(stderr, "internal_w(): UNIMPLEMENTED arg = '%s'\n",
@@ -211,11 +227,12 @@ void internal_w(char *arg)
  */
 static void usage(int longusage)
 {
-	printf("GXemul "VERSION"    Copyright (C) 2003-2010  Anders Gavare\n");
+
+	printf("GXemul " VERSION"    " COPYRIGHT_MSG"\n" SECONDARY_MSG);
 	printf("Read the source code and/or documentation for "
 	    "other Copyright messages.\n");
 
-	printf("\nUsage: %s [options] -e name [file [...]]\n", progname);
+	printf("\nUsage: %s [options] -e name [additional components and files [...]]\n", progname);
 	printf("   or  %s [options] configfile\n", progname);
 	printf("   or  %s -H\n", progname);
 	printf("   or  %s -V\n", progname);
@@ -226,21 +243,25 @@ static void usage(int longusage)
 		printf("  -H           Display a list of available machine templates.\n");
 		printf("  -e name      Start with a machine based on template 'name'.\n");
 		printf("  -q           Quiet mode (suppress debug messages).\n");
-		printf("  -V           Start up in interactive mode, paused.\n");
+		printf("  -V           Start up in interactive debugging mode, paused.\n");
 		printf("\n");
 	}
 
-	printf("\nLegacy usage: %s [machine, other, and general options] [file "
-	    "[...]]\n", progname);
-	printf("          or  %s [general options] @configfile\n", progname);
-
 	if (!longusage) {
+		printf("\nLegacy usage: %s [machine, other, and general options] [file "
+		    "[...]]\n", progname);
+		printf("          or  %s [general options] @configfile\n", progname);
+
 		printf("\nRun  %s -h  for help on command line options.\n",
 		    progname);
 		return;
 	}
 
-	printf("\n--------------------- The following are LEGACY options: ---------------------\n");
+	printf("\nThe following are options for the Old framework:\n");
+
+	printf("\nLegacy usage: %s [machine, other, and general options] [file "
+	    "[...]]\n", progname);
+	printf("          or  %s [general options] @configfile\n", progname);
 
 	printf("\nMachine selection options:\n");
 	printf("  -E t      try to emulate machine type t. (Use -H to get "
@@ -341,7 +362,7 @@ static void usage(int longusage)
 	    "of a simulation\n");
 	printf("  -q        quiet mode (don't print startup messages)\n");
 	printf("  -V        start up in the single-step debugger, paused\n");
-	printf("  -v        verbose debug messages\n");
+	printf("  -v        increase debug message verbosity\n");
 	printf("\n");
 	printf("If you are selecting a machine type to emulate directly "
 	    "on the command line,\nthen you must specify one or more names"
@@ -589,8 +610,8 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 		quiet_mode = 0;
 
 	if (type == NULL && subtype == NULL &&
-	    (single_step == ENTER_SINGLE_STEPPING || argc > 0)) {
-		int res = 0;
+	    (single_step == ENTER_SINGLE_STEPPING || (argc > 0 && argv[0][0] != '@'))) {
+		int res2 = 0;
 		{
 			GXemul gxemul;
 			gxemul.InitUI();
@@ -608,11 +629,13 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			if (argc > 0 && !gxemul.ParseFilenames("", argc, argv))
 				res = 1;
 
-			if (res == 0)
-				res = gxemul.Run();
+			if (res2 == 0)
+				res2 = gxemul.Run();
 		}
 
-		exit(res);
+		// Note: exit() is outside the GXemul scope, so that GXemul's
+		// destructor runs.
+		exit(res2);
 	}
 
 	if (type != NULL || subtype != NULL) {
@@ -623,7 +646,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 
 		/*  Is it a new machine mode?  */
 		if (subtype[0] != '\0') {
-			int res = 0;
+			int res2 = 0;
 			bool doExit = false;
 			
 			{
@@ -642,17 +665,17 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 
 				if (gxemul.IsTemplateMachine(subtype)) {
 					if (!gxemul.ParseFilenames(subtype, argc, argv))
-						res = 1;
+						res2 = 1;
 
-					if (res == 0)
-						res = gxemul.Run();
+					if (res2 == 0)
+						res2 = gxemul.Run();
 
 					doExit = true;
 				}
 			}
 			
 			if (doExit)
-				exit(res);
+				exit(res2);
 		}
 
 		/*  Legacy mode?  */
@@ -747,10 +770,10 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 int main(int argc, char *argv[])
 {
 	/*  Setting constants:  */
-	const int constant_yes = 1;
-	const int constant_true = 1;
-	const int constant_no = 0;
-	const int constant_false = 0;
+	int constant_yes = 1;
+	int constant_true = 1;
+	int constant_no = 0;
+	int constant_false = 0;
 
 	struct emul *emul;
 	int config_file = 0;
@@ -814,7 +837,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Print startup message:  */
-	debug("GXemul "VERSION"    Copyright (C) 2003-2010  Anders Gavare\n"
+	debug("GXemul " VERSION"    " COPYRIGHT_MSG"\n" SECONDARY_MSG
 	    "Read the source code and/or documentation for other Copyright "
 	    "messages.\n\n");
 

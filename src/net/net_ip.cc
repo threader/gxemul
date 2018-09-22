@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -797,19 +797,17 @@ static void net_ip_udp(struct net *net, void *extra,
 	else {
 		debug("NEW");
 		if (free_con_id < 0) {
-			int i;
 			int64_t oldest = net->
 			    udp_connections[0].last_used_timestamp;
 			free_con_id = 0;
 
 			debug(", NO FREE SLOTS, REUSING OLDEST ONE");
-			for (i=0; i<MAX_UDP_CONNECTIONS; i++)
-				if (net->udp_connections[i].
-				    last_used_timestamp < oldest) {
-					oldest = net->udp_connections[i].
-					    last_used_timestamp;
-					free_con_id = i;
+			for (int j=0; j<MAX_UDP_CONNECTIONS; j++)
+				if (net->udp_connections[j].last_used_timestamp < oldest) {
+					oldest = net->udp_connections[j].last_used_timestamp;
+					free_con_id = j;
 				}
+
 			close(net->udp_connections[free_con_id].socket);
 		}
 		con_id = free_con_id;
@@ -938,7 +936,7 @@ void net_ip(struct net *net, void *extra, unsigned char *packet, int len)
  *
  *  Handle an IPv4 DHCP broadcast packet, coming from the emulated NIC.
  *
- *  Read http://www.ietf.org/rfc/rfc2131.txt for details on DHCP.
+ *  Read http://tools.ietf.org/html/rfc2131 for details on DHCP.
  *  (And http://users.telenet.be/mydotcom/library/network/dhcp.htm.)
  */
 static void net_ip_broadcast_dhcp(struct net *net, void *extra,
@@ -949,7 +947,7 @@ static void net_ip_broadcast_dhcp(struct net *net, void *extra,
 	 */
 #if 1
 	struct ethernet_packet_link *lp;
-	int i;
+        int i, reply_len;
 
 	fatal("[ net: IPv4 DHCP: ");
 #if 1
@@ -1009,15 +1007,21 @@ static void net_ip_broadcast_dhcp(struct net *net, void *extra,
 	 */
 	fatal(" ]\n");
 
-	lp = net_allocate_ethernet_packet_link(net, extra, len);
+        reply_len = 307;
+        lp = net_allocate_ethernet_packet_link(net, extra, reply_len);
 
-	/*  Copy the old packet first:  */
-	memcpy(lp->data, packet, len);
+        /*  From old packet, copy everything before options field:  */
+        memcpy(lp->data, packet, 278);
 
 	/*  We are sending to the client, from the gateway:  */
 	memcpy(lp->data + 0, packet + 6, 6);
 	memcpy(lp->data + 6, net->gateway_ethernet_addr, 6);
 
+	/*  Set IP length:  */
+	lp->data[16] = (reply_len - 14) >> 8;
+	lp->data[17] = (reply_len - 14) & 0xff;
+
+        /*  Set IP addresses:  */
 	memcpy(lp->data + 26, &net->gateway_ipv4_addr[0], 4);
 	lp->data[30] = 0xff;
 	lp->data[31] = 0xff;
@@ -1027,6 +1031,10 @@ static void net_ip_broadcast_dhcp(struct net *net, void *extra,
 	/*  Switch src and dst ports:  */
 	memcpy(lp->data + 34, packet + 36, 2);
 	memcpy(lp->data + 36, packet + 34, 2);
+
+	/*  Set UDP length:  */
+	lp->data[38] = (reply_len - 34) >> 8;
+	lp->data[39] = (reply_len - 34) & 0xff;
 
 	/*  Client's (yiaddr) IPv4 address:  */
 	lp->data[58] = 10;
@@ -1042,11 +1050,35 @@ static void net_ip_broadcast_dhcp(struct net *net, void *extra,
 
 	snprintf((char *)lp->data + 70+16+64, 8, "gxemul");
 
+	/*  Options field at offset 278:  */
+	lp->data[278] = 99;
+	lp->data[279] = 130;
+	lp->data[280] = 83;
+	lp->data[281] = 99;
+
+	/*  DHCP options, http://tools.ietf.org/html/rfc1533  */
+	lp->data[282] = 1; /* subnet mask */
+	lp->data[283] = 4;
+	lp->data[284] = 255;
+	lp->data[285] = 0;
+	lp->data[286] = 0;
+	lp->data[287] = 0;
+	lp->data[288] = 3; /* router */
+	lp->data[289] = 4;
+	memcpy(lp->data + 290, &net->gateway_ipv4_addr[0], 4);
+	lp->data[294] = 6; /* domain name server */
+	lp->data[295] = 4;
+	memcpy(lp->data + 296, &net->gateway_ipv4_addr[0], 4);
+	lp->data[300] = 54; /* server identifier */
+	lp->data[301] = 4;
+	memcpy(lp->data + 302, &net->gateway_ipv4_addr[0], 4);
+	lp->data[306] = 255; /* end */
+
 	/*  Recalculate IP header checksum:  */
 	net_ip_checksum(lp->data + 14, 10, 20);
 
 	/*  ... and the UDP checksum:  */
-	net_ip_tcp_checksum(lp->data + 34, 6, len - 34 - 8,
+        net_ip_tcp_checksum(lp->data + 34, 6, reply_len - 34,
 	    lp->data + 26, lp->data + 30, 1);
 
 

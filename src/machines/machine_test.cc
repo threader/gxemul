@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2014  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -51,6 +51,7 @@
 
 #include "cpu.h"
 #include "device.h"
+#include "devices.h"
 #include "machine.h"
 #include "memory.h"
 #include "misc.h"
@@ -105,37 +106,37 @@ static void default_test(struct machine *machine, struct cpu *cpu)
 	snprintf(base_irq, sizeof(base_irq), "%s.cpu[%i]%s",
 	    machine->path, machine->bootstrap_cpu, end_of_base_irq);
 
-	snprintf(tmpstr, sizeof(tmpstr), "irqc addr=0x%"PRIx64" irq=%s",
+	snprintf(tmpstr, sizeof(tmpstr), "irqc addr=0x%" PRIx64" irq=%s",
 	    (uint64_t) DEV_IRQC_ADDRESS, base_irq);
 	device_add(machine, tmpstr);
 
 
 	/*  Now, add the other devices:  */
 
-	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%"PRIx64
+	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%" PRIx64
 	    " irq=%s.irqc.2 in_use=%i",
 	    (uint64_t) DEV_CONS_ADDRESS, base_irq, machine->arch != ARCH_SH);
 	machine->main_console_handle = (size_t)device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%"PRIx64" irq=%s%sirqc.6",
+	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%" PRIx64" irq=%s%sirqc.6",
 	    (uint64_t) DEV_MP_ADDRESS,
 	    end_of_base_irq[0]? end_of_base_irq + 1 : "",
 	    end_of_base_irq[0]? "." : "");
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "fbctrl addr=0x%"PRIx64,
+	snprintf(tmpstr, sizeof(tmpstr), "fbctrl addr=0x%" PRIx64,
 	    (uint64_t) DEV_FBCTRL_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "disk addr=0x%"PRIx64,
+	snprintf(tmpstr, sizeof(tmpstr), "disk addr=0x%" PRIx64,
 	    (uint64_t) DEV_DISK_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%"PRIx64" irq=%s.irqc.3",
+	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%" PRIx64" irq=%s.irqc.3",
 	    (uint64_t) DEV_ETHER_ADDRESS, base_irq);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%"PRIx64" irq=%s.irqc.4",
+	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%" PRIx64" irq=%s.irqc.4",
 	    (uint64_t) DEV_RTC_ADDRESS, base_irq);
 	device_add(machine, tmpstr);
 }
@@ -144,6 +145,15 @@ static void default_test(struct machine *machine, struct cpu *cpu)
 MACHINE_SETUP(barearm)
 {
 	machine->machine_name = strdup("Generic \"bare\" ARM machine");
+
+#if 0
+	// An experiment with running a particular firmware image on a device;
+	// move some other place when/if it works?
+	cpu->byte_order = EMUL_BIG_ENDIAN;
+
+	dev_ram_init(machine, 0xa0000000, 128 * 1048576, DEV_RAM_MIRROR
+		| DEV_RAM_MIGHT_POINT_TO_DEVICES, 0x00000000, "ram_mirror");
+#endif
 }
 
 
@@ -269,29 +279,29 @@ MACHINE_SETUP(oldtestmips)
 	machine->machine_name = strdup("MIPS test machine");
 	cpu->byte_order = EMUL_BIG_ENDIAN;
 
-	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%"PRIx64" irq=%s."
+	snprintf(tmpstr, sizeof(tmpstr), "cons addr=0x%" PRIx64" irq=%s."
 	    "cpu[%i].2", (uint64_t) DEV_CONS_ADDRESS, machine->path,
 	    machine->bootstrap_cpu);
 	machine->main_console_handle = (size_t)device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%"PRIx64" irq=6",
+	snprintf(tmpstr, sizeof(tmpstr), "mp addr=0x%" PRIx64" irq=6",
 	    (uint64_t) DEV_MP_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "fbctrl addr=0x%"PRIx64,
+	snprintf(tmpstr, sizeof(tmpstr), "fbctrl addr=0x%" PRIx64,
 	    (uint64_t) DEV_FBCTRL_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "disk addr=0x%"PRIx64,
+	snprintf(tmpstr, sizeof(tmpstr), "disk addr=0x%" PRIx64,
 	    (uint64_t) DEV_DISK_ADDRESS);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%"PRIx64" irq=%s."
+	snprintf(tmpstr, sizeof(tmpstr), "ether addr=0x%" PRIx64" irq=%s."
 	    "cpu[%i].3", (uint64_t) DEV_ETHER_ADDRESS, machine->path,
 	    machine->bootstrap_cpu);
 	device_add(machine, tmpstr);
 
-	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%"PRIx64" irq=%s."
+	snprintf(tmpstr, sizeof(tmpstr), "rtc addr=0x%" PRIx64" irq=%s."
 	    "cpu[%i].4", (uint64_t) DEV_RTC_ADDRESS, machine->path,
 	    machine->bootstrap_cpu);
 	device_add(machine, tmpstr);

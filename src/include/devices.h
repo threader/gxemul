@@ -2,7 +2,7 @@
 #define	DEVICES_H
 
 /*
- *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -75,17 +75,40 @@ struct pic8259_data {
 };
 
 /*  dev_dec_ioasic.c:  */
-#define	DEV_DEC_IOASIC_LENGTH		0x80100
-#define	N_DEC_IOASIC_REGS	(0x1f0 / 0x10)
+#define	DEV_DEC_IOASIC_LENGTH		0xc0000
 #define	MAX_IOASIC_DMA_FUNCTIONS	8
 struct dec_ioasic_data {
-	uint32_t	reg[N_DEC_IOASIC_REGS];
+	uint32_t	scsi_dmaptr;		/*  0x000  */
+	uint32_t	scsi_nextptr;		/*  0x010  */
+	uint32_t	lance_dmaptr;		/*  0x020  */
+	uint32_t	floppy_dmaptr;		/*  0x070  */
+	uint32_t	isdn_x_dmaptr;		/*  0x080  */
+	uint32_t	isdn_x_nextptr;		/*  0x090  */
+	uint32_t	isdn_r_dmaptr;		/*  0x0a0  */
+	uint32_t	isdn_r_nextptr;		/*  0x0b0  */
+	uint32_t	csr;			/*  0x100  */
+	uint32_t	intr;			/*  0x110  */
+	uint32_t	imsk;			/*  0x120  */
+	uint32_t	isdn_x_data;		/*  0x140  */
+	uint32_t	isdn_r_data;		/*  0x150  */
+	uint32_t	lance_decode;		/*  0x160  */
+	uint32_t	scsi_decode;		/*  0x170  */
+	uint32_t	scc0_decode;		/*  0x180  */
+	uint32_t	scc1_decode;		/*  0x190  */
+	uint32_t	floppy_decode;		/*  0x1a0  */
+	uint32_t	scsi_scr;		/*  0x1b0  */
+	uint32_t	scsi_sdr0;		/*  0x1c0  */
+	uint32_t	scsi_sdr1;		/*  0x1d0  */
+
 	int		(*(dma_func[MAX_IOASIC_DMA_FUNCTIONS]))(struct cpu *, void *, uint64_t addr, size_t dma_len, int tx);
 	void		*dma_func_extra[MAX_IOASIC_DMA_FUNCTIONS];
 	int		rackmount_flag;
+	struct interrupt *irq;
+	int		int_asserted;
 };
+void dec_ioasic_reassert(struct dec_ioasic_data*);
 int dev_dec_ioasic_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr, unsigned char *data, size_t len, int writeflag, void *);
-struct dec_ioasic_data *dev_dec_ioasic_init(struct cpu *cpu, struct memory *mem, uint64_t baseaddr, int rackmount_flag);
+struct dec_ioasic_data *dev_dec_ioasic_init(struct cpu *cpu, struct memory *mem, uint64_t baseaddr, int rackmount_flag, struct interrupt* irq);
 
 /*  dev_asc.c:  */
 #define	DEV_ASC_DEC_LENGTH		0x40000
@@ -341,10 +364,11 @@ void dev_px_init(struct machine *machine, struct memory *mem,
 #define	DEV_RAM_RAM				0
 #define	DEV_RAM_MIRROR				1
 #define	DEV_RAM_MIGHT_POINT_TO_DEVICES		0x10
+#define	DEV_RAM_TRACE_ALL_ACCESSES		0x20
 int dev_ram_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 	unsigned char *data, size_t len, int writeflag, void *);
 void dev_ram_init(struct machine *machine, uint64_t baseaddr, uint64_t length,
-	int mode, uint64_t otheraddr);
+	int mode, uint64_t otheraddr, const char* name = NULL);
 
 /*  dev_scc.c:  */
 #define	DEV_SCC_LENGTH			0x1000
@@ -353,7 +377,7 @@ int dev_scc_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 int dev_scc_dma_func(struct cpu *cpu, void *extra, uint64_t addr,
 	size_t dma_len, int tx);
 void *dev_scc_init(struct machine *machine, struct memory *mem,
-	uint64_t baseaddr, int irq_nr, int use_fb, int scc_nr, int addrmul);
+	uint64_t baseaddr, char* irq_path, int use_fb, int scc_nr, int addrmul);
 
 /*  dev_sfb.c:  */
 #define	DEV_SFB_LENGTH		0x400000
@@ -454,7 +478,7 @@ struct pci_data *dev_uninorth_init(struct machine *machine, struct memory *mem,
 int dev_vga_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 	unsigned char *data, size_t len, int writeflag, void *);
 void dev_vga_init(struct machine *machine, struct memory *mem,
-	uint64_t videomem_base, uint64_t control_base, char *name);
+	uint64_t videomem_base, uint64_t control_base, const char *name);
 
 /*  dev_vr41xx.c:  */
 struct vr41xx_data *dev_vr41xx_init(struct machine *machine,

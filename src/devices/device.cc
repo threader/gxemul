@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2013  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -54,8 +54,8 @@ static int n_pci_entries = 0;
  */
 static int device_entry_compar(const void *a, const void *b)
 {
-	const struct device_entry *pa = (struct device_entry *) a;
-	const struct device_entry *pb = (struct device_entry *) b;
+	const struct device_entry *pa = (const struct device_entry *) a;
+	const struct device_entry *pb = (const struct device_entry *) b;
 
 	return strcmp(pa->name, pb->name);
 }
@@ -254,7 +254,7 @@ void *device_add(struct machine *machine, const char *name_and_params)
 	struct device_entry *p;
 	struct devinit devinit;
 	const char *s2;
-	char *s3;
+	const char *s3;
 	size_t len, interrupt_path_len = strlen(machine->path) + 100;
 	int quoted;
 
@@ -302,7 +302,7 @@ void *device_add(struct machine *machine, const char *name_and_params)
 		/*  s2 now points to the next param. eg "addr=1234"  */
 
 		/*  Get a word (until there is a '=' sign):  */
-		s3 = (char *) s2;
+		s3 = s2;
 		while (*s3 != '=' && *s3 != '\0')
 			s3 ++;
 		if (s3 == s2) {
@@ -341,20 +341,20 @@ void *device_add(struct machine *machine, const char *name_and_params)
 			devinit.in_use = mystrtoull(s3, NULL, 0);
 		} else if (strncmp(s2, "name2=", 6) == 0) {
 			const char *h = s2 + 6;
-			size_t len = 0;
+			size_t len2 = 0;
 			quoted = 0;
 			while (*h) {
 				if (*h == '\'')
 					quoted = !quoted;
-				h++, len++;
+				h++, len2++;
 				if (!quoted && *h == ' ')
 					break;
 			}
-			CHECK_ALLOCATION(devinit.name2 = (char *) malloc(len + 1));
+			CHECK_ALLOCATION(devinit.name2 = (char *) malloc(len2 + 1));
 			h = s2 + 6;
 			if (*h == '\'')
-				len -= 2, h++;
-			snprintf(devinit.name2, len + 1, "%s", h);
+				len2 -= 2, h++;
+			snprintf(devinit.name2, len2 + 1, "%s", h);
 		} else {
 			fatal("unknown param: %s\n", s2);
 			if (device_exit_on_error)

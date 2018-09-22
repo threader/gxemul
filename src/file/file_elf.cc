@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2014  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -204,13 +204,19 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 
 	ok = 0;
 	switch (arch) {
-	/*case ARCH_ALPHA:
+	case ARCH_M88K:
+		switch (emachine) {
+		case EM_88K:
+			ok = 1;
+		}
+		break;
+	case ARCH_ALPHA:
 		switch (emachine) {
 		case EM_ALPHA:
 		case -28634:
 			ok = 1;
 		}
-		break;*/
+		break;
 	case ARCH_ARM:
 		switch (emachine) {
 		case EM_ARM:
@@ -320,9 +326,9 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 	    encoding == ELFDATA2LSB? "LSB (LE)" : "MSB (BE)", s);
 
 	if (elf64)
-		debug("%016"PRIx64"\n", (uint64_t) eentry);
+		debug("%016" PRIx64"\n", (uint64_t) eentry);
 	else
-		debug("%08"PRIx32"\n", (uint32_t) eentry);
+		debug("%08" PRIx32"\n", (uint32_t) eentry);
 
 	/*
 	 *  SH64: 32-bit instruction encoding?
@@ -394,34 +400,34 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 			if (p_type == PT_LOAD)
 				debug("load");
 			else
-				debug("0x%08"PRIx32, (uint32_t) p_type);
+				debug("0x%08" PRIx32, (uint32_t) p_type);
 
-			debug(") @ 0x%"PRIx64", vaddr 0x", (uint64_t) p_offset);
+			debug(") @ 0x%" PRIx64", vaddr 0x", (uint64_t) p_offset);
 
 			if (elf64)
-				debug("%016"PRIx64, (uint64_t) p_vaddr);
+				debug("%016" PRIx64, (uint64_t) p_vaddr);
 			else
-				debug("%08"PRIx32, (uint32_t) p_vaddr);
+				debug("%08" PRIx32, (uint32_t) p_vaddr);
 
-			debug(" len=0x%"PRIx64"\n", (uint64_t) p_memsz);
+			debug(" len=0x%" PRIx64"\n", (uint64_t) p_memsz);
 
 			if (p_vaddr != p_paddr) {
 				if (elf64)
-					debug("NOTE: vaddr (0x%"PRIx64") and "
-					    "paddr (0x%"PRIx64") differ; using "
+					debug("NOTE: vaddr (0x%" PRIx64") and "
+					    "paddr (0x%" PRIx64") differ; using "
 					    "vaddr\n", (uint64_t) p_vaddr,
 					    (uint64_t) p_paddr);
 				else
-					debug("NOTE: vaddr (0x%08"PRIx32") and "
-					    "paddr (0x%08"PRIx32") differ; usin"
+					debug("NOTE: vaddr (0x%08" PRIx32") and "
+					    "paddr (0x%08" PRIx32") differ; usin"
 					    "g vaddr\n", (uint32_t) p_vaddr,
 					    (uint32_t)p_paddr);
 			}
 
 			if (p_memsz < p_filesz) {
 				fprintf(stderr, "%s: memsz < filesz. TODO: how"
-				    " to handle this? memsz=%016"PRIx64
-				    " filesz=%016"PRIx64"\n", filename,
+				    " to handle this? memsz=%016" PRIx64
+				    " filesz=%016" PRIx64"\n", filename,
 				    (uint64_t) p_memsz, (uint64_t) p_filesz);
 				exit(1);
 			}
@@ -437,7 +443,6 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 			ofs = 0;  len = chunk_len = align_len;
 			while (ofs < (int64_t)p_filesz && len==chunk_len) {
 				unsigned char *ch;
-				int i = 0;
 
 				CHECK_ALLOCATION(ch = (unsigned char *) malloc(chunk_len));
 
@@ -460,15 +465,16 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 				if (ofs + len > (int64_t)p_filesz)
 					len = p_filesz - ofs;
 
-				while (i < len) {
+				int j = 0;
+				while (j < len) {
 					size_t len_to_copy;
-					len_to_copy = (i + align_len) <= len?
-					    align_len : len - i;
+					len_to_copy = (j + align_len) <= len?
+					    align_len : len - j;
 					m->cpus[0]->memory_rw(m->cpus[0], mem,
-					    p_vaddr + ofs, &ch[i], len_to_copy,
+					    p_vaddr + ofs, &ch[j], len_to_copy,
 					    MEM_WRITE, NO_EXCEPTIONS);
 					ofs += align_len;
-					i += align_len;
+					j += align_len;
 				}
 
 				free(ch);
@@ -487,7 +493,7 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 		off_t sh_offset;
 		int n_entries;	/*  for reading the symbol / string tables  */
 
-		/*  debug("section header %i at %016"PRIx64"\n", i,
+		/*  debug("section header %i at %016" PRIx64"\n", i,
 		    (uint64_t) eshoff+i*eshentsize);  */
 
 		fseek(f, eshoff + i * eshentsize, SEEK_SET);
@@ -539,7 +545,7 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 			sh_entsize = sizeof(Elf32_Sym);
 
 		if (sh_type == SHT_SYMTAB) {
-			size_t len;
+			size_t len2;
 			n_entries = sh_size / sh_entsize;
 
 			fseek(f, sh_offset, SEEK_SET);
@@ -551,7 +557,7 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 				CHECK_ALLOCATION(symbols_sym64 = (Elf64_Sym *)
 				    malloc(sh_size));
 
-				len = fread(symbols_sym64, 1, sh_entsize *
+				len2 = fread(symbols_sym64, 1, sh_entsize *
 				    n_entries, f);
 			} else {
 				if (symbols_sym32 != NULL)
@@ -560,17 +566,17 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 				CHECK_ALLOCATION(symbols_sym32 = (Elf32_Sym *)
 				    malloc(sh_size));
 
-				len = fread(symbols_sym32, 1,
+				len2 = fread(symbols_sym32, 1,
 				    sh_entsize * n_entries, f);
 			}
 
-			if (len != sh_size) {
+			if (len2 != sh_size) {
 				fprintf(stderr, "could not read symbols from "
 				    "%s\n", filename);
 				exit(1);
 			}
 
-			debug("%i symbol entries at 0x%"PRIx64"\n",
+			debug("%i symbol entries at 0x%" PRIx64"\n",
 			    (int) n_entries, (uint64_t) sh_offset);
 
 			n_symbols = n_entries;
@@ -585,22 +591,20 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 		 */
 
 		if (sh_type == SHT_STRTAB && sh_size > symbol_length) {
-			size_t len;
-
 			if (symbol_strings != NULL)
 				free(symbol_strings);
 
 			CHECK_ALLOCATION(symbol_strings = (char *) malloc(sh_size + 1));
 
 			fseek(f, sh_offset, SEEK_SET);
-			len = fread(symbol_strings, 1, sh_size, f);
-			if (len != sh_size) {
+			size_t len2 = fread(symbol_strings, 1, sh_size, f);
+			if (len2 != sh_size) {
 				fprintf(stderr, "could not read symbols from "
 				    "%s\n", filename);
 				exit(1);
 			}
 
-			debug("%i bytes of symbol strings at 0x%"PRIx64"\n",
+			debug("%i bytes of symbol strings at 0x%" PRIx64"\n",
 			    (int) sh_size, (uint64_t) sh_offset);
 
 			symbol_strings[sh_size] = '\0';
@@ -630,7 +634,7 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 				unencode(size,    &sym32.st_size, Elf32_Word);
 			}
 
-			/*  debug("symbol info=0x%02x addr=0x%016"PRIx64
+			/*  debug("symbol info=0x%02x addr=0x%016" PRIx64
 			    " (%i) '%s'\n", st_info, (uint64_t) addr,
 			    st_name, symbol_strings + st_name);  */
 
@@ -639,7 +643,7 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 
 			if (addr != 0) /* && ((st_info >> 4) & 0xf)
 			    >= STB_GLOBAL) */ {
-				/*  debug("symbol info=0x%02x addr=0x%016"PRIx64
+				/*  debug("symbol info=0x%02x addr=0x%016" PRIx64
 				    " '%s'\n", st_info, (uint64_t) addr,
 				    symbol_strings + st_name);  */
 				add_symbol_name(&m->symbol_context,
@@ -650,9 +654,9 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 			if (strcmp(symbol_strings + st_name, "_gp") == 0) {
 				debug("found _gp address: 0x");
 				if (elf64)
-					debug("%016"PRIx64"\n", (uint64_t)addr);
+					debug("%016" PRIx64"\n", (uint64_t)addr);
 				else
-					debug("%08"PRIx32"\n", (uint32_t)addr);
+					debug("%08" PRIx32"\n", (uint32_t)addr);
 				*gpp = addr;
 			}
 		}
@@ -705,7 +709,7 @@ static void file_load_elf(struct machine *m, struct memory *mem,
 		    ((uint64_t)b[5] << 16) + ((uint64_t)b[6] << 8) +
 		    (uint64_t)b[7];
 
-		debug("entrypoint 0x%016"PRIx64", toc_base 0x%016"PRIx64"\n",
+		debug("entrypoint 0x%016" PRIx64", toc_base 0x%016" PRIx64"\n",
 		    (uint64_t) *entrypointp, (uint64_t) toc_base);
 		if (tocp != NULL)
 			*tocp = toc_base;

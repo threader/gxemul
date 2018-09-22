@@ -2,7 +2,7 @@
 #define	MISC_H
 
 /*
- *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -43,8 +43,7 @@
 
 #include "../../config.h"
 
-
-#define	COPYRIGHT_MSG	"Copyright (C) 2003-2010  Anders Gavare"
+#define	COPYRIGHT_MSG	"Copyright (C) 2003-2018  Anders Gavare"
 
 // The recommended way to add a specific message to the startup banner or
 // about box is to use the SECONDARY_MSG. This should end with a newline
@@ -61,6 +60,7 @@ typedef char stringchar;
 
 #include <map>
 using std::map;
+using std::pair;
 
 #include <list>
 using std::list;
@@ -264,7 +264,7 @@ int decstation_prom_emul(struct cpu *cpu);
 
 /*  dreamcast.c:  */
 void dreamcast_machine_setup(struct machine *);
-int dreamcast_emul(struct cpu *cpu);
+void dreamcast_emul(struct cpu *cpu);
 
 
 /*  dreamcast_scramble.c:  */
@@ -276,6 +276,11 @@ int file_n_executables_loaded(void);
 void file_load(struct machine *machine, struct memory *mem,
 	char *filename, uint64_t *entrypointp,
 	int arch, uint64_t *gpp, int *byte_order, uint64_t *tocp);
+
+
+/*  luna88kprom.c:  */
+void luna88kprom_init(struct machine *machine);
+int luna88kprom_emul(struct cpu *cpu);
 
 
 /*  main.c:  */

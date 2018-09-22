@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2012  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -57,7 +57,7 @@ extern int quiet_mode;
  *  arcbios_add_string_to_component():
  */
 void arcbios_add_string_to_component(struct machine *machine,
-	char *string, uint64_t component)
+	char *str, uint64_t component)
 {
 	if (machine->md.arc->n_string_to_components
 	    >= MAX_STRING_TO_COMPONENT) {
@@ -66,10 +66,10 @@ void arcbios_add_string_to_component(struct machine *machine,
 	}
 
 	CHECK_ALLOCATION(machine->md.arc->string_to_component[machine->
-	    md.arc->n_string_to_components] = strdup(string));
+	    md.arc->n_string_to_components] = strdup(str));
 
 	debug("adding ARC component mapping: 0x%08x = %s\n",
-	    (int)component, string);
+	    (int)component, str);
 
 	machine->md.arc->string_to_component_value[
 	    machine->md.arc->n_string_to_components] = component;
@@ -552,9 +552,9 @@ static uint64_t arcbios_addchild(struct cpu *cpu,
 		    peeraddr + 0 * machine->md.arc->wordlen, &buf[0],
 		    sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp;
-			tmp = buf[0]; buf[0] = buf[3]; buf[3] = tmp;
-			tmp = buf[1]; buf[1] = buf[2]; buf[2] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[3]; buf[3] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[2]; buf[2] = tmp2;
 		}
 		epeer   = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24);
 
@@ -562,9 +562,9 @@ static uint64_t arcbios_addchild(struct cpu *cpu,
 		    machine->md.arc->wordlen,
 		    &buf[0], sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp; tmp = buf[0];
-			buf[0] = buf[3]; buf[3] = tmp;
-			tmp = buf[1]; buf[1] = buf[2]; buf[2] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[3]; buf[3] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[2]; buf[2] = tmp2;
 		}
 		echild  = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24);
 
@@ -572,9 +572,9 @@ static uint64_t arcbios_addchild(struct cpu *cpu,
 		    machine->md.arc->wordlen,
 		    &buf[0], sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp; tmp = buf[0];
-			buf[0] = buf[3]; buf[3] = tmp;
-			tmp = buf[1]; buf[1] = buf[2]; buf[2] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[3]; buf[3] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[2]; buf[2] = tmp2;
 		}
 		eparent = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24);
 
@@ -600,10 +600,11 @@ static uint64_t arcbios_addchild(struct cpu *cpu,
 		cpu->memory_rw(cpu, cpu->mem, peeraddr + 0x28, &buf[0],
 		    sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp; tmp = buf[0];
-			buf[0] = buf[3]; buf[3] = tmp;
-			tmp = buf[1]; buf[1] = buf[2]; buf[2] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[3]; buf[3] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[2]; buf[2] = tmp2;
 		}
+		
 		tmp = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24);
 		peeraddr += 0x30;
 		peeraddr += tmp + 1;
@@ -695,18 +696,18 @@ static uint64_t arcbios_addchild64(struct cpu *cpu,
 		uint64_t eparent, echild, epeer, tmp;
 		unsigned char buf[8];
 
-		/*  debug("[ addchild: peeraddr = 0x%016"PRIx64" ]\n",
+		/*  debug("[ addchild: peeraddr = 0x%016" PRIx64" ]\n",
 		    (uint64_t) peeraddr);  */
 
 		cpu->memory_rw(cpu, cpu->mem,
 		    peeraddr + 0 * machine->md.arc->wordlen, &buf[0],
 		    sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp;
-			tmp = buf[0]; buf[0] = buf[7]; buf[7] = tmp;
-			tmp = buf[1]; buf[1] = buf[6]; buf[6] = tmp;
-			tmp = buf[2]; buf[2] = buf[5]; buf[5] = tmp;
-			tmp = buf[3]; buf[3] = buf[4]; buf[4] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[7]; buf[7] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[6]; buf[6] = tmp2;
+			tmp2 = buf[2]; buf[2] = buf[5]; buf[5] = tmp2;
+			tmp2 = buf[3]; buf[3] = buf[4]; buf[4] = tmp2;
 		}
 		epeer   = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24)
 		    + ((uint64_t)buf[4] << 32) + ((uint64_t)buf[5] << 40)
@@ -716,11 +717,11 @@ static uint64_t arcbios_addchild64(struct cpu *cpu,
 		    machine->md.arc->wordlen,
 		    &buf[0], sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp;
-			tmp = buf[0]; buf[0] = buf[7]; buf[7] = tmp;
-			tmp = buf[1]; buf[1] = buf[6]; buf[6] = tmp;
-			tmp = buf[2]; buf[2] = buf[5]; buf[5] = tmp;
-			tmp = buf[3]; buf[3] = buf[4]; buf[4] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[7]; buf[7] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[6]; buf[6] = tmp2;
+			tmp2 = buf[2]; buf[2] = buf[5]; buf[5] = tmp2;
+			tmp2 = buf[3]; buf[3] = buf[4]; buf[4] = tmp2;
 		}
 		echild  = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24)
 		    + ((uint64_t)buf[4] << 32) + ((uint64_t)buf[5] << 40)
@@ -730,17 +731,17 @@ static uint64_t arcbios_addchild64(struct cpu *cpu,
 		    machine->md.arc->wordlen,
 		    &buf[0], sizeof(eparent), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp;
-			tmp = buf[0]; buf[0] = buf[7]; buf[7] = tmp;
-			tmp = buf[1]; buf[1] = buf[6]; buf[6] = tmp;
-			tmp = buf[2]; buf[2] = buf[5]; buf[5] = tmp;
-			tmp = buf[3]; buf[3] = buf[4]; buf[4] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[7]; buf[7] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[6]; buf[6] = tmp2;
+			tmp2 = buf[2]; buf[2] = buf[5]; buf[5] = tmp2;
+			tmp2 = buf[3]; buf[3] = buf[4]; buf[4] = tmp2;
 		}
 		eparent = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24)
 		    + ((uint64_t)buf[4] << 32) + ((uint64_t)buf[5] << 40)
 		    + ((uint64_t)buf[6] << 48) + ((uint64_t)buf[7] << 56);
 
-		/*  debug("  epeer=%"PRIx64" echild=%"PRIx64" eparent=%"PRIx64
+		/*  debug("  epeer=%" PRIx64" echild=%" PRIx64" eparent=%" PRIx64
 		    "\n", (uint64_t) epeer, (uint64_t) echild,
 		    (uint64_t) eparent);  */
 
@@ -748,16 +749,16 @@ static uint64_t arcbios_addchild64(struct cpu *cpu,
 			epeer = a;
 			store_64bit_word(cpu, peeraddr + 0 *
 			    machine->md.arc->wordlen, epeer);
-			/*  debug("[ addchild: adding 0x%016"PRIx64" as peer "
-			    "to 0x%016"PRIx64" ]\n", (uint64_t) a,
+			/*  debug("[ addchild: adding 0x%016" PRIx64" as peer "
+			    "to 0x%016" PRIx64" ]\n", (uint64_t) a,
 			    (uint64_t) peeraddr);  */
 		}
 		if (peeraddr == parent && echild == 0) {
 			echild = a;
 			store_64bit_word(cpu, peeraddr + 1 *
 			    machine->md.arc->wordlen, echild);
-			/*  debug("[ addchild: adding 0x%016"PRIx64" as child "
-			    "to 0x%016"PRIx64" ]\n", (uint64_t) a,
+			/*  debug("[ addchild: adding 0x%016" PRIx64" as child "
+			    "to 0x%016" PRIx64" ]\n", (uint64_t) a,
 			    (uint64_t) peeraddr);  */
 		}
 
@@ -765,9 +766,9 @@ static uint64_t arcbios_addchild64(struct cpu *cpu,
 		cpu->memory_rw(cpu, cpu->mem, peeraddr + 0x34,
 		    &buf[0], sizeof(uint32_t), MEM_READ, CACHE_NONE);
 		if (cpu->byte_order == EMUL_BIG_ENDIAN) {
-			unsigned char tmp;
-			tmp = buf[0]; buf[0] = buf[3]; buf[3] = tmp;
-			tmp = buf[1]; buf[1] = buf[2]; buf[2] = tmp;
+			unsigned char tmp2;
+			tmp2 = buf[0]; buf[0] = buf[3]; buf[3] = tmp2;
+			tmp2 = buf[1]; buf[1] = buf[2]; buf[2] = tmp2;
 		}
 		tmp = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24);
 
@@ -865,8 +866,8 @@ uint64_t arcbios_addchild_manual(struct cpu *cpu,
 		    machine->md.arc->next_component_address +
 		    (cpu->machine->md.arc->arc_64bit? 0x18 : 0x0c);
 
-		/*  printf("& ADDING %i: configdata=0x%016"PRIx64" "
-		    "component=0x%016"PRIx64"\n",
+		/*  printf("& ADDING %i: configdata=0x%016" PRIx64" "
+		    "component=0x%016" PRIx64"\n",
 		     machine->md.arc->n_configuration_data,
 		    (uint64_t) machine->md.arc->configuration_data_configdata[
 			machine->md.arc->n_configuration_data],
@@ -945,14 +946,14 @@ static void arcbios_get_msdos_partition_size(struct machine *machine,
 ugly_goto:
 	*start = 0; *size = 0;
 
-	/*  printf("reading MSDOS partition from offset 0x%"PRIx64"\n",
+	/*  printf("reading MSDOS partition from offset 0x%" PRIx64"\n",
 	    (uint64_t) offset);  */
 
 	res = diskimage_access(machine, disk_id, disk_type, 0, offset,
 	    sector, sizeof(sector));
 	if (!res) {
 		fatal("[ arcbios_get_msdos_partition_size(): couldn't "
-		    "read the disk image, id %i, offset 0x%"PRIx64" ]\n",
+		    "read the disk image, id %i, offset 0x%" PRIx64" ]\n",
 		    disk_id, (uint64_t) offset);
 		return;
 	}
@@ -1013,7 +1014,7 @@ static int arcbios_handle_to_disk_id_and_type(struct machine *machine,
 	int handle, int *typep)
 {
 	int id, cdrom;
-	char *s;
+	const char *s;
 
 	if (handle < 0 || handle >= ARC_MAX_HANDLES)
 		return -1;
@@ -1045,8 +1046,8 @@ static int arcbios_handle_to_disk_id_and_type(struct machine *machine,
 static void arcbios_handle_to_start_and_size(struct machine *machine,
 	int handle, uint64_t *start, uint64_t *size)
 {
-	char *s = machine->md.arc->file_handle_string[handle];
-	char *s2;
+	const char *s = machine->md.arc->file_handle_string[handle];
+	const char *s2;
 	int disk_id, disk_type;
 
 	disk_id = arcbios_handle_to_disk_id_and_type(machine,
@@ -1235,7 +1236,7 @@ int arcbios_emul(struct cpu *cpu)
 				cpu->cd.mips.gpr[MIPS_GPR_V0] = (int64_t)
 				    (int32_t) cpu->cd.mips.gpr[MIPS_GPR_V0];
 		}
-		debug("[ ARCBIOS GetPeer(node 0x%016"PRIx64"): 0x%016"PRIx64
+		debug("[ ARCBIOS GetPeer(node 0x%016" PRIx64"): 0x%016" PRIx64
 		    " ]\n", (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A0],
 		    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_V0]);
 		break;
@@ -1286,7 +1287,7 @@ int arcbios_emul(struct cpu *cpu)
 				cpu->cd.mips.gpr[MIPS_GPR_V0] = (int64_t)
 				    (int32_t)cpu->cd.mips.gpr[MIPS_GPR_V0];
 		}
-		debug("[ ARCBIOS GetChild(node 0x%016"PRIx64"): 0x%016"
+		debug("[ ARCBIOS GetChild(node 0x%016" PRIx64"): 0x%016"
 		    PRIx64" ]\n", (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A0],
 		    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_V0]);
 		break;
@@ -1335,19 +1336,19 @@ int arcbios_emul(struct cpu *cpu)
 				cpu->cd.mips.gpr[MIPS_GPR_V0] = (int64_t)
 				    (int32_t) cpu->cd.mips.gpr[MIPS_GPR_V0];
 		}
-		debug("[ ARCBIOS GetParent(node 0x%016"PRIx64"): 0x%016"
+		debug("[ ARCBIOS GetParent(node 0x%016" PRIx64"): 0x%016"
 		    PRIx64" ]\n", (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A0],
 		    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_V0]);
 		break;
 	case 0x30:  /*  GetConfigurationData(void *configdata, void *node)  */
-		/*  fatal("[ ARCBIOS GetConfigurationData(0x%016"PRIx64","
-		    "0x%016"PRIx64") ]\n",
+		/*  fatal("[ ARCBIOS GetConfigurationData(0x%016" PRIx64","
+		    "0x%016" PRIx64") ]\n",
 		    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A0],
 		    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A1]);  */
 		cpu->cd.mips.gpr[MIPS_GPR_V0] = ARCBIOS_EINVAL;
 		for (i=0; i<machine->md.arc->n_configuration_data; i++) {
 			/*  fatal("configuration_data_component[%i] = "
-			    "0x%016"PRIx64"\n", i, (uint64_t) machine->
+			    "0x%016" PRIx64"\n", i, (uint64_t) machine->
 			    md.arc->configuration_data_component[i]);  */
 			if (cpu->cd.mips.gpr[MIPS_GPR_A1] ==
 			    machine->md.arc->configuration_data_component[i]) {
@@ -1375,22 +1376,22 @@ int arcbios_emul(struct cpu *cpu)
 		if (cpu->cd.mips.gpr[MIPS_GPR_A0] == 0) {
 			fatal("[ ARCBIOS GetComponent: NULL ptr ]\n");
 		} else {
-			unsigned char buf[500];
+			unsigned char buf2[500];
 			int match_index = -1;
 			int match_len = 0;
 
-			memset(buf, 0, sizeof(buf));
-			for (i=0; i<(ssize_t)sizeof(buf); i++) {
+			memset(buf2, 0, sizeof(buf2));
+			for (i=0; i<(ssize_t)sizeof(buf2); i++) {
 				cpu->memory_rw(cpu, cpu->mem,
 				    cpu->cd.mips.gpr[MIPS_GPR_A0] + i,
-				    &buf[i], 1, MEM_READ, CACHE_NONE);
-				if (buf[i] == '\0')
+				    &buf2[i], 1, MEM_READ, CACHE_NONE);
+				if (buf2[i] == '\0')
 					i = sizeof(buf);
 			}
-			buf[sizeof(buf) - 1] = '\0';
+			buf2[sizeof(buf2) - 1] = '\0';
 
 			/*  "scsi(0)disk(0)rdisk(0)partition(0)" and such.  */
-			/*  printf("GetComponent(\"%s\")\n", buf);  */
+			/*  printf("GetComponent(\"%s\")\n", buf2);  */
 
 			/*  Default to NULL return value.  */
 			cpu->cd.mips.gpr[MIPS_GPR_V0] = 0;
@@ -1399,10 +1400,10 @@ int arcbios_emul(struct cpu *cpu)
 			for (i=0; i<machine->md.arc->n_string_to_components;
 			    i++) {
 				int m = 0;
-				while (buf[m] && machine->md.arc->
+				while (buf2[m] && machine->md.arc->
 				    string_to_component[i][m] &&
 				    machine->md.arc->string_to_component[i][m]
-				    == buf[m])
+				    == buf2[m])
 					m++;
 				if (m > match_len) {
 					match_len = m;
@@ -1484,19 +1485,19 @@ int arcbios_emul(struct cpu *cpu)
 			 *  anything. It is used by the Windows NT SETUPLDR
 			 *  program to load stuff from the boot partition.
 			 */
-			unsigned char *buf;
-			CHECK_ALLOCATION(buf = (unsigned char *) malloc(MAX_OPEN_STRINGLEN));
-			memset(buf, 0, MAX_OPEN_STRINGLEN);
+			unsigned char *buf2;
+			CHECK_ALLOCATION(buf2 = (unsigned char *) malloc(MAX_OPEN_STRINGLEN));
+			memset(buf2, 0, MAX_OPEN_STRINGLEN);
 			for (i=0; i<MAX_OPEN_STRINGLEN; i++) {
 				cpu->memory_rw(cpu, cpu->mem,
 				    cpu->cd.mips.gpr[MIPS_GPR_A0] + i,
-				    &buf[i], 1, MEM_READ, CACHE_NONE);
-				if (buf[i] == '\0')
+				    &buf2[i], 1, MEM_READ, CACHE_NONE);
+				if (buf2[i] == '\0')
 					i = MAX_OPEN_STRINGLEN;
 			}
-			buf[MAX_OPEN_STRINGLEN - 1] = '\0';
+			buf2[MAX_OPEN_STRINGLEN - 1] = '\0';
 			machine->md.arc->file_handle_string[handle] =
-			    (char *)buf;
+			    (char *)buf2;
 			machine->md.arc->current_seek_offset[handle] = 0;
 			cpu->cd.mips.gpr[MIPS_GPR_V0] = ARCBIOS_ESUCCESS;
 		}
@@ -1521,10 +1522,13 @@ int arcbios_emul(struct cpu *cpu)
 		} else {
 			machine->md.arc->file_handle_in_use[
 			    cpu->cd.mips.gpr[MIPS_GPR_A0]] = 0;
-			if (machine->md.arc->file_handle_string[
-			    cpu->cd.mips.gpr[MIPS_GPR_A0]] != NULL)
-				free(machine->md.arc->file_handle_string[
-				    cpu->cd.mips.gpr[MIPS_GPR_A0]]);
+			// TODO: Yes, this is a memory leak. But it will be
+			// scrapped in favor of real code after the rewrite (I
+			// hope).
+			//if (machine->md.arc->file_handle_string[
+			//    cpu->cd.mips.gpr[MIPS_GPR_A0]] != NULL)
+			//	free(machine->md.arc->file_handle_string[
+			//	    cpu->cd.mips.gpr[MIPS_GPR_A0]]);
 			machine->md.arc->file_handle_string[cpu->cd.mips.
 			    gpr[MIPS_GPR_A0]] = NULL;
 			cpu->cd.mips.gpr[MIPS_GPR_V0] = ARCBIOS_ESUCCESS;
@@ -1532,7 +1536,8 @@ int arcbios_emul(struct cpu *cpu)
 		break;
 	case 0x64:  /*  Read(handle, void *buf, length, uint32_t *count)  */
 		if (cpu->cd.mips.gpr[MIPS_GPR_A0] == ARCBIOS_STDIN) {
-			int i, nread = 0, a2;
+			int j2, nread = 0, a2;
+
 			/*
 			 *  Before going into the loop, make sure stdout
 			 *  is flushed.  If we're using an X11 VGA console,
@@ -1541,12 +1546,12 @@ int arcbios_emul(struct cpu *cpu)
 			fflush(stdin);
 			fflush(stdout);
 			/*  NOTE/TODO: This gives a tick to _everything_  */
-			for (i=0; i<machine->tick_functions.n_entries; i++)
-				machine->tick_functions.f[i](cpu,
-				    machine->tick_functions.extra[i]);
+			for (j2=0; j2<machine->tick_functions.n_entries; j2++)
+				machine->tick_functions.f[j2](cpu,
+				    machine->tick_functions.extra[j2]);
 
 			a2 = cpu->cd.mips.gpr[MIPS_GPR_A2];
-			for (i=0; i<a2; i++) {
+			for (j2=0; j2<a2; j2++) {
 				int x;
 				unsigned char ch;
 
@@ -1574,28 +1579,29 @@ int arcbios_emul(struct cpu *cpu)
 				ch = x;
 				nread ++;
 				cpu->memory_rw(cpu, cpu->mem,
-				    cpu->cd.mips.gpr[MIPS_GPR_A1] + i,
+				    cpu->cd.mips.gpr[MIPS_GPR_A1] + j2,
 				    &ch, 1, MEM_WRITE, CACHE_NONE);
 
 				/*  NOTE: Only one char, from STDIN:  */
-				i = cpu->cd.mips.gpr[MIPS_GPR_A2];  /*  :-)  */
+				j2 = cpu->cd.mips.gpr[MIPS_GPR_A2];  /*  :-)  */
 			}
+			
 			store_32bit_word(cpu, cpu->cd.mips.gpr[MIPS_GPR_A3],
 			    nread);
 			/*  TODO: not EAGAIN?  */
 			cpu->cd.mips.gpr[MIPS_GPR_V0] =
 			    nread? ARCBIOS_ESUCCESS: ARCBIOS_EAGAIN;
 		} else {
-			int handle = cpu->cd.mips.gpr[MIPS_GPR_A0];
+			int handleTmp = cpu->cd.mips.gpr[MIPS_GPR_A0];
 			int disk_type = 0;
 			int disk_id = arcbios_handle_to_disk_id_and_type(
-			    machine, handle, &disk_type);
+			    machine, handleTmp, &disk_type);
 			uint64_t partition_offset = 0;
 			int res;
 			uint64_t size;		/*  dummy  */
 			unsigned char *tmp_buf;
 
-			arcbios_handle_to_start_and_size(machine, handle,
+			arcbios_handle_to_start_and_size(machine, handleTmp,
 			    &partition_offset, &size);
 
 			debug("[ ARCBIOS Read(%i,0x%08x,0x%08x,0x%08x) ]\n",
@@ -1609,7 +1615,7 @@ int arcbios_emul(struct cpu *cpu)
 
 			res = diskimage_access(machine, disk_id, disk_type,
 			    0, partition_offset + machine->md.arc->
-			    current_seek_offset[handle], tmp_buf,
+			    current_seek_offset[handleTmp], tmp_buf,
 			    cpu->cd.mips.gpr[MIPS_GPR_A2]);
 
 			/*  If the transfer was successful, transfer the
@@ -1621,7 +1627,7 @@ int arcbios_emul(struct cpu *cpu)
 				store_32bit_word(cpu,
 				    cpu->cd.mips.gpr[MIPS_GPR_A3],
 				    cpu->cd.mips.gpr[MIPS_GPR_A2]);
-				machine->md.arc->current_seek_offset[handle] +=
+				machine->md.arc->current_seek_offset[handleTmp] +=
 				    cpu->cd.mips.gpr[MIPS_GPR_A2];
 				cpu->cd.mips.gpr[MIPS_GPR_V0] = 0;
 			} else
@@ -1653,19 +1659,19 @@ int arcbios_emul(struct cpu *cpu)
 			/*
 			 *  TODO: this is just a test
 			 */
-			int handle = cpu->cd.mips.gpr[MIPS_GPR_A0];
+			int handleTmp = cpu->cd.mips.gpr[MIPS_GPR_A0];
 			int disk_type = 0;
 			int disk_id = arcbios_handle_to_disk_id_and_type(
-			    machine, handle, &disk_type);
+			    machine, handleTmp, &disk_type);
 			uint64_t partition_offset = 0;
-			int res, i;
+			int res, tmpi;
 			uint64_t size;		/*  dummy  */
 			unsigned char *tmp_buf;
 
 			arcbios_handle_to_start_and_size(machine,
-			    handle, &partition_offset, &size);
+			    handleTmp, &partition_offset, &size);
 
-			debug("[ ARCBIOS Write(%i,0x%08"PRIx64",%i,0x%08"
+			debug("[ ARCBIOS Write(%i,0x%08" PRIx64",%i,0x%08"
 			    PRIx64") ]\n", (int) cpu->cd.mips.gpr[MIPS_GPR_A0],
 			    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A1],
 			    (int) cpu->cd.mips.gpr[MIPS_GPR_A2],
@@ -1674,22 +1680,22 @@ int arcbios_emul(struct cpu *cpu)
 			CHECK_ALLOCATION(tmp_buf = (unsigned char *)
 			    malloc(cpu->cd.mips.gpr[MIPS_GPR_A2]));
 
-			for (i=0; i<(int32_t)cpu->cd.mips.gpr[MIPS_GPR_A2]; i++)
+			for (tmpi=0; tmpi<(int32_t)cpu->cd.mips.gpr[MIPS_GPR_A2]; tmpi++)
 				cpu->memory_rw(cpu, cpu->mem,
-				    cpu->cd.mips.gpr[MIPS_GPR_A1] + i,
-				    &tmp_buf[i], sizeof(char), MEM_READ,
+				    cpu->cd.mips.gpr[MIPS_GPR_A1] + tmpi,
+				    &tmp_buf[tmpi], sizeof(char), MEM_READ,
 				    CACHE_NONE);
 
 			res = diskimage_access(machine, disk_id, disk_type,
 			    1, partition_offset + machine->md.arc->
-			    current_seek_offset[handle], tmp_buf,
+			    current_seek_offset[handleTmp], tmp_buf,
 			    cpu->cd.mips.gpr[MIPS_GPR_A2]);
 
 			if (res) {
 				store_32bit_word(cpu,
 				    cpu->cd.mips.gpr[MIPS_GPR_A3],
 				    cpu->cd.mips.gpr[MIPS_GPR_A2]);
-				machine->md.arc->current_seek_offset[handle] +=
+				machine->md.arc->current_seek_offset[handleTmp] +=
 				    cpu->cd.mips.gpr[MIPS_GPR_A2];
 				cpu->cd.mips.gpr[MIPS_GPR_V0] = 0;
 			} else
@@ -1712,13 +1718,13 @@ int arcbios_emul(struct cpu *cpu)
 		break;
 	case 0x70:	/*  Seek(uint32_t handle, int64_t *ofs,
 				 uint32_t whence): uint32_t  */
-		debug("[ ARCBIOS Seek(%i,0x%08"PRIx64",%i): ",
+		debug("[ ARCBIOS Seek(%i,0x%08" PRIx64",%i): ",
 		    (int) cpu->cd.mips.gpr[MIPS_GPR_A0],
 		    (uint64_t)cpu->cd.mips.gpr[MIPS_GPR_A1],
 		    (int) cpu->cd.mips.gpr[MIPS_GPR_A2]);
 
 		if (cpu->cd.mips.gpr[MIPS_GPR_A2] != 0) {
-			fatal("[ ARCBIOS Seek(%i,0x%08"PRIx64",%i): "
+			fatal("[ ARCBIOS Seek(%i,0x%08" PRIx64",%i): "
 			    "UNIMPLEMENTED whence=%i ]\n",
 			    (int) cpu->cd.mips.gpr[MIPS_GPR_A0],
 			    (uint64_t) cpu->cd.mips.gpr[MIPS_GPR_A1],
@@ -1727,25 +1733,26 @@ int arcbios_emul(struct cpu *cpu)
 		}
 
 		{
-			unsigned char buf[8];
+			unsigned char bufTmp[8];
 			uint64_t ofs;
 			cpu->memory_rw(cpu, cpu->mem,
-			    cpu->cd.mips.gpr[MIPS_GPR_A1], &buf[0],
-			    sizeof(buf), MEM_READ, CACHE_NONE);
+			    cpu->cd.mips.gpr[MIPS_GPR_A1], &bufTmp[0],
+			    sizeof(bufTmp), MEM_READ, CACHE_NONE);
 			if (cpu->byte_order == EMUL_BIG_ENDIAN) {
 				unsigned char tmp;
-				tmp = buf[0]; buf[0] = buf[7]; buf[7] = tmp;
-				tmp = buf[1]; buf[1] = buf[6]; buf[6] = tmp;
-				tmp = buf[2]; buf[2] = buf[5]; buf[5] = tmp;
-				tmp = buf[3]; buf[3] = buf[4]; buf[4] = tmp;
+				tmp = bufTmp[0]; bufTmp[0] = bufTmp[7]; bufTmp[7] = tmp;
+				tmp = bufTmp[1]; bufTmp[1] = bufTmp[6]; bufTmp[6] = tmp;
+				tmp = bufTmp[2]; bufTmp[2] = bufTmp[5]; bufTmp[5] = tmp;
+				tmp = bufTmp[3]; bufTmp[3] = bufTmp[4]; bufTmp[4] = tmp;
 			}
-			ofs = buf[0] + (buf[1] << 8) + (buf[2] << 16) +
-			    (buf[3] << 24) + ((uint64_t)buf[4] << 32) +
-			    ((uint64_t)buf[5] << 40) + ((uint64_t)buf[6] << 48)
-			    + ((uint64_t)buf[7] << 56);
+			ofs = bufTmp[0] + (bufTmp[1] << 8) + (bufTmp[2] << 16) +
+			    (bufTmp[3] << 24) + ((uint64_t)bufTmp[4] << 32) +
+			    ((uint64_t)bufTmp[5] << 40) + ((uint64_t)bufTmp[6] << 48)
+			    + ((uint64_t)bufTmp[7] << 56);
+			    
 			machine->md.arc->current_seek_offset[
 			    cpu->cd.mips.gpr[MIPS_GPR_A0]] = ofs;
-			debug("%016"PRIx64" ]\n", (uint64_t) ofs);
+			debug("%016" PRIx64" ]\n", (uint64_t) ofs);
 		}
 
 		cpu->cd.mips.gpr[MIPS_GPR_V0] = 0;	/*  Success.  */
@@ -2430,7 +2437,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 	for (i=0; i<ARC_MAX_HANDLES; i++) {
 		machine->md.arc->file_handle_in_use[i] = i<3? 1 : 0;
 		machine->md.arc->file_handle_string[i] = i>=3? NULL :
-		    (i==0? (char*)"(stdin)" : (i==1? (char*)"(stdout)" : (char*)"(stderr)"));
+		    (i==0? "(stdin)" : (i==1? "(stdout)" : "(stderr)"));
 		machine->md.arc->current_seek_offset[i] = 0;
 	}
 
@@ -2449,7 +2456,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 		machine->md.arc->console_curx = 0;
 		machine->md.arc->console_cury = 0;
 
-		arcbios_putstring(cpu, "GXemul "VERSION"  ARCBIOS emulation\n");
+		arcbios_putstring(cpu, "GXemul " VERSION"  ARCBIOS emulation\n");
 
 		snprintf(tmpstr, sizeof(tmpstr), "%i cpu%s (%s), %i MB "
 		    "memory\n\n", machine->ncpus, machine->ncpus > 1? "s" : "",
@@ -2602,7 +2609,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 
 	system = arcbios_addchild_manual(cpu, COMPONENT_CLASS_SystemClass,
 	    COMPONENT_TYPE_ARC, 0,1,2,0, 0xffffffff, name, 0/*ROOT*/, NULL, 0);
-	debug("ARC system @ 0x%"PRIx64" (\"%s\")\n", (uint64_t) system, name);
+	debug("ARC system @ 0x%" PRIx64" (\"%s\")\n", (uint64_t) system, name);
 
 
 	/*
@@ -2713,18 +2720,18 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 			    0xffffffff, NULL, cpuaddr, NULL, 0);
 		}
 
-		debug("ARC cpu%i @ 0x%"PRIx64, i, (uint64_t) cpuaddr);
+		debug("ARC cpu%i @ 0x%" PRIx64, i, (uint64_t) cpuaddr);
 
 		if (fpu != 0)
-			debug(" (fpu @ 0x%"PRIx64")\n", (uint64_t) fpu);
+			debug(" (fpu @ 0x%" PRIx64")\n", (uint64_t) fpu);
 		else
 			debug("\n");
 
-		debug("    picache @ 0x%"PRIx64", pdcache @ 0x%"PRIx64"\n",
+		debug("    picache @ 0x%" PRIx64", pdcache @ 0x%" PRIx64"\n",
 		    (uint64_t) picache, (uint64_t) pdcache);
 
 		if (cpu->cd.mips.cache_secondary >= 12)
-			debug("    sdcache @ 0x%"PRIx64"\n",
+			debug("    sdcache @ 0x%" PRIx64"\n",
 			    (uint64_t) sdcache);
 
 		if (machine->machine_type == MACHINE_SGI) {
@@ -2733,7 +2740,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 			    COMPONENT_CLASS_MemoryClass,
 			    COMPONENT_TYPE_MemoryUnit, 0, 1, 2, 0,
 			    0xffffffff, "memory", cpuaddr, NULL, 0);
-			debug("ARC memory @ 0x%"PRIx64"\n", (uint64_t) memory);
+			debug("ARC memory @ 0x%" PRIx64"\n", (uint64_t) memory);
 		}
 	}
 

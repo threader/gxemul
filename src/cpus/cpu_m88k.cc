@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -278,7 +278,7 @@ void m88k_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 	if (gprs) {
 		symbol = get_symbol_name(&cpu->machine->symbol_context,
 		    cpu->pc, &offset);
-		debug("cpu%i:  pc  = 0x%08"PRIx32, x, (uint32_t)cpu->pc);
+		debug("cpu%i:  pc  = 0x%08" PRIx32, x, (uint32_t)cpu->pc);
 		debug("  <%s>\n", symbol != NULL? symbol : " no symbol ");
 
 		for (i=0; i<N_M88K_REGS; i++) {
@@ -287,7 +287,7 @@ void m88k_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 			if (i == 0)
 				debug("                  ");
 			else
-				debug("  r%-2i = 0x%08"PRIx32,
+				debug("  r%-2i = 0x%08" PRIx32,
 				    i, cpu->cd.m88k.r[i]);
 			if ((i % 4) == 3)
 				debug("\n");
@@ -304,7 +304,7 @@ void m88k_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 		for (i=0; i<n_control_regs; i++) {
 			if ((i % 4) == 0)
 				debug("cpu%i:", x);
-			debug("  %4s=0x%08"PRIx32,
+			debug("  %4s=0x%08" PRIx32,
 			    m88k_cr_name(cpu, i), cpu->cd.m88k.cr[i]);
 			if ((i % 4) == 3)
 				debug("\n");
@@ -317,7 +317,7 @@ void m88k_cpu_register_dump(struct cpu *cpu, int gprs, int coprocs)
 		for (i=0; i<n_fpu_control_regs; i++) {
 			if ((i % 4) == 0)
 				debug("cpu%i:", x);
-			debug("  %5s=0x%08"PRIx32,
+			debug("  %5s=0x%08" PRIx32,
 			    m88k_fcr_name(cpu, i), cpu->cd.m88k.fcr[i]);
 			if ((i % 4) == 3)
 				debug("\n");
@@ -357,8 +357,8 @@ void m88k_cpu_tlbdump(struct machine *m, int x, int rawflag)
 			for (i = 0; i < N_M88200_BATC_REGS; i++) {
 				uint32_t b = cmmu->batc[i];
 				printf("cpu%i: BATC[%2i]: ", cpu_nr, i);
-				printf("v=0x%08"PRIx32, b & 0xfff80000);
-				printf(", p=0x%08"PRIx32,
+				printf("v=0x%08" PRIx32, b & 0xfff80000);
+				printf(", p=0x%08" PRIx32,
 				    (b << 13) & 0xfff80000);
 				printf(", %s %s %s %s %s %s\n",
 				    b & BATC_SO? "SP " : "!sp",
@@ -379,8 +379,8 @@ void m88k_cpu_tlbdump(struct machine *m, int x, int rawflag)
 					printf("superv");
 				else
 					printf("user  ");
-				printf(" v=0x%08"PRIx32, v & 0xfffff000);
-				printf(", p=0x%08"PRIx32, p & 0xfffff000);
+				printf(" v=0x%08" PRIx32, v & 0xfffff000);
+				printf(", p=0x%08" PRIx32, p & 0xfffff000);
 
 				printf("  %s %s %s %s %s %s %s",
 				    v & PG_U1?   "U1 " : "!u1",
@@ -633,8 +633,8 @@ static void m88k_memory_transaction_debug_dump(struct cpu *cpu, int n)
 		}
 		debug("bytebits=0x%x ]\n", DMT_ENBITS(dmt));
 
-		debug("[ DMD%i: 0x%08"PRIx32"; ", n, cpu->cd.m88k.dmd[n]);
-		debug("DMA%i: 0x%08"PRIx32" ]\n", n, cpu->cd.m88k.dma[n]);
+		debug("[ DMD%i: 0x%08" PRIx32"; ", n, cpu->cd.m88k.dmd[n]);
+		debug("DMA%i: 0x%08" PRIx32" ]\n", n, cpu->cd.m88k.dma[n]);
 	} else
 		debug("not valid ]\n");
 }
@@ -677,7 +677,8 @@ void m88k_exception(struct cpu *cpu, int vector, int is_trap)
 		debug("SFU1_PRECISE"); break;
 	case M88K_EXCEPTION_SFU1_IMPRECISE:
 		debug("SFU1_IMPRECISE"); break;
-	case 0x80:
+	case 0x80:	/*  up to OpenBSD 5.2  */
+	case 0x1c2:	/*  from OpenBSD 5.3 and forward...  */
 #if 0
 		fatal("[ syscall %i(", cpu->cd.m88k.r[13]);
 		m88k_cpu_functioncall_trace(cpu, 8);
@@ -852,7 +853,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 	if (cpu->machine->ncpus > 1 && running)
 		debug("cpu%i:\t", cpu->cpu_id);
 
-	debug("%c%08"PRIx32": ",
+	debug("%c%08" PRIx32": ",
 	    cpu->cd.m88k.cr[M88K_CR_PSR] & M88K_PSR_MODE? 's' : 'u',
 	    (uint32_t) dumpaddr);
 
@@ -861,7 +862,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 	else
 		iw = ib[3] + (ib[2]<<8) + (ib[1]<<16) + (ib[0]<<24);
 
-	debug("%08"PRIx32, (uint32_t) iw);
+	debug("%08" PRIx32, (uint32_t) iw);
 
 	if (running && cpu->delay_slot)
 		debug(" (d)");
@@ -914,23 +915,23 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 			if (symbol != NULL && supervisor)
 				debug("\t; [<%s>]", symbol);
 			else
-				debug("\t; [0x%08"PRIx32"]", tmpaddr);
+				debug("\t; [0x%08" PRIx32"]", tmpaddr);
 			if (op26 >= 0x08) {
 				/*  Store:  */
 				debug(" = ");
 				switch (op26 & 3) {
-				case 0:	debug("0x%016"PRIx64, (uint64_t)
+				case 0:	debug("0x%016" PRIx64, (uint64_t)
 					    ((((uint64_t) cpu->cd.m88k.r[d])
 					    << 32) + ((uint64_t)
 					    cpu->cd.m88k.r[d+1])) );
 					break;
-				case 1:	debug("0x%08"PRIx32,
+				case 1:	debug("0x%08" PRIx32,
 					    (uint32_t) cpu->cd.m88k.r[d]);
 					break;
-				case 2:	debug("0x%04"PRIx16,
+				case 2:	debug("0x%04" PRIx16,
 					    (uint16_t) cpu->cd.m88k.r[d]);
 					break;
-				case 3:	debug("0x%02"PRIx8,
+				case 3:	debug("0x%02" PRIx8,
 					    (uint8_t) cpu->cd.m88k.r[d]);
 					break;
 				}
@@ -967,7 +968,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 				if (symbol != NULL && supervisor)
 					debug("\t; [<%s>]", symbol);
 				else
-					debug("\t; [0x%08"PRIx32"]", tmpaddr);
+					debug("\t; [0x%08" PRIx32"]", tmpaddr);
 			}
 		}
 		debug("\n");
@@ -981,6 +982,9 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 	case 0x15:	/*  xor.u   */
 	case 0x16:	/*  or      */
 	case 0x17:	/*  or.u    */
+		if (d == M88K_ZERO_REG)
+			debug("nop");
+
 		switch (op26) {
 		case 0x10:
 		case 0x11:	mnem = "and"; break;
@@ -991,8 +995,13 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 		case 0x16:
 		case 0x17:	mnem = "or"; break;
 		}
-		debug("%s%s\t", mnem, op26 & 1? ".u" : "");
-		debug("r%i,r%i,0x%x", d, s1, imm16);
+
+		if (d != M88K_ZERO_REG || op26 != 0x16 || s1 != M88K_ZERO_REG) {
+			if (d == M88K_ZERO_REG)
+				debug("\t\t; weird nop encoding: ");
+			debug("%s%s\t", mnem, op26 & 1? ".u" : "");
+			debug("r%i,r%i,0x%x", d, s1, imm16);
+		}
 
 		if (op26 == 0x16 && d != M88K_ZERO_REG) {
 			/*
@@ -1023,7 +1032,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 				if (symbol != NULL && supervisor)
 					debug("<%s>", symbol);
 				else
-					debug("0x%08"PRIx32, tmpaddr);
+					debug("0x%08" PRIx32, tmpaddr);
 			}
 		}
 
@@ -1053,17 +1062,19 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 
 	case 0x20:
 		if ((iw & 0x001ff81f) == 0x00004000) {
-			debug("ldcr\tr%i,%s\n", d,
-			    m88k_cr_name(cpu, cr6));
+			debug("ldcr\tr%i,%s", d, m88k_cr_name(cpu, cr6));
+			if (running)
+				debug("\t\t; %s = 0x%08x", m88k_cr_name(cpu, cr6), cpu->cd.m88k.cr[cr6]);
+			debug("\n");
 		} else if ((iw & 0x001ff81f) == 0x00004800) {
-			debug("fldcr\tr%i,%s\n", d,
-			    m88k_fcr_name(cpu, cr6));
+			debug("fldcr\tr%i,%s\n", d, m88k_fcr_name(cpu, cr6));
 		} else if ((iw & 0x03e0f800) == 0x00008000) {
-			debug("stcr\tr%i,%s", s1,
-			    m88k_cr_name(cpu, cr6));
+			debug("stcr\tr%i,%s", s1, m88k_cr_name(cpu, cr6));
 			if (s1 != s2)
 				debug("\t\t; NOTE: weird encoding: "
 				    "low 5 bits = 0x%02x", s2);
+			if (running)
+				debug("\t\t; r%i = 0x%08x", s1, cpu->cd.m88k.r[s1]);
 			debug("\n");
 		} else if ((iw & 0x03e0f800) == 0x00008800) {
 			debug("fstcr\tr%i,%s", s1,
@@ -1145,7 +1156,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 		debug("b%sr%s\t",
 		    op26 >= 0x32? "s" : "",
 		    op26 & 1? ".n" : "");
-		debug("0x%08"PRIx32, (uint32_t) (dumpaddr + d26));
+		debug("0x%08" PRIx32, (uint32_t) (dumpaddr + d26));
 		symbol = get_symbol_name(&cpu->machine->symbol_context,
 		    dumpaddr + d26, &offset);
 		if (symbol != NULL && supervisor)
@@ -1184,7 +1195,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 		} else {
 			debug("%i", d);
 		}
-		debug(",r%i,0x%08"PRIx32, s1, (uint32_t) (dumpaddr + d16));
+		debug(",r%i,0x%08" PRIx32, s1, (uint32_t) (dumpaddr + d16));
 		symbol = get_symbol_name(&cpu->machine->symbol_context,
 		    dumpaddr + d16, &offset);
 		if (symbol != NULL && supervisor)
@@ -1225,7 +1236,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 				if (symbol != NULL && supervisor)
 					debug("\t; [<%s>]", symbol);
 				else
-					debug("\t; [0x%08"PRIx32"]", tmpaddr);
+					debug("\t; [0x%08" PRIx32"]", tmpaddr);
 			}
 
 			debug("\n");
@@ -1314,7 +1325,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 				if (symbol != NULL && supervisor)
 					debug("\t; [<%s>]", symbol);
 				else
-					debug("\t; [0x%08"PRIx32"]", tmpaddr);
+					debug("\t; [0x%08" PRIx32"]", tmpaddr);
 			}
 
 			debug("\n");
@@ -1392,7 +1403,17 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 			case 0xa0: mnem = "mak"; break;
 			case 0xa8: mnem = "rot"; break;
 			}
-			debug("%s\tr%i,r%i,r%i\n", mnem, d, s1, s2);
+
+			if (((iw >> 8) & 0xff) == 0x58 && d == M88K_ZERO_REG)
+				debug("nop");
+
+			if (((iw >> 8) & 0xff) != 0x58 || d != M88K_ZERO_REG) {
+				if (d == M88K_ZERO_REG)
+					debug("\t\t; weird nop encoding: ");
+				debug("%s\tr%i,r%i,r%i", mnem, d, s1, s2);
+			}
+
+			debug("\n");
 			break;
 		case 0xc0:	/*  jmp  */
 		case 0xc4:	/*  jmp.n  */
@@ -1410,7 +1431,7 @@ int m88k_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 				if (symbol != NULL && supervisor)
 					debug("<%s>", symbol);
 				else
-					debug("0x%08"PRIx32, tmpaddr);
+					debug("0x%08" PRIx32, tmpaddr);
 			}
 			debug("\n");
 			break;

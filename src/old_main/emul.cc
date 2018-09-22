@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -118,7 +118,7 @@ static void add_breakpoints(struct machine *m)
 
 		m->breakpoints.addr[i] = dp;
 
-		debug("breakpoint %i: 0x%"PRIx64, i, dp);
+		debug("breakpoint %i: 0x%" PRIx64, i, dp);
 		if (string_flag)
 			debug(" (%s)", m->breakpoints.string[i]);
 		debug("\n");
@@ -373,6 +373,9 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 
 	m->cpu_family = cpu_family_ptr_by_number(m->arch);
 
+	if (m->arch == ARCH_ALPHA)
+		m->arch_pagesize = 8192;
+
 	machine_memsize_fix(m);
 
 	/*
@@ -556,6 +559,11 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 
 		switch (m->arch) {
 
+		case ARCH_ALPHA:
+			/*  For position-independent code:  */
+			cpu->cd.alpha.r[ALPHA_T12] = cpu->pc;
+			break;
+
 		case ARCH_ARM:
 			if (cpu->pc & 3) {
 				fatal("ARM: lowest bits of pc set: TODO\n");
@@ -650,26 +658,26 @@ void emul_machine_setup(struct machine *m, int n_load, char **load_names,
 
 	case ARCH_MIPS:
 		if (cpu->is_32bit) {
-			debug("0x%08"PRIx32, (uint32_t)
+			debug("0x%08" PRIx32, (uint32_t)
 			    m->cpus[m->bootstrap_cpu]->pc);
 			if (cpu->cd.mips.gpr[MIPS_GPR_GP] != 0)
-				debug(" (gp=0x%08"PRIx32")", (uint32_t)
+				debug(" (gp=0x%08" PRIx32")", (uint32_t)
 				    m->cpus[m->bootstrap_cpu]->cd.mips.gpr[
 				    MIPS_GPR_GP]);
 		} else {
-			debug("0x%016"PRIx64, (uint64_t)
+			debug("0x%016" PRIx64, (uint64_t)
 			    m->cpus[m->bootstrap_cpu]->pc);
 			if (cpu->cd.mips.gpr[MIPS_GPR_GP] != 0)
-				debug(" (gp=0x%016"PRIx64")", (uint64_t)
+				debug(" (gp=0x%016" PRIx64")", (uint64_t)
 				    cpu->cd.mips.gpr[MIPS_GPR_GP]);
 		}
 		break;
 
 	default:
 		if (cpu->is_32bit)
-			debug("0x%08"PRIx32, (uint32_t) cpu->pc);
+			debug("0x%08" PRIx32, (uint32_t) cpu->pc);
 		else
-			debug("0x%016"PRIx64, (uint64_t) cpu->pc);
+			debug("0x%016" PRIx64, (uint64_t) cpu->pc);
 	}
 	debug("\n");
 
@@ -775,15 +783,13 @@ void emul_run(struct emul *emul)
 
 	atexit(fix_console);
 
-	printf("\nNOTE: This is a LEGACY emulation mode.\n\n");
-
 	if (emul == NULL) {
-		printf("No emulation defined. Aborting.\n");
+		fatal("No emulation defined. Aborting.\n");
 		return;
 	}
 
 	if (emul->n_machines == 0) {
-		printf("No machine(s) defined. Aborting.\n");
+		fatal("No machine(s) defined. Aborting.\n");
 		return;
 	}
 
@@ -792,13 +798,12 @@ void emul_run(struct emul *emul)
 
 	/*  Run any additional debugger commands before starting:  */
 	if (emul->n_debugger_cmds > 0) {
-		int j;
 		if (i == 0)
 			print_separator_line();
-		for (j = 0; j < emul->n_debugger_cmds; j ++) {
-			debug("> %s\n", emul->debugger_cmds[j]);
-			debugger_execute_cmd(emul->debugger_cmds[j],
-			    strlen(emul->debugger_cmds[j]));
+		for (int k = 0; k < emul->n_debugger_cmds; k ++) {
+			debug("> %s\n", emul->debugger_cmds[k]);
+			debugger_execute_cmd(emul->debugger_cmds[k],
+			    strlen(emul->debugger_cmds[k]));
 		}
 	}
 

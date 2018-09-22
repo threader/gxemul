@@ -42,7 +42,7 @@
 #include "memory.h"
 #include "misc.h"
 
-#include "vga.h"
+#include "../include/vga.h"
 
 /*  These are generated from binary font files:  */
 #include "fonts/font8x8.cc"
@@ -516,7 +516,7 @@ DEVICE_TICK(vga)
 		int base = ((d->crtc_reg[VGA_CRTC_START_ADDR_HIGH] << 8)
 		    + d->crtc_reg[VGA_CRTC_START_ADDR_LOW]) * 2;
 		int new_u_y1, new_u_y2;
-		debug("[ dev_vga_tick: dyntrans access, %"PRIx64" .. %"
+		debug("[ dev_vga_tick: dyntrans access, %" PRIx64" .. %"
 		    PRIx64" ]\n", (uint64_t) low, (uint64_t) high);
 		low -= base;
 		high -= base;
@@ -1185,7 +1185,7 @@ DEVICE_ACCESS(vga_ctrl)
  *  like 80 and 25, respectively.
  */
 void dev_vga_init(struct machine *machine, struct memory *mem,
-	uint64_t videomem_base, uint64_t control_base, char *name)
+	uint64_t videomem_base, uint64_t control_base, const char *name)
 {
 	struct vga_data *d;
 	size_t allocsize, i;

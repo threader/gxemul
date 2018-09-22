@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2011  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -41,6 +41,12 @@
 		    << SH_INSTR_ALIGNMENT_SHIFT);			\
 		cpu->pc += (low_pc << SH_INSTR_ALIGNMENT_SHIFT);	\
 	}
+
+#define	ABORT_EXECUTION	  {	SYNCH_PC;				\
+				fatal("Execution aborted at: pc = 0x%08x\n", (int)cpu->pc); \
+				cpu->cd.sh.next_ic = &nothing_call;	\
+				cpu->running = 0;			\
+				debugger_n_steps_left_before_interaction = 0; }
 
 #define	RES_INST_IF_NOT_MD						\
 	if (!(cpu->cd.sh.sr & SH_SR_MD)) {				\
@@ -573,9 +579,30 @@ X(fmov_rm_frn)
 
 	FLOATING_POINT_AVAILABLE_CHECK;
 
+	uint32_t data2 = 0;
 	if (cpu->cd.sh.fpscr & SH_FPSCR_SZ) {
-		fatal("fmov_rm_frn: sz=1 (register pair): TODO\n");
-		exit(1);
+		// Register pair. Read second word first, then fallback
+		// to read the first word.
+
+		// Check if it is to an odd register first.
+		size_t r1 = ic->arg[1];
+		int ofs = (r1 - (size_t)&cpu->cd.sh.fr[0]) / sizeof(uint32_t);
+		if (ofs & 1) {
+			fatal("ODD fmov_rm_frn: TODO");
+			exit(1);
+			r1 = (size_t)&cpu->cd.sh.xf[ofs & ~1];
+		}
+		
+		SYNCH_PC;
+		if (!cpu->memory_rw(cpu, cpu->mem, addr + 4, (unsigned char *)&data,
+		    sizeof(data), MEM_READ, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+
+		data2 = data;
+		
+		// fall-through to read the first word in the pair:
 	}
 
 	if (p != NULL) {
@@ -595,6 +622,15 @@ X(fmov_rm_frn)
 		data = BE32_TO_HOST(data);
 
 	reg(ic->arg[1]) = data;
+
+	// TODO: How about little endian: read words in opposite order?
+	if (cpu->cd.sh.fpscr & SH_FPSCR_SZ) {
+		if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+			data2 = LE32_TO_HOST(data2);
+		else
+			data2 = BE32_TO_HOST(data2);
+		reg(ic->arg[1] + 4) = data2;
+	}
 }
 X(fmov_r0_rm_frn)
 {
@@ -604,8 +640,9 @@ X(fmov_r0_rm_frn)
 	FLOATING_POINT_AVAILABLE_CHECK;
 
 	if (cpu->cd.sh.fpscr & SH_FPSCR_SZ) {
-		fatal("fmov_rm_frn: sz=1 (register pair): TODO\n");
-		exit(1);
+		fatal("fmov_r0_rm_frn: sz=1 (register pair): TODO\n");
+		ABORT_EXECUTION;
+		return;
 	}
 
 	if (p != NULL) {
@@ -1088,8 +1125,28 @@ X(fmov_frm_rn)
 	FLOATING_POINT_AVAILABLE_CHECK;
 
 	if (cpu->cd.sh.fpscr & SH_FPSCR_SZ) {
-		fatal("fmov_frm_rn: sz=1 (register pair): TODO\n");
-		exit(1);
+		// Register pair. Store second word first, then fallback
+		// to store the first word.
+
+		// Check if it is to an odd register first.
+		size_t r0 = ic->arg[1];
+		int ofs = (r0 - (size_t)&cpu->cd.sh.fr[0]) / sizeof(uint32_t);
+		if (ofs & 1) {
+			fatal("ODD fmov_frm_rn: TODO");
+			exit(1);
+			r0 = (size_t)&cpu->cd.sh.xf[ofs & ~1];
+		}
+
+		uint32_t data2 = reg(ic->arg[0] + 4);
+
+		SYNCH_PC;
+		if (!cpu->memory_rw(cpu, cpu->mem, addr + 4, (unsigned char *)&data2,
+		    sizeof(data2), MEM_WRITE, CACHE_DATA)) {
+			/*  Exception.  */
+			return;
+		}
+		
+		// fall-through to write the first word in the pair:
 	}
 
 	if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
@@ -1118,7 +1175,8 @@ X(fmov_frm_r0_rn)
 
 	if (cpu->cd.sh.fpscr & SH_FPSCR_SZ) {
 		fatal("fmov_frm_r0_rn: sz=1 (register pair): TODO\n");
-		exit(1);
+		ABORT_EXECUTION;
+		return;
 	}
 
 	if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
@@ -1813,6 +1871,26 @@ X(bsr)
 	} else
 		cpu->delay_slot = NOT_DELAYED;
 }
+X(bsr_trace)
+{
+	MODE_int_t target = cpu->pc & ~((SH_IC_ENTRIES_PER_PAGE-1) <<
+	    SH_INSTR_ALIGNMENT_SHIFT);
+	uint32_t old_pc;
+	SYNCH_PC;
+	old_pc = cpu->pc;
+	target += ic->arg[0];
+	cpu->delay_slot = TO_BE_DELAYED;
+	ic[1].f(cpu, ic+1);
+	cpu->n_translated_instrs ++;
+	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+		cpu->cd.sh.pr = old_pc + 4;
+		cpu->pc = target;
+		cpu_functioncall_trace(cpu, cpu->pc);
+		cpu->delay_slot = NOT_DELAYED;
+		quick_pc_to_pointers(cpu);
+	} else
+		cpu->delay_slot = NOT_DELAYED;
+}
 X(bsr_samepage)
 {
 	uint32_t old_pc;
@@ -1856,6 +1934,26 @@ X(bsrf_rn)
 	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
 		cpu->cd.sh.pr = old_pc + 4;
 		cpu->pc = target;
+		cpu->delay_slot = NOT_DELAYED;
+		quick_pc_to_pointers(cpu);
+	} else
+		cpu->delay_slot = NOT_DELAYED;
+}
+X(bsrf_rn_trace)
+{
+	MODE_int_t target = cpu->pc & ~((SH_IC_ENTRIES_PER_PAGE-1) <<
+	    SH_INSTR_ALIGNMENT_SHIFT);
+	uint32_t old_pc;
+	SYNCH_PC;
+	old_pc = cpu->pc;
+	target += ic->arg[0] + reg(ic->arg[1]);
+	cpu->delay_slot = TO_BE_DELAYED;
+	ic[1].f(cpu, ic+1);
+	cpu->n_translated_instrs ++;
+	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+		cpu->cd.sh.pr = old_pc + 4;
+		cpu->pc = target;
+		cpu_functioncall_trace(cpu, cpu->pc);
 		cpu->delay_slot = NOT_DELAYED;
 		quick_pc_to_pointers(cpu);
 	} else
@@ -2335,18 +2433,18 @@ X(fcnvds_drm_fpul)
  */
 X(fsca_fpul_drn)
 {
-	double fpul = ((double) (int32_t)cpu->cd.sh.fpul) / 32768.0;
+	double fpulAngle = ((double)cpu->cd.sh.fpul) * 2.0 * M_PI / 65536.0;
 
 	FLOATING_POINT_AVAILABLE_CHECK;
 
-	reg(ic->arg[0]) = ieee_store_float_value(sin(fpul), IEEE_FMT_S, 0);
+	reg(ic->arg[0]) = ieee_store_float_value(sin(fpulAngle), IEEE_FMT_S, 0);
 	reg(ic->arg[0] + sizeof(uint32_t)) =
-	    ieee_store_float_value(cos(fpul), IEEE_FMT_S, 0);
+	    ieee_store_float_value(cos(fpulAngle), IEEE_FMT_S, 0);
 }
 
 
 /*
- *  fipr_fvm_fvn:  Vector * vector  =>  vector
+ *  fipr_fvm_fvn:  Vector * vector  =>  scalar
  *
  *  arg[0] = ptr to FVm
  *  arg[1] = ptr to FVn
@@ -2388,6 +2486,9 @@ X(ftrv_xmtrx_fvn)
 	int i;
 	struct ieee_float_value xmtrx[16], frn[4];
 	double frnp0 = 0.0, frnp1 = 0.0, frnp2 = 0.0, frnp3 = 0.0;
+
+	FLOATING_POINT_AVAILABLE_CHECK;
+	// TODO: FPSCR.EN.V = 1 should cause invalid operation exception?
 
 	ieee_interpret_float_value(reg(ic->arg[0] + 0), &frn[0], IEEE_FMT_S);
 	ieee_interpret_float_value(reg(ic->arg[0] + 4), &frn[1], IEEE_FMT_S);
@@ -2435,12 +2536,34 @@ X(fldi_frn)
 X(fneg_frn)
 {
 	FLOATING_POINT_AVAILABLE_CHECK;
+
+	// Hm. If in double register mode... and the register is pointing to
+	// an _odd_ register, what happens then?
+	if (cpu->cd.sh.fpscr & SH_FPSCR_PR) {
+		int ofs0 = (ic->arg[0] - (size_t)&cpu->cd.sh.fr[0]) / sizeof(uint32_t);
+		if (ofs0 & 1) {
+			fatal("TODO: fneg_frn odd register in double prec. mode.\n");
+			exit(1);
+		}
+	}
+
 	/*  Note: This also works for double-precision.  */
 	reg(ic->arg[0]) ^= 0x80000000;
 }
 X(fabs_frn)
 {
 	FLOATING_POINT_AVAILABLE_CHECK;
+
+	// Hm. If in double register mode... and the register is pointing to
+	// an _odd_ register, what happens then?
+	if (cpu->cd.sh.fpscr & SH_FPSCR_PR) {
+		int ofs0 = (ic->arg[0] - (size_t)&cpu->cd.sh.fr[0]) / sizeof(uint32_t);
+		if (ofs0 & 1) {
+			fatal("TODO: fneg_frn odd register in double prec. mode.\n");
+			exit(1);
+		}
+	}
+
 	/*  Note: This also works for double-precision.  */
 	reg(ic->arg[0]) &= 0x7fffffff;
 }
@@ -2479,7 +2602,8 @@ X(fsrra_frn)
 	if (cpu->cd.sh.fpscr & SH_FPSCR_PR) {
 		/*  Double-precision:  */
 		fatal("Double-precision fsrra? TODO\n");
-		exit(1);
+		ABORT_EXECUTION;
+		return;
 	} else {
 		/*  Single-precision:  */
 		int32_t ieee, r1 = reg(ic->arg[0]);
@@ -2746,6 +2870,9 @@ X(fschg)
 /*
  *  pref_rn:  Prefetch.
  *
+ *  TODO: According to the SH4 manual, "OTLBMULTIHIT or RADDERR may be
+ *  delivered", so those things should be checked for. Not implemented yet.
+ *
  *  arg[1] = ptr to Rn
  */
 X(pref_rn)
@@ -2753,32 +2880,53 @@ X(pref_rn)
 	uint32_t addr = reg(ic->arg[1]), extaddr;
 	int sq_nr, ofs;
 
-	if (addr < 0xe0000000 || addr >= 0xe4000000)
+	if (addr < 0xe0000000U || addr >= 0xe4000000U)
+	{
+		// printf("[ SH4 pref 0x%08x (pc = 0x%08x) ]\n", addr, (int)cpu->pc);
 		return;
+	}
 
-	/*  Send Store Queue contents to external memory:  */
+	SYNCH_PC;
+
+	// Calculate the external address:
 	extaddr = addr & 0x03ffffe0;
 	sq_nr = addr & 0x20? 1 : 0;
 
-	if (cpu->cd.sh.mmucr & SH4_MMUCR_AT) {
-		fatal("Store Queue to external memory, when "
-		    "MMU enabled: TODO\n");
-		exit(1);
-	}
+	// if (addr & 0x0000001f)
+	//	debug("[ WARNING: SH4 Store Queue, addr = 0x%08x... lowest 5 "
+	//	    "bits are non-zero. Ignoring. ]\n", addr);
 
 	if (sq_nr == 0)
 		extaddr |= (((cpu->cd.sh.qacr0 >> 2) & 7) << 26);
 	else
 		extaddr |= (((cpu->cd.sh.qacr1 >> 2) & 7) << 26);
 
-	/*  fatal("extaddr = 0x%08x\n", extaddr);  */
+	// fatal("[ SH4 pref: SQ extaddr = 0x%08x (pc = 0x%08x) ]\n", extaddr, (int)cpu->pc);
 
-	SYNCH_PC;
+	// Is the MMU turned on?
+	if (cpu->cd.sh.mmucr & SH4_MMUCR_AT) {
+		// When the SQMD bit in MMUCR is set, user access is prohibited
+		// if the MMU is enabled.
+		if (cpu->cd.sh.mmucr & SH4_MMUCR_SQMD) {
+			bool inUserMode = (cpu->cd.sh.sr & SH_SR_MD) ? false : true;
+			if (inUserMode) {
+				sh_exception(cpu, EXPEVT_RES_INST, 0, 0);
+				return;
+			}
+		}
+
+		fatal("Store Queue to external memory, when "
+		    "MMU enabled: Not yet implemented... TODO\n");
+		ABORT_EXECUTION;
+		return;
+	}
+
 	for (ofs = 0; ofs < 32; ofs += sizeof(uint32_t)) {
 		uint32_t word;
-		cpu->memory_rw(cpu, cpu->mem, 0xe0000000 + ofs
+		cpu->memory_rw(cpu, cpu->mem, 0xe0000000UL + ofs
 		    + sq_nr * 0x20, (unsigned char *)
 		    &word, sizeof(word), MEM_READ, PHYSICAL);
+		// fatal("  addr %08x: %08x\n", (extaddr + ofs), word);
 		cpu->memory_rw(cpu, cpu->mem, extaddr+ofs, (unsigned char *)
 		    &word, sizeof(word), MEM_WRITE, PHYSICAL);
 	}
@@ -2845,6 +2993,90 @@ X(prom_emul)
 	} else if ((uint32_t)cpu->pc != old_pc) {
 		/*  The PC value was changed by the PROM call.  */
 		quick_pc_to_pointers(cpu);
+	}
+}
+
+
+/*****************************************************************************/
+
+
+/*
+ *  bt_samepage_wait_for_variable:
+ *
+ *  Loop which reads a variable in memory forever until it changes state,
+ *  can most likely only change state if an interrupt occurs. Simulate speed
+ *  by skipping ahead quickly, until the next interrupt occurs.
+ *
+ *	z:  mov.l  (X,gbr),r0		mov_l_disp_gbr_r0 with arg[1] = X
+ *          cmp/eq r0,rY		cmpeq_rm_rn with args 0 and 1 being r0 and rY
+ *          bt     x			bt_samepage with arg[1] = z
+ */
+X(bt_samepage_wait_for_variable)
+{
+	if (cpu->delay_slot) {
+		instr(mov_l_disp_gbr_r0)(cpu, ic);
+		return;
+	}
+
+	// mov_l_disp_gbr_r0:
+	// Bail out quickly if the memory is not on a readable page.
+	uint32_t addr = cpu->cd.sh.gbr + ic->arg[1];
+	uint32_t *p = (uint32_t *) cpu->cd.sh.host_load[addr >> 12];
+	if (p == NULL) {
+		instr(mov_l_disp_gbr_r0)(cpu, ic);
+		return;
+	}
+
+	uint32_t data = p[(addr & 0xfff) >> 2];
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+		data = LE32_TO_HOST(data);
+	else
+		data = BE32_TO_HOST(data);
+
+	cpu->cd.sh.r[0] = data;
+
+	// cmpeq_rm_rn:
+	if (reg(ic[1].arg[1]) == reg(ic[1].arg[0]))
+		cpu->cd.sh.sr |= SH_SR_T;
+	else
+		cpu->cd.sh.sr &= ~SH_SR_T;
+
+	// Loop for a "long time" if the two registered were equal.
+	if (cpu->cd.sh.sr & SH_SR_T) {
+		// Some bogus amount of instructions.
+		// TODO: Make nicer?
+		cpu->n_translated_instrs += 500;
+		cpu->cd.sh.next_ic = ic;	// "jump to z"
+	} else {
+		// otherwise, get out of the loop.
+		cpu->n_translated_instrs += 2;
+		cpu->cd.sh.next_ic = ic + 3;
+	}
+}
+
+
+/*****************************************************************************/
+
+
+/*
+ *  Combine: something ending with a bt_samepage.
+ *
+ *  See comment for bt_samepage_wait_for_variable above for details.
+ */
+void COMBINE(bt_samepage)(struct cpu *cpu, struct sh_instr_call *ic, int low_addr)
+{
+	int n_back = (low_addr >> SH_INSTR_ALIGNMENT_SHIFT)
+	    & (SH_IC_ENTRIES_PER_PAGE - 1);
+
+	if (n_back < 2)
+		return;
+
+	if (ic[-2].f == instr(mov_l_disp_gbr_r0) &&
+	    ic[-1].f == instr(cmpeq_rm_rn) &&
+	    (ic[-1].arg[0] == (size_t) &cpu->cd.sh.r[0] ||
+	     ic[-1].arg[1] == (size_t) &cpu->cd.sh.r[0]) &&
+	    ic[0].arg[1] == (size_t) &ic[-2]) {
+		ic[-2].f = instr(bt_samepage_wait_for_variable);
 	}
 }
 
@@ -3075,7 +3307,11 @@ X(to_be_translated)
 				ic->arg[0] = (size_t)&cpu->cd.sh.sr;
 				break;
 			case 0x03:	/*  BSRF Rn  */
-				ic->f = instr(bsrf_rn);
+				if (cpu->machine->show_trace_tree)
+					ic->f = instr(bsrf_rn_trace);
+				else
+					ic->f = instr(bsrf_rn);
+
 				ic->arg[0] = (int32_t) (addr &
 				    ((SH_IC_ENTRIES_PER_PAGE-1)
 				    << SH_INSTR_ALIGNMENT_SHIFT) & ~1) + 4;
@@ -3336,6 +3572,11 @@ X(to_be_translated)
 			case 0x09:	/*  SHLR2 Rn  */
 				ic->f = instr(shlr2_rn);
 				break;
+			case 0x0a:	/*  LDS Rm,MACH  */
+				ic->f = instr(mov_rm_rn);
+				ic->arg[0] = (size_t)&cpu->cd.sh.r[r8];	/* m */
+				ic->arg[1] = (size_t)&cpu->cd.sh.mach;
+				break;
 			case 0x0b:	/*  JSR @Rn  */
 				if (cpu->machine->show_trace_tree)
 					ic->f = instr(jsr_rn_trace);
@@ -3377,6 +3618,11 @@ X(to_be_translated)
 				break;
 			case 0x19:	/*  SHLR8 Rn  */
 				ic->f = instr(shlr8_rn);
+				break;
+			case 0x1a:	/*  LDS Rm,MACL  */
+				ic->f = instr(mov_rm_rn);
+				ic->arg[0] = (size_t)&cpu->cd.sh.r[r8];	/* m */
+				ic->arg[1] = (size_t)&cpu->cd.sh.macl;
 				break;
 			case 0x1b:	/*  TAS.B @Rn  */
 				ic->f = instr(tas_b_rn);
@@ -3658,6 +3904,9 @@ X(to_be_translated)
 			ic->f = samepage_function;
 		}
 
+		if (ic->f == instr(bt_samepage))
+			cpu->cd.sh.combination_check = COMBINE(bt_samepage);
+
 		break;
 
 	case 0x9:	/*  MOV.W @(disp,PC),Rn  */
@@ -3689,8 +3938,13 @@ X(to_be_translated)
 			samepage_function = instr(bra_samepage);
 			break;
 		case 0xb:
-			ic->f = instr(bsr);
-			samepage_function = instr(bsr_samepage);
+			if (cpu->machine->show_trace_tree)
+				ic->f = instr(bsr_trace);
+			else
+			{
+				ic->f = instr(bsr);
+				samepage_function = instr(bsr_samepage);
+			}
 			break;
 		}
 
@@ -3926,8 +4180,8 @@ X(to_be_translated)
 		} else if (lo8 == 0xed) {
 			/*  FIPR FVm,FVn  */
 			ic->f = instr(fipr_fvm_fvn);
-			ic->arg[0] = (size_t)&cpu->cd.sh.fr[r8 & 0xc];  /* m */
-			ic->arg[1] = (size_t)&cpu->cd.sh.fr[(r8&3)*4];  /* n */
+			ic->arg[0] = (size_t)&cpu->cd.sh.fr[(r8<<2) & 0xc];  /* m */
+			ic->arg[1] = (size_t)&cpu->cd.sh.fr[r8 & 0xc];  /* n */
 		} else if ((iword & 0x01ff) == 0x00fd) {
 			/*  FSCA FPUL,DRn  */
 			ic->f = instr(fsca_fpul_drn);

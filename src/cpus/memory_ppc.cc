@@ -207,8 +207,6 @@ static int ppc_vtp32(struct cpu *cpu, uint32_t vaddr, uint64_t *return_paddr,
 /*
  *  ppc_translate_v2p():
  *
- *  Don't call this function if userland_emul is non-NULL, or cpu is NULL.
- *
  *  Return values:
  *	0  Failure
  *	1  Success, the page is readable only
@@ -272,7 +270,7 @@ int ppc_translate_v2p(struct cpu *cpu, uint64_t vaddr,
 		return 0;
 
 	if (!quiet_mode)
-		fatal("[ memory_ppc: exception! vaddr=0x%"PRIx64" pc=0x%"PRIx64
+		fatal("[ memory_ppc: exception! vaddr=0x%" PRIx64" pc=0x%" PRIx64
 		    " instr=%i user=%i wf=%i ]\n", (uint64_t) vaddr,
 		    (uint64_t) cpu->pc, instr, user, writeflag);
 
