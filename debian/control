@@ -4,9 +4,9 @@ Priority: optional
 Maintainer: Göran Weinholt <weinholt@debian.org>
 Build-Depends: debhelper (>= 11~), libx11-dev
 Standards-Version: 3.8.4
-Homepage: http://gxemul.sourceforge.net/
-Vcs-Browser: http://robin.powdarrmonkey.net/cgi-bin/gitweb.cgi?p=gxemul
-Vcs-Git: git://robin.powdarrmonkey.net/git/gxemul/
+Homepage: http://gavare.se/gxemul/
+Vcs-Browser: https://salsa.debian.org/debian/gxemul
+Vcs-Git: https://salsa.debian.org/debian/gxemul.git
 
 Package: gxemul
 Architecture: any
