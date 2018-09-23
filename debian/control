@@ -1,6 +1,6 @@
 Source: gxemul
 Section: misc
-Priority: extra
+Priority: optional
 Maintainer: Göran Weinholt <weinholt@debian.org>
 Build-Depends: debhelper (>= 11~), libx11-dev
 Standards-Version: 3.8.4
