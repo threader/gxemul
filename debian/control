@@ -2,7 +2,7 @@ Source: gxemul
 Section: misc
 Priority: optional
 Maintainer: Göran Weinholt <weinholt@debian.org>
-Build-Depends: debhelper (>= 11~), libx11-dev
+Build-Depends: debhelper (>= 11~), libx11-dev, doxygen
 Standards-Version: 3.8.4
 Homepage: http://gavare.se/gxemul/
 Vcs-Browser: https://salsa.debian.org/debian/gxemul
