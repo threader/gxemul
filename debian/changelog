@@ -1,3 +1,23 @@
+gxemul (0.6.0.2-1) unstable; urgency=medium
+
+  * New upstream version
+  * Package resurrected and new maintainer.
+    Thanks to Jonathan Wiltshire, for maintaining it while I was away.
+    (Closes: #909411)
+  * Update to debhelper compatibility level 11
+  * Remove obsolete buildsystem patch
+  * Replace priority extra with optional
+  * Disable valgrind when running tests
+  * Update homepage & watch to gavare.se and move Vcs-* to Salsa
+  * Add doxygen to build-depends
+  * debian/copyright: Update copyright years
+  * Fix {RELEASE,TODO}.html being installed in both packages
+  * Update to Standards-Version 4.2.1
+  * Patch: Clean up extra files in the clean_all target
+  * Patch: Disable regeneration of unclean src/machines/.index
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 23 Sep 2018 23:38:55 +0200
+
 gxemul (0.6.0-1) unstable; urgency=low
 
   * [54e53c] New upstream version
