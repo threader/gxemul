@@ -17,6 +17,12 @@ override_dh_install:
 	dh_install
 	rm -rf debian/gxemul/usr/share/doc/gxemul/*
 
+override_dh_installdocs:
+	dh_installdocs
+	rm -f debian/gxemul-doc/usr/share/doc/gxemul/machines/*.SKEL
+	rm -f debian/gxemul-doc/usr/share/doc/gxemul/RELEASE.html
+	rm -f debian/gxemul-doc/usr/share/doc/gxemul/TODO.html
+
 override_dh_installchangelogs:
 	dh_installchangelogs HISTORY
 

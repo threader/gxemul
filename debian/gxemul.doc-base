@@ -1,7 +1,7 @@
 Document: gxemul-notes
-Title: GXEmul: Release Notes
+Title: GXemul: Release Notes
 Author: Anders Gavare
-Abstract: Release notes for GXEmul, a machine emulator for multiple architectures
+Abstract: Release notes for GXemul, a machine emulator for multiple architectures
 Section: Emulators
 
 Format: HTML
