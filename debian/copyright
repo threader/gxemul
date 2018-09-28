@@ -1,44 +1,568 @@
-This is Debian's prepackaged version of GXemul. It was packaged on
-Sat, 26 Jun 2004 04:30:07 +0200 by Göran Weinholt <weinholt@debian.org>.
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: GXemul
+Upstream-Contact: Anders Gavare <gavare@gmail.com>
+Source: http://gavare.se/gxemul/
 
-It was downloaded from http://gavare.se/gxemul/
-The author is Anders Gavare <anders at gavare dot se>.
+Files: *
+Copyright: 2003-2018 Anders Gavare <gavare@gmail.com>
+License: BSD-3-clause
 
-Copyright (C) 2003-2018 Anders Gavare.  All rights reserved.
+Files: demos/*
+       src/include/testmachine/*
+Copyright: Anders Gavare
+License: public-domain
+ These demos are not under the same license(s) as the rest of GXemul.
+ .
+ The demos, and the testmachine include header files, are public domain, so
+ you can reuse the code even in projects which have licenses that are
+ incompatible with the BSD-style licenses used for GXemul itself.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+Files: doc/Doxyfile
+       doc/doxygen.css
+Copyright: 1997-2015, Dimitri van Heesch
+Comment: License extracted from the doxygen package
+License: GPL with doxygen exception
+ Permission to use, copy, modify, and distribute this software and its
+ documentation under the terms of the GNU General Public License is hereby
+ granted. No representations are made about the suitability of this software
+ for any purpose. It is provided "as is" without express or implied warranty.
+ See the GNU General Public License for more details.
+ .
+ Documents produced by Doxygen are derivative works derived from the
+ input used in their production; they are not affected by this license.
+ .
+ On Debian systems, the complete text of the GNU General Public
+ License can be found in '/usr/share/common-licenses/GPL-2'.
 
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. The name of the author may not be used to endorse or promote products
-   derived from this software without specific prior written permission.
+Files: src/include/thirdparty/impactsr-bsd.h
+       src/include/thirdparty/gtreg.h
+       src/include/thirdparty/mvme88k_vme.h
+       src/include/thirdparty/mvme_memcreg.h
+       src/include/thirdparty/sh4_pcicreg.h
+Copyright: 1997, 1998, 2001, The NetBSD Foundation, Inc.
+           2005, NONAKA Kimihiro
+           2004, Stanislaw Skowronek
+           1995, Theo de Raadt
+License: BSD-2-clause
 
-THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGE.
+Files: src/include/thirdparty/arcbios_other.h
+       src/include/thirdparty/errno_freebsd.h
+       src/include/thirdparty/errno_netbsd.h
+       src/include/thirdparty/i8253reg.h
+       src/include/thirdparty/igsfbreg.h
+       src/include/thirdparty/imcreg.h
+       src/include/thirdparty/lptreg.h
+       src/include/thirdparty/m8820x_pte.h
+       src/include/thirdparty/mvmeprom.h
+       src/include/thirdparty/netbsd_iyonix_bootconfig.h
+       src/include/thirdparty/osiopreg.h
+       src/include/thirdparty/sh4_cpu.h
+       src/include/thirdparty/sh4_scifreg.h
+       src/include/thirdparty/sh4_tmureg.h
+       src/include/thirdparty/sh4_rtcreg.h
+       src/include/thirdparty/sh4_scireg.h
+       src/include/thirdparty/sh4_bscreg.h
+       src/include/thirdparty/sh4_intcreg.h
+Copyright: 1996, M. Warner Losh
+           1996, Nivas Madhur
+           2001, Rafal K. Boni
+           2002, Reinoud Zandijk
+           1999, SAITOH Masanobu
+           1998, Steve Murphree, Jr.
+           2002, The NetBSD Foundation, Inc.
+           1982-1993, The Regents of the University of California
+           1995, Theo de Raadt
+           1988, University of Utah
+           UNIX System Laboratories, Inc.
+           2002, Valeriy E. Ushakov
+           1990, William Jolitz
+License: BSD-3-clause
 
+Files: src/include/thirdparty/adb_viareg.h
+       src/include/thirdparty/algor_p5064reg.h
+       src/include/thirdparty/armreg.h
+       src/include/thirdparty/bcureg.h
+       src/include/thirdparty/bireg.h
+       src/include/thirdparty/clmpccreg.h
+       src/include/thirdparty/comreg.h
+       src/include/thirdparty/cpc700reg.h
+       src/include/thirdparty/crimereg.h
+       src/include/thirdparty/cyclone_boot.h
+       src/include/thirdparty/dc21285reg.h
+       src/include/thirdparty/dec_5100.h
+       src/include/thirdparty/dec_bootinfo.h
+       src/include/thirdparty/dp83932reg.h
+       src/include/thirdparty/dreamcast_maple.h
+       src/include/thirdparty/dreamcast_pvr.h
+       src/include/thirdparty/dreamcast_sysasicvar.h
+       src/include/thirdparty/ee_timerreg.h
+       src/include/thirdparty/exec_aout.h
+       src/include/thirdparty/exec_ecoff.h
+       src/include/thirdparty/exec_ecoff_mips.h
+       src/include/thirdparty/exec_elf.h
+       src/include/thirdparty/hpc_bootinfo.h
+       src/include/thirdparty/i80321reg.h
+       src/include/thirdparty/i82365reg.h
+       src/include/thirdparty/if_lereg.h
+       src/include/thirdparty/if_mecreg.h
+       src/include/thirdparty/if_pcnreg.h
+       src/include/thirdparty/iopi2creg.h
+       src/include/thirdparty/jazz_r4030_dma.h
+       src/include/thirdparty/kbdreg.h
+       src/include/thirdparty/maltareg.h
+       src/include/thirdparty/mii.h
+       src/include/thirdparty/mk48txxreg.h
+       src/include/thirdparty/ncr53c9xreg.h
+       src/include/thirdparty/ns16550reg.h
+       src/include/thirdparty/ohcireg.h
+       src/include/thirdparty/pcireg.h
+       src/include/thirdparty/pcmciareg.h
+       src/include/thirdparty/pica.h
+       src/include/thirdparty/pmppc.h
+       src/include/thirdparty/ppc_bat.h
+       src/include/thirdparty/ppc_pte.h
+       src/include/thirdparty/ps2_dmacreg.h
+       src/include/thirdparty/pxreg.h
+       src/include/thirdparty/rs5c313reg.h
+       src/include/thirdparty/rtl81x9reg.h
+       src/include/thirdparty/sfbreg.h
+       src/include/thirdparty/sgi_arcbios.h
+       src/include/thirdparty/sgi_macereg.h
+       src/include/thirdparty/sh4_cache.h
+       src/include/thirdparty/sh4_exception.h
+       src/include/thirdparty/sh4_mmu.h
+       src/include/thirdparty/tulipreg.h
+       src/include/thirdparty/vr_rtcreg.h
+       src/include/thirdparty/vripreg.h
+       src/include/thirdparty/vrkiureg.h
+       src/include/thirdparty/wdcreg.h
+       src/include/thirdparty/xmireg.h
+       src/include/thirdparty/yamon.h
+       src/include/thirdparty/z8530reg.h
+Copyright: 1994, Adam Glass
+           1993, Allen K. Briggs
+           1998-2001, Ben Harris
+           1997-1998, Bill Paul <wpaul@ctr.columbia.edu>
+           1993, Bradley A. Grantham
+           1994, Brini
+           1997-1998, Causality Limited
+           1994-1996, Charles M. Hannum
+           1993, Chris P. Caputo
+           1993-2000, Christopher G. Demetriou
+           2001, Christopher Sekiya
+           2001, Jason R. Thorpe
+           1997-1998, Jonathan Stone
+           1993, Lawrence A. Kesteloot
+           2000, Ludd, University of Luleå, Sweden
+           1997, Manuel Bouyer
+           1997, Marc Horowitz
+           2001, Marcus Comstedt
+           1994-1998, Mark Brinicombe
+           2003, Matt Thomas
+           1997, Matthias Drochner
+           1993, Michael L. Finch
+           1991, OMRON Corporation
+           1994-1996, Per Fogelstrom
+           1994, Peter Galbavy
+           1999, PocketBSD Project
+           1988, Regents of the University of California
+           1999, SASAKI Takesi
+           1999-2001, SATO Kazumi
+           1999, Shin Takemura
+           1999-2001, Shin Takemura and PocketBSD Project
+           2000, Soren S. Jorvang
+           1994-2005, The NetBSD Foundation, Inc.
+           1991-1995, The Regents of the University of California
+           1998-1999, Tohru Nishimura
+           1995-1996, TooLs GmbH
+           2001-2003, Wasabi Systems, Inc.
+           1995-1996, Wolfgang Solfrank
+License: BSD-4-clause
 
-Exceptions to the license above:
+Files: src/include/thirdparty/mvme_pcctworeg.h
+Copyright: 1996, Nivas Madhur
+License: BSD-4-clause
+Comment:
+ Originally contributed to OpenBSD by Nivas Madhur. Although it lacked an
+ explicit notice, other files in the same change did have a notice:
+ https://github.com/openbsd/src/commit/be4a5d153bc5792d6fa724f2f244dd83a1b58a73
+ From miod of the OpenBSD project, to Anders Gavare:
+ | Since this file consists of #define for hardware registers and their
+ | bits, using names coming straight from the Motorola documentation, it
+ | hardly qualifies as copyrightable.
+ | I don't think this file can be found in any tree with an explicit
+ | copyright notice from Nivas. If this becomes a problem, you can try
+ | switching to NetBSD sys/dev/mvme/pcctworeg.h, which has a clear
+ | copyright notice but slightly different constant names.
 
-The demos in the demos/ directories, and the testmachine header files in
-src/include/testmachine/, are placed in the public domain. This way, they
-can be reused in projects which for some reason are incompatible with the
-conditions required by the BSD-style license.
+Files: src/include/thirdparty/ppc_spr.h
+Copyright: 2001, The NetBSD Foundation, Inc.
+License: BSD-2-clause
+Comment:
+ | From: Simon Burge <simonb@NetBSD.org>
+ | Subject: Re: Copyright status of ppc_spr.h
+ | To: Göran Weinholt <goran@weinholt.se>
+ | Date: Fri, 28 Sep 2018 10:49:05 +1000
+ | Message-Id: <20180928004905.BD4F1204D3@thoreau.thistledown.com.au>
+ |
+ | =?utf-8?Q?G=C3=B6ran?= Weinholt wrote:
+ |
+ | Hi Goran,
+ |
+ | > I'm trying to track down the copyright status of this file:
+ | >
+ | > https://salsa.debian.org/debian/gxemul/blob/debian/src/include/thirdparty/p=
+ | > pc_spr.h
+ | >
+ | > It looks like $NetBSD: spr.h,v 1.35 2005/01/20 21:26:49 matt Exp $ is a
+ | > file originally authored by you. Can you please provide me a copyright
+ | > notice for this file?
+ | >
+ | > (I see that you've added a notice to spr.h 1.48, which I would've used,
+ | > but most of ppc_spr.h has been split out to other */spr.h files that
+ | > lack notices).
+ |
+ | I'm happy for the current NetBSD copyright to apply to rev 1.35 of
+ | that file too (see below).  I should add the copyright to the others
+ | that have been split off.  Maybe one day...
 
-Some of the header files in the src/include/ directory, containing definitions
-of bitfields for hardware devices etc., are copied from NetBSD and other
-sources. If you plan to redistribute GXemul (for example as a binary package),
-or reuse code from GXemul, then you should check those files for their
-license terms.
+Files: src/include/thirdparty/bt459.h
+       src/include/thirdparty/dec_kmin.h
+       src/include/thirdparty/dec_kn01.h
+       src/include/thirdparty/dec_kn02.h
+       src/include/thirdparty/dec_kn03.h
+       src/include/thirdparty/dec_maxine.h
+       src/include/thirdparty/m88k_psl.h
+       src/include/thirdparty/mvme187.h
+       src/include/thirdparty/sccreg.h
+       src/include/thirdparty/tc_ioasicreg.h
+Copyright: 1989-1995, Carnegie Mellon University
+           1996, Nivas Madhur
+           1991, OMRON Corporation
+           1999, Steve Murphree, Jr.
+           1992-1993, The Regents of the University of California
+License: BSD-4-clause and cmu
+
+Files: src/include/thirdparty/aic7xxx_reg.h
+Copyright: 1994-2001, Justin T. Gibbs
+           2000-2001, Adaptec Inc.
+Comment:
+ Although the file is autogenerated, the only parts used are the
+ #define'd hardware register constants. If one wanted to modify this
+ file then one would not want to hunt down the tool from NetBSD, one
+ would just modify it. The input to the generation tool can be found
+ here, containing the copyright notice:
+  http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/dev/microcode/
+    aic7xxx/aic7xxx.reg?rev=1.2.10.1&content-type=text/x-cvsweb-markup
+License: adaptec
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions, and the following disclaimer,
+    without modification.
+ 2. Redistributions in binary form must reproduce at minimum a disclaimer
+    substantially similar to the "NO WARRANTY" disclaimer below
+    ("Disclaimer") and any redistribution must be conditioned upon
+    including a substantially similar Disclaimer requirement for further
+    binary redistribution.
+ 3. Neither the names of the above-listed copyright holders nor the names
+    of any contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+ .
+ Alternatively, this software may be distributed under the terms of the
+ GNU General Public License ("GPL") version 2 as published by the Free
+ Software Foundation.
+ .
+ NO WARRANTY
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR
+ A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ HOLDERS OR CONTRIBUTORS BE LIABLE FOR SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ POSSIBILITY OF SUCH DAMAGES.
+
+Files: src/include/thirdparty/mb86960reg.h
+Copyright: 1995, Fujitsu Limited
+License: fujitsu
+ This software may be used, modified, copied, distributed, and sold, in
+ both source and binary form provided that the above copyright, these
+ terms and the following disclaimer are retained.  The name of the author
+ and/or the contributor may not be used to endorse or promote products
+ derived from this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND THE CONTRIBUTOR ``AS IS'' AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR THE CONTRIBUTOR BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE.
+
+Files: src/include/thirdparty/alpha_autoconf.h
+       src/include/thirdparty/alpha_cpu.h
+       src/include/thirdparty/alpha_lcareg.h
+       src/include/thirdparty/alpha_prom.h
+       src/include/thirdparty/alpha_rpb.h
+       src/include/thirdparty/bt431reg.h
+       src/include/thirdparty/luna88k_board.h
+       src/include/thirdparty/mc146818reg.h
+       src/include/thirdparty/m88k_dmt.h
+       src/include/thirdparty/tgareg.h
+Copyright: 1989-1996, Carnegie-Mellon University
+           1991, OMRON Corporation
+License: cmu
+
+Files: src/include/thirdparty/exec_bout.h
+Copyright: 1990-1993, Intel Corporation
+License: intel
+ Intel hereby grants you permission to copy, modify, and distribute this
+ software and its documentation.  Intel grants this permission provided
+ that the above copyright notice appears in all copies and that both the
+ copyright notice and this permission notice appear in supporting
+ documentation.  In addition, Intel grants this permission provided that
+ you prominently mark as "not part of the original" any modifications
+ made to this software or documentation, and that the name of Intel
+ Corporation not be used in advertising or publicity pertaining to
+ distribution of the software or the documentation without specific,
+ written prior permission.
+ .
+ Intel Corporation provides this AS IS, WITHOUT ANY WARRANTY, EXPRESS OR
+ IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY
+ OR FITNESS FOR A PARTICULAR PURPOSE.  Intel makes no guarantee or
+ representations regarding the use of, or the results of the use of,
+ the software and documentation in terms of correctness, accuracy,
+ reliability, currentness, or otherwise; and you rely on the software,
+ documentation and results solely at your own risk.
+ .
+ IN NO EVENT SHALL INTEL BE LIABLE FOR ANY LOSS OF USE, LOSS OF BUSINESS,
+ LOSS OF PROFITS, INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES
+ OF ANY KIND.  IN NO EVENT SHALL INTEL'S TOTAL LIABILITY EXCEED THE SUM
+ PAID TO INTEL FOR THE PRODUCT LICENSED HEREUNDER.
+
+Files: src/include/thirdparty/m8820x.h
+Copyright: 1993-1992, Carnegie Mellon University
+           2004, Miodrag Vallat.
+License: BSD-2-clause and cmu
+
+Files: src/include/thirdparty/debug_new.h
+       src/include/thirdparty/fast_mutex.h
+       src/include/thirdparty/static_assert.h
+       src/main/debug_new.cc
+Copyright: 2004-2005, Wu Yongwei <adah@users.sourceforge.net>
+License: Zlib
+
+Files: src/include/thirdparty/lk201.h
+Copyright: 1992, The Regents of the University of California
+           1989, Digital Equipment Corporation
+License: BSD-4-clause and dec
+Comment:
+ Source was copied from a file that had lost the original license.
+ The original code, with license, is here:
+ http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/arch/pmax/dev/Attic/fb.c
+   ?rev=1.1&content-type=text/x-cvsweb-markup
+ http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/arch/pmax/dev/Attic/fbreg.h
+   ?rev=1.1&content-type=text/x-cvsweb-markup
+
+Files: src/include/thirdparty/dc7085.h
+       src/include/thirdparty/dec_prom.h
+       src/include/thirdparty/siireg.h
+Copyright: 1989, Digital Equipment Corporation
+           1992-1993, The Regents of the University of California
+License: BSD-4-clause and dec
+
+Files: src/include/thirdparty/mips_cpuregs.h
+Copyright: 1989, Digital Equipment Corporation
+           1992-1993, The Regents of the University of California
+License: BSD-3-clause and dec
+
+Files: src/include/thirdparty/hitachi_hm53462_rop.h
+Copyright: 2013, Kenji Aoyama
+License: ISC
+
+Files: src/devices/fonts/*
+Copyright: 1992-1994, Hellmuth Michaelis and Joerg Wunsch
+License: BSD-4-clause
+
+Files: src/devices/fonts/Xconv_raw_to_c.c
+Copyright: 2003-2009, Anders Gavare
+License: BSD-2-clause
+
+Files: src/promemul/dreamcast_scramble.cc
+Copyright: Marcus Comstedt
+License: public-domain
+ The sofware in this section is in the Public Domain. This means that
+ I make no copyright claim for it, and that there is no license that
+ restricts its usage.
+Comment:
+ Source of the claim and clarification by email from the author:
+ https://web.archive.org/web/20180314035840/http://mc.pp.se/dc/sw.html
+ https://web.archive.org/web/20180407064526/http://mc.pp.se/dc/files/scramble.c
+ .
+ | From: Marcus Comstedt <marcus@lysator.liu.se>
+ | To: Göran Weinholt <goran@weinholt.se>
+ | Subject: Re: License of dreamcast scramble.c
+ | Date: Wed, 26 Sep 2018 22:34:38 +0200
+ | Message-ID: <q35zys576p.fsf@armitage.lysator.liu.se>
+ |
+ | Hej,
+ |
+ | Göran Weinholt <goran@weinholt.se> writes:
+ |
+ | > From the page: "The sofware in this section is in the Public Domain.
+ | > This means that I make no copyright claim for it, and that there is no
+ | > license that restricts its usage. "
+ | >
+ | > Does this also apply to scramble.c, which is in the section above that
+ | > text?
+ |
+ | Yes, scramble.c is also in the public domain.
+
+Files: debian/*
+Copyright: 2004-2018, Göran Weinholt <weinholt@debian.org>
+           2008-2010 Jonathan Wiltshire <debian@jwiltshire.org.uk>
+License: BSD-3-clause
+Comment: No explicit license historically; assuming 'LICENSE' applies
+
+License: BSD-2-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ .
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE.
+
+License: BSD-3-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ .
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE.
+
+License: BSD-4-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. All advertising materials mentioning features or use of this software
+    must display the following acknowledgement:
+      This product includes software developed by <the organization>.
+ 4. Neither the name of <the copyright holder> nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY <COPYRIGHT HOLDER> "AS IS" AND ANY
+ EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: ISC
+ Permission to use, copy, modify, and distribute this software for any
+ purpose with or without fee is hereby granted, provided that the above
+ copyright notice and this permission notice appear in all copies.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+License: Zlib
+ This software is provided 'as-is', without any express or implied
+ warranty.  In no event will the authors be held liable for any
+ damages arising from the use of this software.
+ .
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute
+ it freely, subject to the following restrictions:
+ .
+ 1. The origin of this software must not be misrepresented; you must
+    not claim that you wrote the original software. If you use this
+    software in a product, an acknowledgment in the product
+    documentation would be appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must
+    not be misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source
+    distribution.
+
+License: cmu
+ Permission to use, copy, modify and distribute this software and its
+ documentation is hereby granted, provided that both the copyright
+ notice and this permission notice appear in all copies of the
+ software, derivative works or modified versions, and any portions
+ thereof, and that both notices appear in supporting documentation.
+ .
+ CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ .
+ Carnegie Mellon requests users of this software to return to
+ .
+  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+  School of Computer Science
+  Carnegie Mellon University
+  Pittsburgh PA 15213-3890
+ .
+ any improvements or extensions that they make and grant Carnegie Mellon
+ the rights to redistribute these changes.
+
+License: dec
+ Permission to use, copy, modify, and distribute this software and
+ its documentation for any purpose and without fee is hereby granted,
+ provided that the above copyright notice appears in all copies.
+ Digital Equipment Corporation makes no representations about the
+ suitability of this software for any purpose.  It is provided "as is"
+ without express or implied warranty.
