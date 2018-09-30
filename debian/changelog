@@ -1,3 +1,9 @@
+gxemul (0.6.0.2-2) unstable; urgency=medium
+
+  * Incorporate all thirdparty code into debian/copyright
+
+ -- Göran Weinholt <weinholt@debian.org>  Sun, 30 Sep 2018 18:05:18 +0200
+
 gxemul (0.6.0.2-1) unstable; urgency=medium
 
   * New upstream version
