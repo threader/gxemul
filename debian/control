@@ -23,7 +23,7 @@ Description: machine emulator for multiple architectures
   * IQ80321 (NetBSD/evbarm)
   * NetWinder (NetBSD/netwinder)
  MIPS-based machines:
-  * DECstation 5000/200 (NetBSD/pmax, OpenBSD/pmax, Ultrix, 
+  * DECstation 5000/200 (NetBSD/pmax, OpenBSD/pmax, Ultrix,
     Linux/DECstation, Sprite)
   * Acer Pica-61 (NetBSD/arc)
   * NEC MobilePro 770, 780, 800, 880 (NetBSD/hpcmips)
