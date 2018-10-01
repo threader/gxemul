@@ -55,7 +55,7 @@ gxemul (0.4.7.1-1) unstable; urgency=low
     - Minor documentation errors fixed.
     - Some more missing M88K instructions added.
     - NetBSD/hpcmips can now be installed and run using serial console
-      (i.e. without -X), in addition to using the framebuffer. 
+      (i.e. without -X), in addition to using the framebuffer.
   * Corrected dependency field for binary package gxemul
   * All patches integrated upstream; removing dpatch dependency and rules
 
@@ -64,7 +64,7 @@ gxemul (0.4.7.1-1) unstable; urgency=low
 gxemul (0.4.7-1) unstable; urgency=low
 
   * New Upstream Version
-    - Motorola 88100 emulation is now complete enough to run a guest 
+    - Motorola 88100 emulation is now complete enough to run a guest
       operating system
   * Patch 05_segfault_params is now integrated upstream
   * Revised patch 01_manhyphens_patch to fit new upstream
@@ -79,14 +79,14 @@ gxemul (0.4.7-1) unstable; urgency=low
 
 gxemul (0.4.6.6-3) unstable; urgency=low
 
-  * Patch against segmentation fault if gxemul is started with arbitrary 
+  * Patch against segmentation fault if gxemul is started with arbitrary
     parameters (LP: #301041)
 
  -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Mon, 24 Nov 2008 11:10:27 +0000
 
 gxemul (0.4.6.6-2) unstable; urgency=low
 
-  * Using debhelper 7 to shrink debian/rules (thanks Sandro Tosi for the 
+  * Using debhelper 7 to shrink debian/rules (thanks Sandro Tosi for the
     tutorial)
 
  -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Sun, 23 Nov 2008 21:46:20 +0000
@@ -104,9 +104,9 @@ gxemul (0.4.6.6-1) unstable; urgency=low
 
 gxemul (0.4.6.5-3) unstable; urgency=low
 
-  * Turned hyphens into dashes when used for arguments in the man page 
+  * Turned hyphens into dashes when used for arguments in the man page
     (Closes: #497106)
-  * Package no longer builds gxemul-doc_0.4.6.5-2_all.deb when binary-indep 
+  * Package no longer builds gxemul-doc_0.4.6.5-2_all.deb when binary-indep
     target is not called (Closes: #497105)
 
  -- Jonathan Wiltshire <debian@jwiltshire.org.uk>  Sat, 30 Aug 2008 01:00:51 +0100
@@ -229,7 +229,7 @@ gxemul (0.3.7-1) unstable; urgency=low
 gxemul (0.3.6.2-1) unstable; urgency=low
 
   * New upstream release.
-  * debian/control: 
+  * debian/control:
     + Add CATS (an ARM-based machine) to the list of emulated machines.
     + debian/control: Add upstream's homepage to the package description.
 
