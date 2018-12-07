@@ -99,7 +99,7 @@ operating system code.
 <p>The emulator contains code which tries to emulate the workings of CPUs
 and surrounding hardware found in real machines, but it does not contain
 any ROM code. You will need some form of program (in binary form) to run
-in the emulator. For some emulation modes, PROM calls are handled by the
+in the emulator. For most emulation modes, PROM calls are handled by the
 emulator itself, so you do not need to use any ROM image at all.
 
 <p>You can use pre-compiled kernels (for example <a href="http://www.netbsd.org/">NetBSD</a>
@@ -398,7 +398,8 @@ machine in these lists is:
     <li><b>Malta</b> (<a href="guestoses.html#netbsdevbmipsinstall">NetBSD/evbmips</a>, <a href="unsupported.html#linux_malta2">Linux/Malta</a> <font color="#0000e0">(<super>*1</super>)</font>)
     <li><b>Algorithmics P5064</b> (<a href="guestoses.html#netbsdalgorinstall">NetBSD/algor</a>)
     <li><b>SGI O2 (aka IP32)</b> <font color="#0000e0">(<super>*2</super>)</font>
-	(<a href="guestoses.html#netbsdsgimips">NetBSD/sgi</a>)
+	(<a href="guestoses.html#netbsdsgimips">NetBSD/sgimips</a>,
+	<a href="guestoses.html#openbsdsgiinstall">OpenBSD/sgi</a>)
     <li><b>oldtestmips</b> (<a href="experiments.html#expdevices">experimental</a>, <a href="guestoses.html#helenos">HelenOS/mips</a>)
   </ul>
   <p>
@@ -435,12 +436,6 @@ is much more experimental/unknown than NetBSD, so it is still on the
 <br><small><font color="#0000e0">(<super>*2</super>)</font> =
 The emulation is enough for root-on-nfs, but no disk controller (SCSI nor 
 IDE) is emulated yet for this machine type.</small>
-
-<p>Note that of all of the machines above, none of them is emulated to 
-100%. The most complete emulation mode is probably the DECstation 
-5000/200. Things that will most likely <b>not</b> work include running 
-raw PROM images for most machines, SGI IRIX, MacOS X or Darwin, Windows 
-NT, or Dreamcast games.
 
 <p>There may be code in GXemul for emulation of some other machine types; the
 degree to which these work range from almost being able to run a complete

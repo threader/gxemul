@@ -251,9 +251,12 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 
 #ifdef DYNTRANS_ARM
 	if (cpu->cd.arm.cpsr & ARM_FLAG_T) {
-		fatal("THUMB execution not implemented.\n");
-		cpu->running = false;
-		return 0;
+		// fatal("THUMB execution not implemented.\n");
+		// cpu->running = false;
+		// return 0;
+		
+		arm_cpu_interpret_thumb_SLOW(cpu);
+		return 1;
 	}
 #endif
 
@@ -288,7 +291,7 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 				int len =
 #endif
 				    cpu_disassemble_instr(
-				    cpu->machine, cpu, instr, 1, 0);
+				    cpu->machine, cpu, instr, 1, cpu->pc);
 #ifdef DYNTRANS_DELAYSLOT
 				/*  Show the instruction in the delay slot,
 				    if any:  */
@@ -305,7 +308,7 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 					cpu->delay_slot = DELAYED;
 					cpu->pc += len;
 					cpu_disassemble_instr(cpu->machine,
-					    cpu, instr, 1, 0);
+					    cpu, instr, 1, cpu->pc);
 					cpu->delay_slot = saved_delayslot;
 					cpu->pc -= len;
 				}
@@ -460,7 +463,7 @@ int DYNTRANS_RUN_INSTR_DEF(struct cpu *cpu)
 void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 {
 	int show_symbolic_function_name = 1;
-        char strbuf[50];
+        char strbuf[55];
 	char *symbol;
 	uint64_t ot;
 	int x, print_dots = 1, n_args_to_print =
@@ -525,10 +528,18 @@ void DYNTRANS_FUNCTION_TRACE_DEF(struct cpu *cpu, int n_args)
 
 		if (d > -256 && d < 256)
 			fatal("%i", (int)d);
-		else if (memory_points_to_string(cpu, cpu->mem, d, 1))
-			fatal("\"%s\"", memory_conv_to_string(cpu,
-			    cpu->mem, d, strbuf, sizeof(strbuf)));
-		else if (symbol != NULL && ot == 0 &&
+		else if (memory_points_to_string(cpu, cpu->mem, d, 1)) {
+			memset(strbuf, 0, sizeof(strbuf));
+			memory_conv_to_string(cpu,
+			    cpu->mem, d, strbuf, sizeof(strbuf));
+			fatal("\"%s\"", strbuf);
+			// TODO: This shows "..." when the string is longer
+			// _or exactly the max length_. An improvement would
+			// be to detect the case where the string is exactly
+			// the max length and not show "..." then.
+			if (strlen(strbuf) >= sizeof(strbuf)-1)
+				fatal("...");
+		} else if (symbol != NULL && ot == 0 &&
 		    show_symbolic_function_name)
 			fatal("&%s", symbol);
 		else {

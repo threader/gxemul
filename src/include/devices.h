@@ -100,7 +100,7 @@ struct dec_ioasic_data {
 	uint32_t	scsi_sdr0;		/*  0x1c0  */
 	uint32_t	scsi_sdr1;		/*  0x1d0  */
 
-	int		(*(dma_func[MAX_IOASIC_DMA_FUNCTIONS]))(struct cpu *, void *, uint64_t addr, size_t dma_len, int tx);
+	int		(*dma_func[MAX_IOASIC_DMA_FUNCTIONS])(struct cpu *, void *, uint64_t addr, size_t dma_len, int tx);
 	void		*dma_func_extra[MAX_IOASIC_DMA_FUNCTIONS];
 	int		rackmount_flag;
 	struct interrupt *irq;
@@ -394,6 +394,33 @@ int dev_sgi_gbe_access(struct cpu *cpu, struct memory *mem,
 void dev_sgi_gbe_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr);
 
+/*  dev_sgi_re.cc:  */
+// SGI O2 Rendering Engine:
+#define	DEV_SGI_RE_LENGTH		0x1000
+int dev_sgi_re_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_sgi_re_init(struct machine *machine, struct memory *mem, uint64_t baseaddr);
+// SGI O2 Drawing Engine:
+#define	DEV_SGI_DE_LENGTH		0x1000
+int dev_sgi_de_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_sgi_de_init(struct memory *mem, uint64_t baseaddr, struct sgi_re_data *);
+// SGI O2 Memory Transfer Engine:
+#define	DEV_SGI_MTE_LENGTH		0x1000
+int dev_sgi_re_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_sgi_mte_init(struct memory *mem, uint64_t baseaddr, struct sgi_re_data *);
+// SGI O2 Rendering Engine:
+#define	DEV_SGI_DE_STATUS_LENGTH		0x1000
+int dev_sgi_de_access(struct cpu *cpu, struct memory *mem,
+	uint64_t relative_addr, unsigned char *data, size_t len,
+	int writeflag, void *);
+void dev_sgi_de_status_init(struct memory *mem, uint64_t baseaddr, struct sgi_re_data *);
+
+
 /*  dev_sgi_ip20.c:  */
 #define	DEV_SGI_IP20_LENGTH		0x40
 #define	DEV_SGI_IP20_BASE		0x1fb801c0
@@ -439,11 +466,6 @@ int dev_sgi_ust_access(struct cpu *cpu, struct memory *mem,
 	uint64_t relative_addr, unsigned char *data, size_t len,
 	int writeflag, void *);
 void dev_sgi_ust_init(struct memory *mem, uint64_t baseaddr);
-#define	DEV_SGI_MTE_LENGTH		0x10000
-int dev_sgi_mte_access(struct cpu *cpu, struct memory *mem,
-	uint64_t relative_addr, unsigned char *data, size_t len,
-	int writeflag, void *);
-void dev_sgi_mte_init(struct memory *mem, uint64_t baseaddr);
 
 /*  dev_sii.c:  */
 #define	DEV_SII_LENGTH			0x100
