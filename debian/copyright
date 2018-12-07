@@ -34,12 +34,17 @@ License: GPL with doxygen exception
  On Debian systems, the complete text of the GNU General Public
  License can be found in '/usr/share/common-licenses/GPL-2'.
 
-Files: src/include/thirdparty/impactsr-bsd.h
+Files: src/include/thirdparty/crmfbreg.h
+       src/include/thirdparty/impactsr-bsd.h
        src/include/thirdparty/gtreg.h
+       src/include/thirdparty/mii.h
        src/include/thirdparty/mvme88k_vme.h
        src/include/thirdparty/mvme_memcreg.h
        src/include/thirdparty/sh4_pcicreg.h
-Copyright: 1997, 1998, 2001, The NetBSD Foundation, Inc.
+Copyright: 2007, Jared D. McNeill <jmcneill@invisible.ca>
+           1997, 1998, 2001, The NetBSD Foundation, Inc.
+           1997, Manuel Bouyer
+           2008, Michael Lorenz <macallan@netbsd.org>
            2005, NONAKA Kimihiro
            2004, Stanislaw Skowronek
            1995, Theo de Raadt
@@ -80,6 +85,7 @@ License: BSD-3-clause
 
 Files: src/include/thirdparty/adb_viareg.h
        src/include/thirdparty/algor_p5064reg.h
+       src/include/thirdparty/arm_cputypes.h
        src/include/thirdparty/armreg.h
        src/include/thirdparty/bcureg.h
        src/include/thirdparty/bireg.h
@@ -110,7 +116,6 @@ Files: src/include/thirdparty/adb_viareg.h
        src/include/thirdparty/jazz_r4030_dma.h
        src/include/thirdparty/kbdreg.h
        src/include/thirdparty/maltareg.h
-       src/include/thirdparty/mii.h
        src/include/thirdparty/mk48txxreg.h
        src/include/thirdparty/ncr53c9xreg.h
        src/include/thirdparty/ns16550reg.h
@@ -154,7 +159,6 @@ Copyright: 1994, Adam Glass
            1997-1998, Jonathan Stone
            1993, Lawrence A. Kesteloot
            2000, Ludd, University of Luleå, Sweden
-           1997, Manuel Bouyer
            1997, Marc Horowitz
            2001, Marcus Comstedt
            1994-1998, Mark Brinicombe
@@ -361,20 +365,9 @@ Files: src/include/thirdparty/debug_new.h
 Copyright: 2004-2005, Wu Yongwei <adah@users.sourceforge.net>
 License: Zlib
 
-Files: src/include/thirdparty/lk201.h
-Copyright: 1992, The Regents of the University of California
-           1989, Digital Equipment Corporation
-License: BSD-4-clause and dec
-Comment:
- Source was copied from a file that had lost the original license.
- The original code, with license, is here:
- http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/arch/pmax/dev/Attic/fb.c
-   ?rev=1.1&content-type=text/x-cvsweb-markup
- http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/arch/pmax/dev/Attic/fbreg.h
-   ?rev=1.1&content-type=text/x-cvsweb-markup
-
 Files: src/include/thirdparty/dc7085.h
        src/include/thirdparty/dec_prom.h
+       src/include/thirdparty/lk201.h
        src/include/thirdparty/siireg.h
 Copyright: 1989, Digital Equipment Corporation
            1992-1993, The Regents of the University of California
@@ -386,7 +379,9 @@ Copyright: 1989, Digital Equipment Corporation
 License: BSD-3-clause and dec
 
 Files: src/include/thirdparty/hitachi_hm53462_rop.h
+       src/include/thirdparty/sgi_gl.h
 Copyright: 2013, Kenji Aoyama
+           2009-2010, Joel Sing <jsing@openbsd.org>
 License: ISC
 
 Files: src/devices/fonts/*
