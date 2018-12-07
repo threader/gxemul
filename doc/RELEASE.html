@@ -9,7 +9,7 @@
 
 <!-- 10 lines header.  -->
 
-<h1>Release notes for GXemul 0.6.0.2</h1>
+<h1>Release notes for GXemul 0.6.1</h1>
 
 <p><i>Copyright (C) 2003-2018  Anders Gavare</i>
 
@@ -28,47 +28,37 @@ controllers.
 <p>The <a href="index.html">documentation</a> lists the machines and
 guest operating systems that 
 can be regarded as "working" in GXemul. The first guest operating 
-system that worked in GXemul is
+system that worked in GXemul was
 <a href="guestoses.html#netbsdpmaxinstall">NetBSD/pmax</a>, and that is
 still one of the guest OSes that works best.
 
 
 
-<p><br>The changes between release 0.6.0.2 and 0.6.0.1 are relatively
-minor. They include:
+<p><br>The most important change between release 0.6.0.2 and 0.6.1 is:
 
-<p>General:
-<ul>
-	<li>Minor fixes to make it possible to build GXemul using
-		relatively modern compilers (GCC 6.4.0 and clang 3.4.1).
-	<li>Updating the guest OS installation
-		instructions with newer versions of guest OSes.
-</ul>
-
+<!--
 <p>Old framework:
+-->
 <ul>
-	<li><b>MIPS:</b>
+	<li><b>SGI O2 emulation (in the Old framework):</b>
 	<ul>
-		<li>Bug fix for the case when a guest OS used larger-than-4KB
-			pages, when it comes to invalidating previous
-			translations. This makes e.g. recent versions of
-			<a href="unsupported.html#helenosmaltabe">HelenOS
-			on Malta</a> run further than before.
+		<li>Graphical framebuffer:
+		Previously, only serial console was possible when
+		running NetBSD/sgimips as a guest OS, but now it is
+		also possible to use graphical framebuffer for both
+		text console and for X11.
+
+		<li>OpenBSD/sgi has been moved from "unsupported" to
+		supported.
 	</ul>
 </ul>
 
+<!--
 <p>New framework:
-<ul>	
-	<li><b>Intel i960:</b>
-	<ul>
-		<li>Disassembly of i960CA instructions has been
-			implemented. Execution is not implemented yet,
-			but disassembly support may still be useful when
-			debugging or inspecting i960 binaries.
-		<li>Intel b.out file format loader.
-	</ul>
+<ul>
+	<li>...
 </ul>
-
+-->
 
 
 <p><br>Please read the HISTORY file for more details.
@@ -77,10 +67,10 @@ minor. They include:
 <tt>make</tt>. This should hopefully work on most Unix-like systems, with few
 or no modifications to the source code.
 
-<p>Regarding files in the <tt>src/include/</tt> directory: only some of 
-these are written by me, the rest are from other sources
-(such as <a href="http://www.netbsd.org/">NetBSD</a>). See individual
-source files for details, if you plan to redistribute GXemul or reuse code.
+<p>Regarding files in the <tt>src/include/thirdparty/</tt> directory:
+most of these are from other open source projects such as NetBSD. See individual
+source files for details, if you plan to redistribute GXemul in binary form,
+or reuse the source code.
 
 <p>GXemul's homepage is
 <a href="http://gavare.se/gxemul/">http://gavare.se/gxemul/</a>.

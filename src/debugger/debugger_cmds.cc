@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -1105,10 +1105,6 @@ static void debugger_cmd_unassemble(struct machine *m, char *cmd_line)
 	if (addr_start == MAGIC_UNTOUCHED)
 		addr_start = c->pc;
 
-	// Hack for ARM (THUMB):
-	if (m->arch == ARCH_ARM)
-		addr_start &= ~1;
-
 	addr_end = addr_start + 1000;
 
 	/*  endaddr:  */
@@ -1135,7 +1131,13 @@ static void debugger_cmd_unassemble(struct machine *m, char *cmd_line)
 		memset(buf, 0, sizeof(buf));
 
 		for (i=0; i<sizeof(buf); i++) {
-			if (c->memory_rw(c, mem, addr+i, buf+i, 1, MEM_READ,
+			uint64_t actualaddr = addr;
+
+			// Hack for ARM (THUMB): (Lowest bit = 1 means 16-bit encoding)
+			if (m->arch == ARCH_ARM)
+				actualaddr &= ~1;
+
+			if (c->memory_rw(c, mem, actualaddr+i, buf+i, 1, MEM_READ,
 			    CACHE_NONE | NO_EXCEPTIONS) == MEMORY_ACCESS_FAILED)
 				failed ++;
 		}
@@ -1212,13 +1214,13 @@ static struct cmd cmds[] = {
 		"dump memory contents in hex and ASCII" },
 
 	{ "emul", "", 0, debugger_cmd_emul,
-		" PRInt a summary of the current emulation" },
+		"Print a summary of the current emulation" },
 
 	{ "focus", "x[,y[,z]]", 0, debugger_cmd_focus,
 		"changes focus to cpu x, machine x, emul z" },
 
 	{ "help", "", 0, debugger_cmd_help,
-		" PRInt this help message" },
+		"Print this help message" },
 
 	{ "itrace", "", 0, debugger_cmd_itrace,
 		"toggle instruction_trace on or off" },
@@ -1227,7 +1229,7 @@ static struct cmd cmds[] = {
 		"lookup a symbol by name or address" },
 
 	{ "machine", "", 0, debugger_cmd_machine,
-		" PRInt a summary of the current machine" },
+		"Print a summary of the current machine" },
 
 	{ "ninstrs", "[on|off]", 0, debugger_cmd_ninstrs,
 		"toggle (set or unset) show_nr_of_instructions" },
@@ -1235,7 +1237,7 @@ static struct cmd cmds[] = {
 	{ "pause", "cpuid", 0, debugger_cmd_pause,
 		"pause (or unpause) a CPU" },
 
-	{ " PRInt", "expr", 0, debugger_cmd_print,
+	{ "print", "expr", 0, debugger_cmd_print,
 		"evaluate an expression without side-effects" },
 
 	{ "put", "[b|h|w|d|q] addr, data", 0, debugger_cmd_put,
@@ -1265,11 +1267,14 @@ static struct cmd cmds[] = {
 	{ "trace", "[on|off]", 0, debugger_cmd_trace,
 		"toggle show_trace_tree on or off" },
 
+	/*  NOTE: Try to keep 'u' down to only one command. Having 'unassemble'
+	    available as a one-letter command is very convenient.  */
+
 	{ "unassemble", "[addr [endaddr]]", 0, debugger_cmd_unassemble,
 		"dump memory contents as instructions" },
 
 	{ "version", "", 0, debugger_cmd_version,
-		" PRInt version information" },
+		"Print version information" },
 
 	/*  Note: NULL handler.  */
 	{ "x = expr", "", 0, NULL, "generic assignment" },

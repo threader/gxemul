@@ -4715,3 +4715,109 @@ Changelog for GXemul:
 
 ==============  RELEASE 0.6.0.2  ==============
 
+20180910	Running the SGI O2 PROM works a little bit again, with some
+		hacks (updating the documentation).
+20180917	OpenBSD/landisk 6.3 guest OS install instruction update.
+20180918	Fixing a regression bug which was introduced September 2012
+		(svn r5805), regarding shifted immediate values, which caused
+		OpenBSD/cats to fail during install.
+20180920	Making ARM disassembly show THUMB instructions, if the lowest
+		bit of the address is 1. (They can not be executed yet though.)
+		Fixing broken "print" command. Oops.
+		Implement some more THUMB disassembly.
+		Fail rather than silently treating ARM instructions beginning
+		with 0xf as nops.
+		Allow the emulator to start in THUMB mode (lowest pc bit set).
+20180921        Continuing on ARM THUMB disassembly.
+		Beginning to implement very slow THUMB interpretation (not
+		dyntrans). Horrible performance-wise, but better than nothing.
+20180924	Oops, forgot to add machine_rpi.cc back in 20131006.
+20180925	Cleaning up some more files on make clean_all. Thanks to
+		Göran Weinholt for noticing.
+20180927	Fixing big-endian ARM loads/stores (except perhaps double-word
+		loads and stores); probably slows everything down a bit.
+20181001	Continuing on the slow THUMB instruction interpretation.
+20181008	Disk images added using -d for SGI modes are now SCSI, not IDE.
+		Importing newer crimereg.h and crmfbreg.h from NetBSD.
+20181009	Moving around SGI O2 graphics code, in preparation for making
+		more use of the "new" NetBSD defines.
+20181011	SGI O2 GBE now switches resolution if the OS wants it (i.e.
+		Linux/O2), rather than requiring a recompile.
+		Also, detection of Linux' "tweaked" (linear) mode, thus
+		avoiding a recompile when experimenting with Linux/O2.
+		NetBSD can now show some output on the O2 framebuffer too.
+20181012	Fixing a bug in the generic X11 framebuffer output, so that
+		scaledown is preserved even when a guest OS switches resultion
+		at runtime.
+		Continuing on the SGI O2 graphics; when the nr of tiles or
+		"partial pixels" is in mismatch with the screen resolution,
+		the skewed result now looks the same as on my real physical O2.
+20181013	More SGI O2 graphics work: TLBs. OpenBSD can now show graphical
+		console messages.
+20181015	Some more emulated O2 registers now return the same values as
+		my real O2 does.
+		Refactoring the O2 "output" to always be 24-bit, separate from
+		the emulated framebuffer tiles (which may be e.g. 8 bit).
+		NetBSD's colors (RG3B2 mode) are now probably more correct.
+		Changing from 64 to 128 MB ram for the O2; this matches what
+		my real O2 has, and it is now detected correctly both by OSes
+		and the PROM.
+		Implementing the O2's GBE cursor; both bitmap and crosshair
+		modes work exactly like on the real machine now.
+		Finally fixed the bug which caused scroll-up to not work when
+		running the O2's PROM.
+20181016	More work on the O2 graphics; managed to get rid of the Linux
+		tweaked special case rendering mode.
+		Splitting the O2 GBE into a GBE part and a Rendering Engine
+		part.
+20181017	Refactored the register representation in dev_sgi_ip32's crime
+		interrupt controller.
+		Adding a horrible hack to enable the use of a RAM_MIRROR at
+		0x40000000 (for SGI O2 emulation).
+20181018	Updating the OpenBSD/sgi installation instructions (still
+		in unsupported.html though, and still only diskless).
+20181019	Fixing some 8242 key encodings (used by the SGI O2 mode).
+		Better memory bank stuff for SGI O2 (128 vs 256 MB RAM).
+		Taking the FR bit of the MIPS status register into account to
+		use 64-bit floating point registers rather than pairs of 32-bit
+		registers (need for OpenBSD/sgi to work).
+		Moving OpenBSD/sgi from unsupported.html to guestoes.html.
+20181022	Fixing broken MACE interrupt mechanism for SGI O2.
+20181025	Implementing MTE_MODE_COPY in the SGI O2 memory transfer engine
+		to allow NetBSD to scroll up the framebuffer.
+		Made the pckbc work with NetBSD/sgimips.
+		Only allow SGI O2 MTE memory fills to pages that are in a TLB.
+20181026	Some cleanup and refactoring of the O2 rendering engine and 
+		other things.
+		ARCS environment fixes (better values for diskless booting).
+20181030	Updating NetBSD/sgimips guest OS instructions to version 8.0.
+		Some progress on the hw accelerated graphics operations used
+		by NetBSD/sgimips' Xorg driver.
+20181031	Better separation of pckbc scancode translation tables 1, 2,
+		and 3, and beginning to play around with PS/2 mouse movement.
+20181101	Fixes to the SGI O2 mec ethernet implementation's register
+		alignment to correctly support mixed 32/64-bit access.
+20181102	Adding some PHY/MII related parts of the O2 mec device (not
+		needed by NetBSD/OpenBSD it seems, but by the O2 PROM).
+20181106	Splitting SGI O2 rectangle drawing and line drawing into
+		separate parts; NetBSD/sgimips' Xorg now looks reasonable.
+20181107	Progress on PS/2 mouse emulation; NetBSD accepts it as "pms0
+		at macekbc0" in the SGI O2 emulation mode. (No actual host
+		mouse input yet though.)
+20181108	Implementing host X11 mouse input for the pckbc device.
+20181112	More work on the O2 rendering engine Raster Ops. Moving windows
+		within NetBSD's X11 now looks as it should.
+20181115	Changing the PCI product ID for the AIC7880 SCSI controller in
+		the SGI O2 emulation mode to match my real O2 (0x9004, 0x8078).
+20181120	Continuing on SGI O2 graphics: "overlays" (seem to always be
+		8 bits deep?).
+20181121	Getting rid of a hack in the O2 rendering code for "stipple
+		patterns", by looking at the "stipple mode" register.
+20181122	Fixing an old very annoying bug where floating point number
+		0x0 was interpreted as 2.22507e-308 rather than 0.0. Thanks to
+		Maya Rashish (coypu@SDF.ORG) for reporting the bug.
+20181203	Beginning on test/floatingpoint infrastructure. Fixing some
+		more floating point bugs.
+
+==============  RELEASE 0.6.1  ==============
+

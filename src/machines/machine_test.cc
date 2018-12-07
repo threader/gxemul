@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2014  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -75,7 +75,7 @@
  */
 static void default_test(struct machine *machine, struct cpu *cpu)
 {
-	char tmpstr[1000];
+	char tmpstr[2000];
 	char base_irq[1000];
 	char end_of_base_irq[50];
 
@@ -146,7 +146,7 @@ MACHINE_SETUP(barearm)
 {
 	machine->machine_name = strdup("Generic \"bare\" ARM machine");
 
-#if 0
+#if 1
 	// An experiment with running a particular firmware image on a device;
 	// move some other place when/if it works?
 	cpu->byte_order = EMUL_BIG_ENDIAN;
