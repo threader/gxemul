@@ -27,13 +27,20 @@ Description: machine emulator for multiple architectures
     Linux/DECstation, Sprite)
   * Acer Pica-61 (NetBSD/arc)
   * NEC MobilePro 770, 780, 800, 880 (NetBSD/hpcmips)
-  * Malta (NetBSD/evbmips
+  * Cobalt (NetBSD/cobalt)
+  * Malta (NetBSD/evbmips, Linux/Malta)
   * Algorithmics P5064 (NetBSD/algor)
-  * SGI O2 (aka IP32) (NetBSD/sgi) (enough for root-on-nfs)
+  * SGI O2 (aka IP32) (NetBSD/sgi)
+ Motorola 88K-based machines:
+  * Motorola MVME187 (OpenBSD/mvme88k)
+  * Luna 88K (OpenBSD/luna88k)
  PowerPC-based machines:
   * IBM 6050/6070 (PReP, PowerPC Reference Platform) (NetBSD/prep)
+  * MacPPC (generic "G4" Macintosh) (NetBSD/macppc)
+  * Artesyn PM/PPC (NetBSD/pmppc)
  SuperH-based machines:
-  * Sega Dreamcast (NetBSD/dreamcast) (enough for ramdisk userland)
+  * Sega Dreamcast (NetBSD/dreamcast, Linux/dreamcast)
+  * Landisk I-O DATA USL-5P (OpenBSD/landisk)
  .
  Other machine types and architectures are emulated less completely.
  See the documentation in the gxemul-doc package for the exact details
