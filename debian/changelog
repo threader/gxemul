@@ -1,3 +1,18 @@
+gxemul (0.6.1-1) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * d/changelog: Remove trailing whitespaces
+  * d/control: Remove trailing whitespaces
+
+  [ Göran Weinholt ]
+  * New upstream version
+  * debian/control: Update description with new machines
+  * debian/copyright: Update third-party copyrights
+  * debian/gbp.conf: Add gbp configuration
+  * Remove all debian/patches (fixed upstream)
+
+ -- Göran Weinholt <weinholt@debian.org>  Fri, 07 Dec 2018 20:52:23 +0100
+
 gxemul (0.6.0.2-2) unstable; urgency=medium
 
   * Incorporate all thirdparty code into debian/copyright
