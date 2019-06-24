@@ -1,3 +1,11 @@
+gxemul (0.6.2-1) experimental; urgency=low
+
+  * New upstream version
+  * debian/copyright: Update copyright years
+  * debian/rules: Disable tests, upstream knows they are broken
+
+ -- Göran Weinholt <weinholt@debian.org>  Mon, 24 Jun 2019 22:25:47 +0200
+
 gxemul (0.6.1-1) unstable; urgency=medium
 
   [ Ondřej Nový ]
