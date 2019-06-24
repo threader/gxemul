@@ -30,5 +30,7 @@ override_dh_clean:
 	dh_clean
 	if [ -f Makefile ]; then make clean_all; fi
 
+override_dh_auto_test:
+
 %:
 	dh $@
