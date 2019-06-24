@@ -2,7 +2,7 @@
 #define	CPUCOMPONENT_H
 
 /*
- *  Copyright (C) 2008-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2008-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -100,8 +100,6 @@ public:
 	 * \brief Disassembles an instruction into readable strings.
 	 *
 	 * @param vaddr The virtual address of the program counter.
-	 * @param maxLen The number of bytes in the instruction buffer.
-	 * @param instruction A pointer to a buffer containing the instruction.
 	 * @param result A vector where the implementation will add:
 	 *	<ol>
 	 *		<li>machine code bytes in a standard notation
@@ -115,8 +113,7 @@ public:
 	 *	format.
 	 * @return The number of bytes that the instruction occupied.
 	 */	
-	virtual size_t DisassembleInstruction(uint64_t vaddr, size_t maxLen,
-		unsigned char *instruction, vector<string>& result) = 0;
+	virtual size_t DisassembleInstruction(uint64_t vaddr, vector<string>& result) = 0;
 
 
 	/********************************************************************/

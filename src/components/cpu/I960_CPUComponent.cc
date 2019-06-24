@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2018-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -207,6 +207,10 @@ void I960_CPUComponent::ResetState()
 
 	m_pc = 0;
 
+	m_i960_ac = 0;
+	m_i960_pc = 0;
+	m_i960_tc = 0;
+
 	// 0 for most (?) i960 implementations. 3 for i960CA. (TODO: CF etc)
 	m_nr_of_valid_sfrs = 0;
 	if (m_model == "i960CA")
@@ -319,22 +323,16 @@ uint64_t I960_CPUComponent::PCtoInstructionAddress(uint64_t pc)
 }
 
 
-size_t I960_CPUComponent::DisassembleInstruction(uint64_t vaddr, size_t maxLen,
-	unsigned char *instruction, vector<string>& result)
+size_t I960_CPUComponent::DisassembleInstruction(uint64_t vaddr, vector<string>& result)
 {
 	size_t instrSize = sizeof(uint32_t);
-
-	if (maxLen < instrSize) {
-		assert(false);
-		return 0;
-	}
+	uint32_t instructionWord;
 
 	// Read the instruction word:
-	uint32_t instructionWord = ((uint32_t *) (void *) instruction)[0];
-	if (m_isBigEndian)
-		instructionWord = BE32_TO_HOST(instructionWord);
-	else
-		instructionWord = LE32_TO_HOST(instructionWord);
+	AddressSelect(vaddr);
+	bool readOk = ReadData(instructionWord, m_isBigEndian? BigEndian : LittleEndian);
+	if (!readOk)
+		return 0;
 
 	const uint32_t iword = instructionWord;
 
@@ -385,14 +383,13 @@ size_t I960_CPUComponent::DisassembleInstruction(uint64_t vaddr, size_t maxLen,
 	uint32_t displacementWord = 0;
 	if (hasDisplacementWord) {
 		instrSize += sizeof(uint32_t);
-		if (maxLen < instrSize)
-			return 0;
 
-		displacementWord = ((uint32_t *) (void *) instruction)[1];
-		if (m_isBigEndian)
-			displacementWord = BE32_TO_HOST(displacementWord);
-		else
-			displacementWord = LE32_TO_HOST(displacementWord);
+		// Read the displacement word:
+		AddressSelect(vaddr + sizeof(uint32_t));
+		readOk = ReadData(displacementWord, m_isBigEndian? BigEndian : LittleEndian);
+
+		if (!readOk)
+			return 0;
 	}
 
 	stringstream ssHex;
@@ -769,9 +766,6 @@ size_t I960_CPUComponent::DisassembleInstruction(uint64_t vaddr, size_t maxLen,
 
 string I960_CPUComponent::GetAttribute(const string& attributeName)
 {
-	if (attributeName == "stable")
-		return "yes";
-
 	if (attributeName == "description")
 		return "Intel i960 processor.";
 
@@ -804,19 +798,40 @@ DYNTRANS_INSTR(I960_CPUComponent,mov_lit_reg)
 }
 
 
+DYNTRANS_INSTR(I960_CPUComponent,mov_reg_reg)
+{
+	REG32(ic->arg[2]) = REG32(ic->arg[0]);
+}
+
+
 DYNTRANS_INSTR(I960_CPUComponent,sysctl)
 {
 	DYNTRANS_INSTR_HEAD(I960_CPUComponent)
 
 	uint32_t message = REG32(ic->arg[0]);
 	int type = (message >> 8) & 0xff;
+	int field1 = message & 0xff;
+	
+	// type 0 = software interrupt, src1 = vector number
+	// type 1 = invalidate cache
+	// type 2 = configure cache, src1 = cache mode configuration, src2 = cache load address
+	// type 3 = reinitialize, src2 = first-IP, src3 = PRCB address
+	// type 4 = load control register, src1 = register group number
 	
 	if (type == 0x01) {
 		// Invalidate cache.
 		// Right now in GXemul, this is a NOP.
 		UI* ui = cpu->GetUI();
 		ui->ShowDebugMessage(cpu, "invalidating cache (no-op for now)");
+	} else if (type == 0x04) {
+		// Load control register.
+		// TODO.
+		UI* ui = cpu->GetUI();
+		stringstream ss;
+		ss << "TODO: load control register, group " << field1;
+		ui->ShowDebugMessage(cpu, ss.str());
 	} else {
+		stringstream ss;
 		
 		// We didn't actually do anything in this instruction.
 		cpu->m_executedCycles --;
@@ -828,7 +843,8 @@ DYNTRANS_INSTR(I960_CPUComponent,sysctl)
 		cpu->m_nextIC = &cpu->m_abortIC;
 	
 		UI* ui = cpu->GetUI();
-		ui->ShowDebugMessage(cpu, "unimplemented sysctl message type");
+		ss << "unimplemented sysctl message type " << type;
+		ui->ShowDebugMessage(cpu, ss.str());
 	}
 }
 
@@ -904,6 +920,7 @@ void I960_CPUComponent::Translate(uint32_t iword, uint32_t iword2, struct Dyntra
 			// mov		NOTE: mov does not use src2.
 			f_lit_lit_reg = instr_mov_lit_reg;
 			f_lit_reg_reg = instr_mov_lit_reg;
+			f_reg_lit_reg = instr_mov_reg_reg;
 		} else if (op3 == 0x659) {
 			// sysctl
 			f_reg_reg_reg = instr_sysctl;
@@ -960,6 +977,8 @@ void I960_CPUComponent::Translate(uint32_t iword, uint32_t iword2, struct Dyntra
 		stringstream ss;
 		ss.flags(std::ios::hex);
 		ss << "unimplemented opcode 0x" << opcode;
+		if (opcode >= 0x58 && opcode <= 0x7f)
+			ss << ",0x" << ((iword >> 7) & 0xf);
 		ui->ShowDebugMessage(this, ss.str());
 	}
 }
@@ -1011,35 +1030,6 @@ static void Test_I960_CPUComponent_Create()
 	UnitTest::Assert("cpu has no pfp state variable?", p != NULL);
 }
 
-static void Test_I960_CPUComponent_Disassembly_Basic()
-{
-	refcount_ptr<Component> i960_cpu = ComponentFactory::CreateComponent("i960_cpu");
-	CPUComponent* cpu = i960_cpu->AsCPUComponent();
-
-	vector<string> result;
-	size_t len;
-	unsigned char instruction[sizeof(uint32_t) * 2];
-
-	// This assumes that the default endianness is little endian...
-	instruction[0] = 0x00;
-	instruction[1] = 0x30;
-	instruction[2] = 0x68;
-	instruction[3] = 0x8c;
-
-	instruction[4] = 0x01;
-	instruction[5] = 0x23;
-	instruction[6] = 0x34;
-	instruction[7] = 0x45;
-
-	len = cpu->DisassembleInstruction(0x12345678, sizeof(instruction), instruction, result);
-
-	UnitTest::Assert("disassembled instruction was wrong length?", len, 8);
-	UnitTest::Assert("disassembly result incomplete?", result.size(), 3);
-	UnitTest::Assert("disassembly result[0]", result[0], "8c683000 45342301");
-	UnitTest::Assert("disassembly result[1]", result[1], "lda");
-	UnitTest::Assert("disassembly result[2]", result[2], "0x45342301,r13");
-}
-
 static GXemul SimpleMachine()
 {
 	GXemul gxemul;
@@ -1049,6 +1039,31 @@ static GXemul SimpleMachine()
 	gxemul.GetCommandInterpreter().RunCommand("ram0.memoryMappedBase = 0x3fe00000");
 	gxemul.GetCommandInterpreter().RunCommand("ram0.memoryMappedSize = 0x1000");
 	return gxemul;
+}
+
+static void Test_I960_CPUComponent_Disassembly_Basic()
+{
+	GXemul gxemul = SimpleMachine();
+	refcount_ptr<Component> i960_cpu = gxemul.GetRootComponent()->LookupPath("root.mainbus0.cpu0");
+	CPUComponent* cpu = i960_cpu->AsCPUComponent();
+	AddressDataBus* bus = cpu->AsAddressDataBus();
+
+	vector<string> result;
+	size_t len;
+
+	// This assumes that the default endianness is little endian...
+	bus->AddressSelect(0x3fe00048);
+	bus->WriteData((uint32_t)0x8c683000, LittleEndian);
+	bus->AddressSelect(0x3fe0004c);
+	bus->WriteData((uint32_t)0x45342301, LittleEndian);
+
+	len = cpu->DisassembleInstruction(0x3fe00048, result);
+
+	UnitTest::Assert("disassembled instruction was wrong length?", len, 8);
+	UnitTest::Assert("disassembly result incomplete?", result.size(), 3);
+	UnitTest::Assert("disassembly result[0]", result[0], "8c683000 45342301");
+	UnitTest::Assert("disassembly result[1]", result[1], "lda");
+	UnitTest::Assert("disassembly result[2]", result[2], "0x45342301,r13");
 }
 
 static void Test_I960_CPUComponent_Execute_mov()

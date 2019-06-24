@@ -4821,3 +4821,92 @@ Changelog for GXemul:
 
 ==============  RELEASE 0.6.1  ==============
 
+20181217	Implementing the ARM uxtb instruction.
+		Implementing a simple Android boot.img file loader, and two
+		dummy Android ARM machines ("Sony Xperia Mini" and "Finow X5
+		Air").
+		Treating ARM dsb/dmb/isb instructions as NOPs for now.
+20190101	Implementing the ARM v7 movt and movw instructions.
+20190103	Implementing the ARM sxth, uxth, bfi, and ubfx instructions.
+20190110	Adding disassembly (but not execution yet) of ARM uxtab, uxtah,
+		ldrex, and strex instructions.
+20190112	Making sure that when writing to mirrored RAM, any dyntrans
+		translations made in either the mirror or mirrored ranges are
+		invalidated.
+20190122	Beginning on a hack to allow emulated SGI O2 machines have more
+		than 256 MB of RAM. Works with OpenBSD/sgi so far.
+20190206	Implementing the ARM ldrex/strex (load-linked / store-
+		conditional) instructions, and mls (multiply-and-subtract).
+20190218	Implementing the ARM rev, uxtab, and uxtah instructions.
+20190224	Implementing the ARM sbfx instruction.
+20190227	Adding a skeleton RISC-V CPU and RISC-V "virt" machine.
+		Refactoring some parts of the new framework to deal better
+		with variable length instructions during disassembly.
+20190306	Applying a patch from Andreas Gustafsson (gson) to set the
+		SA_RESTART flag in the timer sigaction call.
+20190417	Applying most of NetBSD's patches for the gxemul package (all
+		except two).
+20190418	Adding 512 KB ROM at 0xfff80000 in the HP 700/RX machine.
+20190422	Implementing the i960 "mov reg,reg" instruction.
+20190502	Adding a section to the documentation about how to use the
+		emulator as a debugger (breakpoints, unassembling, single-
+		stepping, inspecting registers, and so on).
+20190515	Making sure that when invalidating virtual addresses in
+		the dyntrans cache, take into account that not all CPUs can
+		use all 64 bits for virtual addresses. This fixes a very old
+		bug which affected Glatt MU/MK. Unfortunate side effect means
+		that internal cache invalidation goes from O(1) to O(n) for
+		64-bit address spaces. :-(
+20190519	Better fix for the issue found four days ago, taking 32-bit
+		addressing (UX=0) on 64-bit MIPS CPUs into account. The cache
+		invalidation code is now O(1) again. :-)
+20190520	Unfortunately, to make everything work with all guest OSes
+		with many different kinds of CPUs (R3000, R4000, R10000),
+		the invalidation is now O(n) again, but it works.
+20190521	De-emphasizing the new framework in the man page and in the
+		help/usage message produced when running gxemul with no
+		arguments, focusing on the old/legacy framework.
+		Removing the MIPS CPU emulation and testmips machines from
+		the new framework completely. Any MIPS enhancements and bug
+		fixes will go into the old framework only.
+		Renaming oldtestmips back to testmips.
+20190523	Starting to move guest OS installation instructions into
+		individual machine pages, rather than having all of them
+		randomly in the general guest OS page.
+20190525	Adding detection of /opt/X11/{include,lib} in the configure
+		script, to build with X11 on MacOS with XQuartz installed
+		(thanks to eschatologist in the #GXemul IRC channel on
+		FreeNode for noticing this).
+20190530	Removing the "QEMU_MIPS" machine mode, which was useful back
+		in 2006 to compare performance against QEMU's MIPS emulation.
+20190601	The fix 2018-06-13 for translation invalidation when using
+		larger than 4 KB pages, which made HelenOS/malta run further,
+		caused a regressions which broke NetBSD/hpcmips (on VR4121
+		CPUs, which have 1 KB native page size). A bit of cleanup seems
+		to have fixed this, so that both NetBSD/hpcmips and
+		HelenOS/malta work now.
+		Applying a fix for the ARM sbc and rsc instructions from
+		Joergen Nilsson.
+20190606	Changing PCI device nr from 9 to 10 for the PIIX4 controller
+		in the Malta emulation mode, to match a real dmesg from
+		NetBSD/malta.
+		Fixing disassembly of the MIPS TGEI, TGEIU, TLTI, TLTIU, TEQI,
+		and TNEI instructions (NetBSD's pkgsrc patch had it wrong!).
+		Implementing the MIPS TGEI, TGEIU, TLTI, TLTIU, TEQI, and TNEI
+		instructions (but have not really tested them).
+		Updating NetBSD/evbmips (Malta) installation instructions from
+		7.1.2 to 8.0 (which needs the tgeiu instruction to boot).
+		Fixing pmax bootpath bug (thanks for Andreas Gustafsson for 
+		figuring out what the problem was).
+20190610	Adding a memory range (ROM) dumping tool for HP 700/RX to the
+		experiments directory.
+20190611	Expanding the MIPS lw/sw 2-, 3-, and 4-instruction combinations
+		(when loading/storing using the same base register) so that
+		they are used also when emulating 64-bit CPUs such as the
+		R4400. (Note: still lw/sw, i.e. 32-bit loads and stores, NOT
+		ld/sd.)  Also stretching it to 5-instruction-sequences.
+20190614	Adding __builtin_expect (likely/unlikely) detection to the
+		configure script.
+
+==============  RELEASE 0.6.2  ==============
+

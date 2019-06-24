@@ -2,21 +2,21 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-  <title>GXemul: Dynamic Translation</title>
+  <title>GXemul: Dynamic Translation Internals</title>
   <meta name="robots" content="noarchive,nofollow,noindex">
 </head>
 <body style="font-family : sans-serif;">
 
 <!-- 10 lines header.  -->
 
-<h1>GXemul: Dynamic Translation</h1>
+<h1>GXemul: Dynamic Translation Internals</h1>
 <p>
 
 <a href="./">Back to the index.</a>
 
 <!--
 
-Copyright (C) 2005-2010  Anders Gavare.  All rights reserved.
+Copyright (C) 2005-2019  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -51,6 +51,7 @@ system (usually referred to as just "dyntrans").
 <ul>
   <li><a href="#staticvsdynamic">Static vs. dynamic</a>
   <li><a href="#ir">Executable Intermediate Representation</a>
+  <li><a href="#loadsandstores">Emulation of Loads and Stores</a>
   <li><a href="#performance">Performance</a>
   <li><a href="#instrcomb">Instruction Combinations</a>
   <li><a href="#native">Native Code Generation Back-ends</a>
@@ -71,6 +72,8 @@ Self-modifying code and Just-in-Time compilers running inside
 the emulator are other things that would not work with a static 
 translator. GXemul is a dynamic translator. However, it does not 
 necessarily translate into <a href="#native">native code</a>, like some other emulators.
+
+
 
 
 <p><br>
@@ -254,6 +257,105 @@ optimize it to a reasonably short sequence:
 </pre>
 
 
+
+<p><br>
+<a name="loadsandstores"></a>
+<h3>Emulation of Loads and Stores:</h3>
+
+<p>The emulation of memory access instructions differ slightly between
+the various emulated architectures, but most of the principles in this
+chapter apply.
+The emulation of loads and stores when emulating a MIPS processor consist
+of a "happy case" shorter code path, and a fallback to a more general case if
+the preconditions for the happy case are not met.
+
+<p>Pseudo code for the short path:
+
+<p><table border="1">
+<tr>
+	<td><b>Step:</b></td>
+	<td>Overhead:</td>
+</tr>
+<tr>
+	<td><b>1.</b> Calculate the final virtual address.</td>
+	<td>3 host memory accesses: read the Base and Offset arguments.</td>
+</tr>
+<tr>
+	<td><b>2.</b> Preconditions check: a) find a corresponding host RAM
+		page, if there is one, and b) check address alignment.</td>
+	<td>1 host memory access for 32 bit, 3 for 64 bit.</td>
+</tr>
+<tr>
+	<td><b>3.</b> Perform native load or store.</td>
+	<td>1 host memory access (or multiple if doing byte-order-swap).</td>
+</tr>
+<tr>
+	<td><b>4.</b> "Write-back" to emulated CPU's destination register (for loads).</td>
+	<td>2 host memory accesses.</td>
+</tr>
+</table>
+
+<p><b>Step 1</b> calculates the actual virtual address (usually a base
+register plus an immediate offset).
+
+<p><b>Step 2</b> looks up whether there is a corresponding RAM page in the host.
+If there is, we can potentially load or store directly from that page in the
+host's RAM.
+
+<p>However, before going ahead with the load or store, we need to check the
+alignment of the address as well. Different host architectures have different
+properties, for example when running on (some?) ARM hosts, the lower bits of
+an address may be ignored leading to the wrong address being used if we were
+to use the address as-is; when running on an x86-based host, unaligned loads
+and stores are silently accepted even though they shouldn't be on the hardware
+being emulated (in this case MIPS). Checking the lowest bits of the final
+address is thus important for correct emulation, so that exceptions can be
+generated etc.
+
+<p>For emulation of 32-bit address spaces, the lookup from emulated virtual
+address to host page is a single fetch from an array. For emulation of 64-bit
+address spaces, it is a three-level lookup.
+In either case, there are separate lookups for loads and stores. A page which
+is write-protected has just a mapping for load, no mapping for store. A page
+which is readable and writable has both a mapping for load and one for store.
+
+<p>If the alignment was ok, and there was a direct mapping to host page,
+we can go ahead (<b>step 3</b>) and perform a native load or store, possibly
+followed by byte order swap (which may be implemented by using multiple
+memory accesses) if the emulated CPU is of different endianness than the host.
+
+<p>(This mechanism is currently hardcoded for 4 KB base page size. The 1 KB
+page size of the VR41xx CPUs for example does not work, and neither would e.g.
+VAX' 512 byte pages. As long as the guest OS doesn't make use of smaller page
+sizes than 4 KB, it should work even when emulating such CPUs.)
+
+<p>If any of the checks fail in <b>step 2</b>, the code bails out and calls a
+more general memory access routine, which looks up addresses via the emulated
+MIPS TLB and depending on the outcome, may add host pages to the
+virtual-to-host arrays, or cause exceptions on the emulated cpu, or call out
+to memory mapped device routines.
+
+<p>This implementation is obviously not intended to result in any world speed
+records, but it strikes a reasonable balance between emulation correctness and
+host portability.
+
+<p>The actual code in <tt>src/cpus/cpu_mips_instr_loadstore.cc</tt> looks
+horrible due to being originally written in C with the intention of mimicking
+C++ templates. If it were to be written in C++ templates from scratch, it
+would likely be more readable.
+
+<p>When the TLB in the emulated CPU gets instructed to change its mapping,
+for example if virtual address 0x1000 pointed to physical address 0x1234000,
+but is changed to point to 0x2345000, then the virtual-to-physical-to-host
+mappings in the emulator must be updated to reflect this. This is known as
+invalidating the translation lookup tables.
+
+<p>Also, when performing a store to a page for which there are code
+translations (the IR described above), all such translated instruction slots
+are reset.
+
+
+
 <p><br>
 <a name="performance"></a>
 <h3>Performance:</h3>
@@ -320,6 +422,7 @@ pattern is not done. (Note: The <tt>sw</tt> instruction is in the
 	slot 10: ...				slot 10: ...
 </pre>
 
+<p>
 <i>(*) If the sw_loop code is executed, then execution continues here (<tt>&ic[3]</tt>).</i>
 
 <p>The <tt>sw_loop</tt> is then implemented as follows:
@@ -397,16 +500,17 @@ the most common instructions can be retrieved from that statistics.
 <a name="native"></a>
 <h3>Native Code Generation Back-ends:</h3>
 
-<p>In theory, it will be possible to implement native code generation,
-similar to what is used in high-performance emulators such as <a
-href="http://www.nongnu.org/qemu/">QEMU</a>, as long as that generated code
-abides to the C or C++ ABI on the host.
+<p>Native code generation was included in GXemul before 0.4.x, but only for
+i386 and Alpha hosts, but that did not feel clean and portable enough to work
+as a long-term solution. Time has proved this right; i386 has been superseded
+by amd64, and the Alpha architecture has unfortunately been killed.
+The current implementation instead focuses on an having an intermediate
+representation that can be executed regardless of what the native architecture
+is.
 
-<p>However, so far, there is no native code generation in GXemul. There was
-native code generation before 0.4.x (for i386 and Alpha hosts), but that was
-not clean enough to work as a long-term solution.
-It is better to spend development resources on porting things from the old
-emulation framework (pre-0.6.x) to the current one.
+<p>In theory, it would be possible to add native code generation again,
+as long as that generated code abides to the C or C++ ABI on the host.
+
 
 
 

@@ -1,12 +1,11 @@
 
 
           --------------------------------------------------------
-             Gavare's eXperimental Emulator   --   GXemul 0.6.1
+             Gavare's eXperimental Emulator   --   GXemul 0.6.2
           --------------------------------------------------------
 
 
-                   Copyright (C) 2003-2018  Anders Gavare
-
+                   Copyright (C) 2003-2019  Anders Gavare
 
 
 Overview  --  What is GXemul?
@@ -30,7 +29,7 @@ which a C++ compiler is available.
 
 The documentation lists the machines and specific guest operating systems
 that can be regarded as "working" in GXemul. The guest operating system
-that works best in GXemul is NetBSD/pmax.
+that works best in GXemul is NetBSD/pmax on an emulated DECstation 5000/200.
 
 
 Possible uses of GXemul include:
@@ -54,9 +53,6 @@ Possible uses of GXemul include:
 
  o)  debugging code in general
 
-Use your imagination :-)
-
-
 
 GXemul's limitations
 --------------------
@@ -74,7 +70,6 @@ GXemul's limitations
      systems may not run at all, or behave strangely.)
 
 
-
 Quick start
 -----------
 
@@ -82,7 +77,7 @@ To compile, type './configure' and then 'make'. This should work on most
 Unix-like systems. If it does not, then please mail me a bug report.
 
 If you are impatient, and want to try out running a guest operating system 
-inside GXemul, read this:  doc/guestoses.html#netbsdpmaxinstall
+inside GXemul, read this:  doc/machine_decstation.html#netbsdpmaxinstall
 
 If you want to use GXemul for experimenting with code of your own,
 then I suggest you compile a Hello World program according to the tips
@@ -92,11 +87,9 @@ Please read the rest of the documentation in the doc/ sub-directory for
 more detailed information on how to use the emulator.
 
 
-
 Feedback
 --------
 
 If you have found GXemul useful in some way, or feel like sending me
 comments or feedback in general, then mail me at gavare@gmail.com.
-
 

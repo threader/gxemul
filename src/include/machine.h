@@ -2,7 +2,7 @@
 #define	MACHINE_H
 
 /*
- *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -144,7 +144,7 @@ struct machine {
 	struct symbol_context symbol_context;
 
 	int	random_mem_contents;
-	int	physical_ram_in_mb;
+	uint32_t physical_ram_in_mb;
 	int	memory_offset_in_mb;
 	int	prom_emulation;
 	int	register_dump;
@@ -218,8 +218,7 @@ struct machine {
 #define	MACHINE_ARC		1007
 #define	MACHINE_EVBMIPS		1008
 #define	MACHINE_ALGOR		1009
-#define	MACHINE_QEMU_MIPS	1010
-#define	MACHINE_VOCORE		1011
+#define	MACHINE_VOCORE		1010
 
 /*  PPC:  */
 #define	MACHINE_BAREPPC		2000
@@ -242,8 +241,8 @@ struct machine {
 #define	MACHINE_NETWINDER	5004
 #define	MACHINE_IQ80321		5005
 #define	MACHINE_IYONIX		5006
-#define	MACHINE_QEMU_ARM	5007
-#define	MACHINE_RPI		5008
+#define	MACHINE_RPI		5007
+#define	MACHINE_ANDROIDARM	5008
 
 /*  SH:  */
 #define	MACHINE_BARESH		6000
@@ -332,6 +331,10 @@ struct machine {
 /*  LUNA88K  */
 #define MACHINE_LUNA_88K		1
 #define MACHINE_LUNA_88K2		2
+
+/*  Android ARM  */
+#define MACHINE_ANDROIDARM_SONYXPERIAMINI	1
+#define MACHINE_ANDROIDARM_FINOWX5AIR		2
 
 
 /*  For the automachine system:  */

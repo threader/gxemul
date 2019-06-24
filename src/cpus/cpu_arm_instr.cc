@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -214,8 +214,8 @@ X(invalid) {
 	cpu->pc += (low_pc << ARM_INSTR_ALIGNMENT_SHIFT);
 
 	fatal("FATAL ERROR: An internal error occured in the ARM"
-	    " dyntrans code. Please contact the author with detailed"
-	    " repro steps on how to trigger this bug. pc = 0x%08" PRIx32"\n",
+	    " dyntrans code. This could be due to an unimplemented instruction"
+	    " encoding. pc = 0x%08" PRIx32"\n",
 	    (uint32_t)cpu->pc);
 
 	cpu->cd.arm.next_ic = &nothing_call;
@@ -660,6 +660,26 @@ Y(mlas)
 
 
 /*
+ *  mla: Multiplication with subtraction
+ *
+ *  arg[0] = copy of instruction word
+ */
+X(mls)
+{
+	/*  xxxx0000 0110dddd aaaammmm 1001nnnn  mls Rd,Rn,Rm,Ra  */
+	uint32_t iw = ic->arg[0];
+	int rd = (iw >> 16) & 15;
+	int rn = (iw >>  0) & 15;
+	int rm = (iw >>  8) & 15;
+	int ra = (iw >> 12) & 15;
+
+	cpu->cd.arm.r[rd] = cpu->cd.arm.r[ra] -
+	    cpu->cd.arm.r[rn] * cpu->cd.arm.r[rm];
+}
+Y(mls)
+
+
+/*
  *  mull: Long multiplication
  *
  *  arg[0] = copy of instruction word
@@ -1004,6 +1024,222 @@ X(und)
 	arm_exception(cpu, ARM_EXCEPTION_UND);
 }
 Y(und)
+
+
+/*
+ *  movt:  Move Top.
+ *
+ *  arg[1] = 32-bit immediate value. Top 16 bits are those of interest.
+ *  arg[2] = ptr to rd
+ */
+X(movt)
+{
+	reg(ic->arg[2]) &= 0xffff;
+	reg(ic->arg[2]) |= ic->arg[1];
+}
+Y(movt)
+
+
+/*
+ *  movw:  Move (Word).
+ *
+ *  arg[1] = 32-bit immediate value.
+ *  arg[2] = ptr to rd
+ */
+X(movw)
+{
+	reg(ic->arg[2]) = ic->arg[1];
+}
+Y(movw)
+
+
+/*
+ *  rev:  Reverse endian.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rm
+ */
+X(rev)
+{
+	uint32_t v = reg(ic->arg[1]);
+
+	reg(ic->arg[0]) = (v >> 24) | ((v & 0x00ff0000) >> 8)
+		| ((v & 0x0000ff00) << 8) | ((v & 0xff) << 24);
+}
+Y(rev)
+
+
+/*
+ *  uxtb:  Unsigned Extend Byte.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rm
+ *  arg[2] = rotation amount (shift works too)
+ */
+X(uxtb)
+{
+	uint32_t x = reg(ic->arg[1]);
+	reg(ic->arg[0]) = (uint8_t)(x >> ic->arg[2]);
+}
+Y(uxtb)
+
+
+/*
+ *  sxth:  Signed Extend Halfword.
+ *
+ *  TODO: Could be optimized so that the rotation amount is "inlined".
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rm
+ *  arg[2] = rotation amount
+ */
+X(sxth)
+{
+	uint32_t x = reg(ic->arg[1]);
+
+	switch (ic->arg[2]) {
+	case 0:	break;
+	case 8: x >>= 8; break;
+	case 16: x >>= 16; break;
+	case 24: x = (x >> 24) | ((x & 255) << 8); break;
+	}
+
+	int16_t rotated = x;
+	reg(ic->arg[0]) = (int32_t)rotated;
+}
+Y(sxth)
+
+
+/*
+ *  uxth:  Unsigned Extend Halfword.
+ *
+ *  TODO: Could be optimized so that the rotation amount is "inlined".
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rm
+ *  arg[2] = rotation amount
+ */
+X(uxth)
+{
+	uint32_t x = reg(ic->arg[1]);
+
+	switch (ic->arg[2]) {
+	case 0:	break;
+	case 8: x >>= 8; break;
+	case 16: x >>= 16; break;
+	case 24: x = (x >> 24) | ((x & 255) << 8); break;
+	}
+
+	uint16_t rotated = x;
+	reg(ic->arg[0]) = (uint32_t)rotated;
+}
+Y(uxth)
+
+
+/*
+ *  uxtah:  Unsigned Extend and Add Byte.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rn
+ *  arg[2] = ptr to rm
+ */
+X(uxtab)
+{
+	reg(ic->arg[0]) = reg(ic->arg[1]) + (uint8_t)reg(ic->arg[2]);
+}
+Y(uxtab)
+
+
+/*
+ *  uxtah:  Unsigned Extend and Add Halfword.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rn
+ *  arg[2] = ptr to rm
+ */
+X(uxtah)
+{
+	reg(ic->arg[0]) = reg(ic->arg[1]) + (uint16_t)reg(ic->arg[2]);
+}
+Y(uxtah)
+
+
+/*
+ *  ubfx:  Unsigned Bit-Field Extract.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rn
+ *  arg[2] = (width << 16) + lsb
+ */
+X(ubfx)
+{
+	uint32_t x = reg(ic->arg[1]);
+
+	int lsb = (uint8_t)ic->arg[2];
+	int width = ic->arg[2] >> 16;
+
+	uint32_t mask = (1 << width) - 1;
+
+	x >>= lsb;
+	x &= mask;
+
+	reg(ic->arg[0]) = x;
+}
+Y(ubfx)
+
+
+/*
+ *  sbfx:  Signed Bit-Field Extract.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rn
+ *  arg[2] = (width << 16) + lsb
+ */
+X(sbfx)
+{
+	uint32_t x = reg(ic->arg[1]);
+
+	int lsb = (uint8_t)ic->arg[2];
+	int width = ic->arg[2] >> 16;
+
+	uint32_t mask = (1 << width) - 1;
+	x >>= lsb;
+	x &= mask;
+
+	uint32_t topBitMask = 1 << (width-1);
+	if (x & topBitMask && width < 32)
+		x |= ~mask;
+
+	reg(ic->arg[0]) = x;
+}
+Y(sbfx)
+
+
+/*
+ *  bfi:  Bit-Field Insert.
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rn
+ *  arg[2] = (msb << 16) + lsb
+ */
+X(bfi)
+{
+	uint32_t x = reg(ic->arg[1]);
+
+	int lsb = (uint8_t)ic->arg[2];
+	int msb = ic->arg[2] >> 16;
+	int width = msb - lsb + 1;
+
+	x <<= lsb;
+
+	uint32_t mask = (1 << width) - 1;
+
+	mask <<= lsb;
+
+	reg(ic->arg[0]) &= ~mask;
+	reg(ic->arg[0]) |= (x & mask);
+}
+Y(bfi)
 
 
 /*
@@ -1433,6 +1669,123 @@ X(bdt_store)
 	arm_push(cpu, np, p_bit, u_bit, s_bit, w_bit, (uint16_t)iw);
 }
 Y(bdt_store)
+
+
+/*
+ *  Load Register Exclusive (ARM "load linked"):
+ *
+ *  A Load Register Exclusive instruction initiates a RMW (read-modify-write)
+ *  sequence.
+ *
+ *  A Store Register Exclusive instruction ends the sequence.
+ *
+ *  arg[0] = ptr to rt
+ *  arg[1] = ptr to rn
+ *  arg[2] = int32_t imm offset
+ */
+X(ldrex)
+{
+	uint32_t addr = reg(ic->arg[1]) + (int32_t)ic->arg[2];
+	int low_pc;
+	uint8_t word[sizeof(uint32_t)];
+
+	/*  Synchronize the program counter:  */
+	low_pc = ((size_t)ic - (size_t)
+	    cpu->cd.arm.cur_ic_page) / sizeof(struct arm_instr_call);
+	cpu->pc &= ~((ARM_IC_ENTRIES_PER_PAGE-1) << ARM_INSTR_ALIGNMENT_SHIFT);
+	cpu->pc += (low_pc << ARM_INSTR_ALIGNMENT_SHIFT);
+
+	if (addr & (sizeof(word)-1)) {
+		fatal("TODO: ldrex unaligned access: exception\n");
+		exit(1);
+	}
+
+	if (!cpu->memory_rw(cpu, cpu->mem, addr, word,
+	    sizeof(word), MEM_READ, CACHE_DATA)) {
+		/*  An exception occurred.  */
+		return;
+	}
+
+	cpu->cd.arm.rmw = 1;
+	cpu->cd.arm.rmw_addr = addr;
+	cpu->cd.arm.rmw_len = sizeof(word);
+
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+		reg(ic->arg[0]) = word[0] + (word[1] << 8)
+		    + (word[2] << 16) + (word[3] << 24);
+	else
+		reg(ic->arg[0]) = word[3] + (word[2] << 8)
+		    + (word[1] << 16) + (word[0] << 24);
+}
+Y(ldrex)
+/*
+ *  Store Register Exclusive
+ *
+ *  arg[0] = ptr to rd
+ *  arg[1] = ptr to rn
+ *  arg[2] = ptr to rt
+ */
+X(strex)
+{
+	uint32_t addr = reg(ic->arg[1]);
+	uint64_t r = reg(ic->arg[2]);
+	int low_pc, i;
+	uint8_t word[sizeof(uint32_t)];
+	
+	/*  Synchronize the program counter:  */
+	low_pc = ((size_t)ic - (size_t)
+	    cpu->cd.arm.cur_ic_page) / sizeof(struct arm_instr_call);
+	cpu->pc &= ~((ARM_IC_ENTRIES_PER_PAGE-1) << ARM_INSTR_ALIGNMENT_SHIFT);
+	cpu->pc += (low_pc << ARM_INSTR_ALIGNMENT_SHIFT);
+
+	if (addr & (sizeof(word)-1)) {
+		fatal("TODO: strex unaligned access: exception\n");
+		exit(1);
+	}
+
+	if (cpu->byte_order == EMUL_LITTLE_ENDIAN) {
+		word[0]=r; word[1]=r>>8; word[2]=r>>16; word[3]=r>>24;
+	} else {
+		word[3]=r; word[2]=r>>8; word[1]=r>>16; word[0]=r>>24;
+	}
+
+	/*  If rmw is 0, then the store failed.  (This cache-line was written
+	    to by someone else.)  */
+	if (cpu->cd.arm.rmw == 0 || cpu->cd.arm.rmw_addr != addr
+	    || cpu->cd.arm.rmw_len != sizeof(word)) {
+		reg(ic->arg[0]) = 1;	// 1 = fail.
+		cpu->cd.arm.rmw = 0;
+		return;
+	}
+
+	if (!cpu->memory_rw(cpu, cpu->mem, addr, word,
+	    sizeof(word), MEM_WRITE, CACHE_DATA)) {
+		/*  An exception occurred.  */
+		return;
+	}
+
+	/*  We succeeded. Let's invalidate everybody else's store to this
+	    cache line:  */
+	for (i=0; i<cpu->machine->ncpus; i++) {
+		if (cpu->machine->cpus[i]->cd.arm.rmw) {
+			uint64_t yaddr = addr, xaddr = cpu->machine->cpus[i]->
+			    cd.arm.rmw_addr;
+
+			/*  8-2048 bytes, implementation dependent :-(  */			
+			/*  https://stackoverflow.com/questions/11383125/do-the-arm-instructions-ldrex-strex-have-to-operate-on-cache-aligned-data  */
+			uint64_t mask = 2047;
+
+			xaddr &= mask;
+			yaddr &= mask;
+			if (xaddr == yaddr)
+				cpu->machine->cpus[i]->cd.arm.rmw = 0;
+		}
+	}
+
+	reg(ic->arg[0]) = 0;	// 0 = success
+	cpu->cd.arm.rmw = 0;
+}
+Y(strex)
 
 
 /*  Various load/store multiple instructions:  */
@@ -2692,6 +3045,36 @@ X(to_be_translated)
 			goto okay;
 		}
 
+		if (iword == 0xf10c0040) {
+			/*  cpsid f. Treat as NOP for now.  */
+			ic->f = instr(nop);
+			goto okay;
+		}
+
+		if (iword == 0xf10c0080) {
+			/*  cpsid i. Treat as NOP for now.  */
+			ic->f = instr(nop);
+			goto okay;
+		}
+
+		if (iword == 0xf57ff04f) {
+			/*  dsb sy. Treat as NOP for now.  */
+			ic->f = instr(nop);
+			goto okay;
+		}
+
+		if (iword == 0xf57ff05f) {
+			/*  dmb sy. Treat as NOP for now.  */
+			ic->f = instr(nop);
+			goto okay;
+		}
+
+		if (iword == 0xf57ff06f) {
+			/*  isb sy. Treat as NOP for now.  */
+			ic->f = instr(nop);
+			goto okay;
+		}
+
 		switch (main_opcode) {
 		case 0xa:
 		case 0xb:
@@ -2722,6 +3105,43 @@ X(to_be_translated)
 	case 0x2:
 	case 0x3:
 		/*  Check special cases first:  */
+		if ((iword & 0x0ff00fff) == 0x01900f9f) {
+			ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+			ic->arg[1] = (size_t)(&cpu->cd.arm.r[rn]);
+			ic->arg[2] = 0;
+
+			if (rd == ARM_PC || rn == ARM_PC) {
+				if (!cpu->translation_readahead)
+					fatal("ldrex with pc register: TODO\n");
+				goto bad;
+			}
+			
+			ic->f = cond_instr(ldrex);
+			break;
+		}
+
+		if ((iword & 0x0ff00ff0) == 0x01800f90) {
+			ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+			ic->arg[1] = (size_t)(&cpu->cd.arm.r[rn]);
+			ic->arg[2] = (size_t)(&cpu->cd.arm.r[rm]);
+
+			if (rd == ARM_PC || rm == ARM_PC || rn == ARM_PC ||
+			    rd == rm || rd == rn) {
+				if (!cpu->translation_readahead)
+					fatal("strex with bad register: TODO\n");
+				goto bad;
+			}
+			
+			ic->f = cond_instr(strex);
+			break;
+		}
+
+		if ((iword & 0x0ff000f0) == 0x00600090) {
+			ic->arg[0] = iword;
+			ic->f = cond_instr(mls);
+			break;
+		}
+		
 		if ((iword & 0x0fc000f0) == 0x00000090) {
 			/*
 			 *  Multiplication:
@@ -2852,12 +3272,9 @@ X(to_be_translated)
 				if (iword & (1<<17)) arg1 |= 0x0000ff00;
 				if (iword & (1<<18)) arg1 |= 0x00ff0000;
 				if (iword & (1<<19)) arg1 |= 0xff000000;
-				if (arg1 == 0) {
-					if (!cpu->translation_readahead)
-						fatal("msr no fields\n");
-					goto bad;
-				}
 				ic->arg[1] = arg1;
+				if (arg1 == 0)
+					ic->f = instr(nop);
 			}
 			break;
 		}
@@ -2964,6 +3381,30 @@ X(to_be_translated)
 			break;
 		}
 
+		if ((iword & 0x0ff00000) == 0x03000000) {
+			ic->arg[0] = (size_t)(&cpu->cd.arm.r[rn]);
+			ic->arg[1] = (((iword & 0xf0000) >> 4) | (iword & 0xfff));
+			ic->arg[2] = (size_t)(&cpu->cd.arm.r[rd]);
+			ic->f = cond_instr(movw);
+			if (rd == ARM_PC) {
+				if (!cpu->translation_readahead)
+					fatal("movw with rd = pc?\n");
+				goto bad;
+			}
+			break;
+		} else if ((iword & 0x0ff00000) == 0x03400000) {
+			ic->arg[0] = (size_t)(&cpu->cd.arm.r[rn]);
+			ic->arg[1] = (((iword & 0xf0000) >> 4) | (iword & 0xfff)) << 16;
+			ic->arg[2] = (size_t)(&cpu->cd.arm.r[rd]);
+			ic->f = cond_instr(movt);
+			if (rd == ARM_PC) {
+				if (!cpu->translation_readahead)
+					fatal("movt with rd = pc?\n");
+				goto bad;
+			}
+			break;
+		}
+
 		/*
 		 *  Generic Data Processing Instructions:
 		 */
@@ -3032,6 +3473,76 @@ X(to_be_translated)
 	case 0x5:	/*  xxxx010P UBWLnnnn ddddoooo oooooooo  Immediate  */
 	case 0x6:	/*  xxxx011P UBWLnnnn ddddcccc ctt0mmmm  Register  */
 	case 0x7:
+		// Special non-loadstore encodings:
+		if (main_opcode >= 6 && iword & 0x10) {
+			if ((iword & 0x0fff0ff0) == 0x06bf0f30) {
+				ic->f = cond_instr(rev);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+			} else if ((iword & 0x0fff03f0) == 0x06bf0070) {
+				ic->f = cond_instr(sxth);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+				ic->arg[2] = ((iword & 0xc00) >> 10) << 3;
+			} else if ((iword & 0x0fff03f0) == 0x06ef0070) {
+				ic->f = cond_instr(uxtb);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+				ic->arg[2] = ((iword & 0xc00) >> 10) << 3;
+			} else if ((iword & 0x0ff003f0) == 0x06e00070) {
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rn]);
+				ic->arg[2] = (size_t)(&cpu->cd.arm.r[rm]);
+				ic->f = cond_instr(uxtab);
+				if (iword & 0xc00) {
+					if (!cpu->translation_readahead)
+						fatal("unimplemented uxtab with rotate != 0\n");
+					goto bad;
+				}
+			} else if ((iword & 0x0fff03f0) == 0x06ff0070) {
+				ic->f = cond_instr(uxth);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+				ic->arg[2] = ((iword & 0xc00) >> 10) << 3;
+			} else if ((iword & 0x0ff003f0) == 0x06f00070) {
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rn]);
+				ic->arg[2] = (size_t)(&cpu->cd.arm.r[rm]);
+				ic->f = cond_instr(uxtah);
+				if (iword & 0xc00) {
+					if (!cpu->translation_readahead)
+						fatal("unimplemented uxtah with rotate != 0\n");
+					goto bad;
+				}
+			} else if ((iword & 0x0fe00070) == 0x07c00010) {
+				ic->f = cond_instr(bfi);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+				int lsb = (iword >> 7) & 31;
+				int msb = (iword >> 16) & 31;
+				ic->arg[2] = (msb << 16) + lsb;
+			} else if ((iword & 0x0fe00070) == 0x07e00050) {
+				ic->f = cond_instr(ubfx);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+				int lsb = (iword >> 7) & 31;
+				int width = 1 + ((iword >> 16) & 31);
+				ic->arg[2] = (width << 16) + lsb;
+			} else if ((iword & 0x0fe00070) == 0x07a00050) {
+				ic->f = cond_instr(sbfx);
+				ic->arg[0] = (size_t)(&cpu->cd.arm.r[rd]);
+				ic->arg[1] = (size_t)(&cpu->cd.arm.r[rm]);
+				int lsb = (iword >> 7) & 31;
+				int width = 1 + ((iword >> 16) & 31);
+				ic->arg[2] = (width << 16) + lsb;
+			} else {
+				if (!cpu->translation_readahead)
+					fatal("unimplemented special non-loadstore encoding!\n");
+				goto bad;
+			}
+			break;
+		}
+	
 		ic->arg[0] = (size_t)(&cpu->cd.arm.r[rn]);
 		ic->arg[2] = (size_t)(&cpu->cd.arm.r[rd]);
 		if (rd == ARM_PC || rn == ARM_PC) {

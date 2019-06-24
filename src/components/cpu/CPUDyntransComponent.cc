@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2008-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2008-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -194,13 +194,14 @@ void CPUDyntransComponent::DyntransClearICPage(struct DyntransIC* icpage)
 	// Fill the page with "to be translated" entries, which when executed
 	// will read the instruction from memory, attempt to translate it, and
 	// then execute it.
-	void (*f)(CPUDyntransComponent*, DyntransIC*) = GetDyntransToBeTranslated();
+	DyntransIC_t f = GetDyntransToBeTranslated();
 
 	for (int i=0; i<m_dyntransICentriesPerPage; ++i)
 		icpage[i].f = f;
 
 	// ... and set the entries after the last instruction slot to
-	// special "end of page" handlers.
+	// special "end of page" handlers. For architectures with delay slots,
+	// there need to be two, otherwise one would suffice.
 	icpage[m_dyntransICentriesPerPage + 0].f = CPUDyntransComponent::instr_endOfPage;
 	icpage[m_dyntransICentriesPerPage + 1].f = CPUDyntransComponent::instr_endOfPage2;
 }
@@ -309,11 +310,11 @@ void CPUDyntransComponent::DyntransToBeTranslatedBegin(struct DyntransIC* ic)
 }
 
 
-bool CPUDyntransComponent::DyntransReadInstruction(uint16_t& iword)
+bool CPUDyntransComponent::DyntransReadInstruction(uint16_t& iword, int offset)
 {
 	// TODO: Fast lookup.
 
-	AddressSelect(PCtoInstructionAddress(m_pc));
+	AddressSelect(PCtoInstructionAddress(m_pc + offset));
 	bool readable = ReadData(iword, m_isBigEndian? BigEndian : LittleEndian);
 
 	if (!readable) {
@@ -321,7 +322,7 @@ bool CPUDyntransComponent::DyntransReadInstruction(uint16_t& iword)
 		if (ui != NULL) {
 			stringstream ss;
 			ss.flags(std::ios::hex);
-			ss << "instruction at 0x" << PCtoInstructionAddress(m_pc)
+			ss << "instruction at 0x" << PCtoInstructionAddress(m_pc + offset)
 			    << " could not be read!";
 			ui->ShowDebugMessage(this, ss.str());
 		}

@@ -2,7 +2,7 @@
 #define	I960_CPUCOMPONENT_H
 
 /*
- *  Copyright (C) 2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2018-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -88,8 +88,7 @@ public:
 
 	virtual bool PreRunCheckForComponent(GXemul* gxemul);
 
-	virtual size_t DisassembleInstruction(uint64_t vaddr, size_t maxlen,
-		unsigned char *instruction, vector<string>& result);
+	virtual size_t DisassembleInstruction(uint64_t vaddr, vector<string>& result);
 
 
 	/********************************************************************/
@@ -123,7 +122,10 @@ protected:
 private:
 	DECLARE_DYNTRANS_INSTR(b);
 	DECLARE_DYNTRANS_INSTR(lda_displacement);
+
 	DECLARE_DYNTRANS_INSTR(mov_lit_reg);
+	DECLARE_DYNTRANS_INSTR(mov_reg_reg);
+
 	DECLARE_DYNTRANS_INSTR(sysctl);
 
 	void Translate(uint32_t iword, uint32_t iword2, struct DyntransIC* ic);
