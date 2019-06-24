@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -1012,6 +1012,7 @@ static void DYNTRANS_INVALIDATE_TLB_ENTRY(struct cpu *cpu,
 		cpu->cd.DYNTRANS_ARCH.vaddr_to_tlbindex[index] = 0;
 	}
 #else
+	// 64-bit:
 	const uint32_t mask1 = (1 << DYNTRANS_L1N) - 1;
 	const uint32_t mask2 = (1 << DYNTRANS_L2N) - 1;
 	const uint32_t mask3 = (1 << DYNTRANS_L3N) - 1;
@@ -1204,7 +1205,30 @@ void DYNTRANS_INVALIDATE_TC(struct cpu *cpu, uint64_t addr, int flags)
 	/*  Quick case for _one_ virtual addresses: see note above.  */
 	if (flags & INVALIDATE_VADDR) {
 		/*  fatal("vaddr 0x%08x\n", (int)addr_page);  */
+
+#ifdef MODE32
 		DYNTRANS_INVALIDATE_TLB_ENTRY(cpu, addr_page, flags);
+#else
+		// In principle, there can be multiple entries, and they must
+		// be invalidated based on the bits that matter. For example,
+		// using vaddr 0x00A0000012345678 and 0x00B000001234567c
+		// actually point to the same physical page, and if then
+		// the virtual address 0x0000000012345000 is to be invalidated,
+		// then both of those should be invalidated!
+		int n = 0;
+		for (r=0; r<DYNTRANS_MAX_VPH_TLB_ENTRIES; r++)
+			if (cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid &&
+			    (cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].vaddr_page
+			    & cpu->vaddr_mask) == (addr_page & cpu->vaddr_mask)) {
+				DYNTRANS_INVALIDATE_TLB_ENTRY(cpu, cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].vaddr_page, flags);
+				n ++;
+			}
+
+		if (n > 1)
+			debug("[ DYNTRANS_INVALIDATE_TC: CACHE COLLISION vaddr 0x%016llx! ]\n",
+				(long long)addr_page);
+#endif
+
 		return;
 	}
 
@@ -1219,7 +1243,9 @@ void DYNTRANS_INVALIDATE_TC(struct cpu *cpu, uint64_t addr, int flags)
 				DYNTRANS_INVALIDATE_TLB_ENTRY(cpu, cpu->cd.
 				    DYNTRANS_ARCH.vph_tlb_entry[r].vaddr_page,
 				    0);
-				cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid=0;
+				// Not needed: DYNTRANS_INVALIDATE_TLB_ENTRY should
+				// set valid to 0 anyway.
+				// cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid=0;
 			}
 		}
 		return;
@@ -1232,7 +1258,9 @@ void DYNTRANS_INVALIDATE_TC(struct cpu *cpu, uint64_t addr, int flags)
 				DYNTRANS_INVALIDATE_TLB_ENTRY(cpu, cpu->cd.
 				    DYNTRANS_ARCH.vph_tlb_entry[r].vaddr_page,
 				    0);
-				cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid=0;
+				// Not needed: DYNTRANS_INVALIDATE_TLB_ENTRY should
+				// set valid to 0 anyway.
+				// cpu->cd.DYNTRANS_ARCH.vph_tlb_entry[r].valid=0;
 			}
 		}
 		return;

@@ -182,7 +182,7 @@ X(beq)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -202,7 +202,7 @@ X(beq_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -239,7 +239,7 @@ X(bne)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -259,7 +259,7 @@ X(bne_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -294,7 +294,7 @@ X(b)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		old_pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1) <<
@@ -309,7 +309,7 @@ X(b_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)))
 		cpu->cd.mips.next_ic = (struct mips_instr_call *) ic->arg[2];
 	cpu->delay_slot = NOT_DELAYED;
 }
@@ -332,7 +332,7 @@ X(beql)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -353,7 +353,7 @@ X(beql_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -371,7 +371,7 @@ X(bnel)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -392,7 +392,7 @@ X(bnel_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -418,7 +418,7 @@ X(blez)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -438,7 +438,7 @@ X(blez_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -456,7 +456,7 @@ X(blezl)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -477,7 +477,7 @@ X(blezl_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -503,7 +503,7 @@ X(bltz)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -523,7 +523,7 @@ X(bltz_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -541,7 +541,7 @@ X(bltzl)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -562,7 +562,7 @@ X(bltzl_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -588,7 +588,7 @@ X(bgez)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -608,7 +608,7 @@ X(bgez_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -626,7 +626,7 @@ X(bgezl)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -647,7 +647,7 @@ X(bgezl_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -681,7 +681,7 @@ X(bgezal)
 
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -709,7 +709,7 @@ X(bgezal_samepage)
 
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -735,7 +735,7 @@ X(bgezall)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -764,7 +764,7 @@ X(bgezall_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -798,7 +798,7 @@ X(bltzal)
 
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -826,7 +826,7 @@ X(bltzal_samepage)
 
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -852,7 +852,7 @@ X(bltzall)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -881,7 +881,7 @@ X(bltzall_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -907,7 +907,7 @@ X(bgtz)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -927,7 +927,7 @@ X(bgtz_samepage)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -945,7 +945,7 @@ X(bgtzl)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		if (x) {
@@ -966,7 +966,7 @@ X(bgtzl_samepage)
 	if (x)
 		ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		if (x)
 			cpu->cd.mips.next_ic = (struct mips_instr_call *)
 			    ic->arg[2];
@@ -990,7 +990,7 @@ X(jr)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		cpu->pc = rs;
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
@@ -1004,7 +1004,7 @@ X(jr_ra)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		cpu->pc = rs;
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
@@ -1028,7 +1028,7 @@ X(jr_ra_trace)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		cpu->pc = rs;
 		cpu_functioncall_trace_return(cpu);
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
@@ -1047,7 +1047,7 @@ X(jalr)
 	reg(ic->arg[1]) = rd;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		cpu->pc = rs;
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
@@ -1065,7 +1065,7 @@ X(jalr_trace)
 	reg(ic->arg[1]) = rd;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		cpu->pc = rs;
 		cpu_functioncall_trace(cpu, cpu->pc);
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
@@ -1088,7 +1088,7 @@ X(j)
 	cpu->delay_slot = TO_BE_DELAYED;
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		old_pc &= ~0x03ffffff;
@@ -1105,7 +1105,7 @@ X(jal)
 	cpu->cd.mips.gpr[31] = (MODE_int_t)cpu->pc + (int32_t)ic->arg[1];
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		old_pc &= ~0x03ffffff;
@@ -1122,7 +1122,7 @@ X(jal_trace)
 	cpu->cd.mips.gpr[31] = (MODE_int_t)cpu->pc + (int32_t)ic->arg[1];
 	ic[1].f(cpu, ic+1);
 	cpu->n_translated_instrs ++;
-	if (!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT)) {
+	if (likely(!(cpu->delay_slot & EXCEPTION_IN_DELAY_SLOT))) {
 		/*  Note: Must be non-delayed when jumping to the new pc:  */
 		cpu->delay_slot = NOT_DELAYED;
 		old_pc &= ~0x03ffffff;
@@ -1143,6 +1143,109 @@ X(cache)
 
 	/*  Make sure the rmw bit is cleared:  */
 	cpu->cd.mips.rmw = 0;
+}
+
+
+/*
+ *  tgei:  Trap if Greater-or-Equal Immediate.
+ *  tgeiu:  Trap if Greater-or-Equal Immediate Unsigned.
+ *  tlti:  Trap if Less-Than Immediate.
+ *  tltiu:  Trap if Less-Than Immediate Unsigned.
+ *  teqi:  Trap if Equal Immediate.
+ *  tnei:  Trap if Not-Equal Immediate.
+ *
+ *  arg[0] = pointer to rs
+ *  arg[2] = immediate value, sign-extended to native word size
+ */
+X(tgei)
+{
+	MODE_int_t rs = reg(ic->arg[0]);
+	MODE_int_t imm = ic->arg[2];
+
+	if (rs >= imm) {
+		/*  Synchronize the PC and cause an exception:  */
+		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
+		    / sizeof(struct mips_instr_call);
+		cpu->pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1)
+		    << MIPS_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << MIPS_INSTR_ALIGNMENT_SHIFT);
+		mips_cpu_exception(cpu, EXCEPTION_TR, 0, 0, 0, 0, 0, 0);
+	}
+}
+X(tgeiu)
+{
+	MODE_uint_t rs = reg(ic->arg[0]);
+	MODE_uint_t imm = ic->arg[2];
+
+	if (rs >= imm) {
+		/*  Synchronize the PC and cause an exception:  */
+		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
+		    / sizeof(struct mips_instr_call);
+		cpu->pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1)
+		    << MIPS_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << MIPS_INSTR_ALIGNMENT_SHIFT);
+		mips_cpu_exception(cpu, EXCEPTION_TR, 0, 0, 0, 0, 0, 0);
+	}
+}
+X(tlti)
+{
+	MODE_int_t rs = reg(ic->arg[0]);
+	MODE_int_t imm = ic->arg[2];
+
+	if (rs < imm) {
+		/*  Synchronize the PC and cause an exception:  */
+		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
+		    / sizeof(struct mips_instr_call);
+		cpu->pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1)
+		    << MIPS_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << MIPS_INSTR_ALIGNMENT_SHIFT);
+		mips_cpu_exception(cpu, EXCEPTION_TR, 0, 0, 0, 0, 0, 0);
+	}
+}
+X(tltiu)
+{
+	MODE_uint_t rs = reg(ic->arg[0]);
+	MODE_uint_t imm = ic->arg[2];
+
+	if (rs < imm) {
+		/*  Synchronize the PC and cause an exception:  */
+		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
+		    / sizeof(struct mips_instr_call);
+		cpu->pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1)
+		    << MIPS_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << MIPS_INSTR_ALIGNMENT_SHIFT);
+		mips_cpu_exception(cpu, EXCEPTION_TR, 0, 0, 0, 0, 0, 0);
+	}
+}
+X(teqi)
+{
+	MODE_uint_t rs = reg(ic->arg[0]);
+	MODE_uint_t imm = ic->arg[2];
+
+	if (rs == imm) {
+		/*  Synchronize the PC and cause an exception:  */
+		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
+		    / sizeof(struct mips_instr_call);
+		cpu->pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1)
+		    << MIPS_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << MIPS_INSTR_ALIGNMENT_SHIFT);
+		mips_cpu_exception(cpu, EXCEPTION_TR, 0, 0, 0, 0, 0, 0);
+	}
+}
+X(tnei)
+{
+	MODE_uint_t rs = reg(ic->arg[0]);
+	MODE_uint_t imm = ic->arg[2];
+
+	if (rs != imm) {
+		/*  Synchronize the PC and cause an exception:  */
+		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
+		    / sizeof(struct mips_instr_call);
+		cpu->pc &= ~((MIPS_IC_ENTRIES_PER_PAGE-1)
+		    << MIPS_INSTR_ALIGNMENT_SHIFT);
+		cpu->pc += (low_pc << MIPS_INSTR_ALIGNMENT_SHIFT);
+		mips_cpu_exception(cpu, EXCEPTION_TR, 0, 0, 0, 0, 0, 0);
+	}
 }
 
 
@@ -1479,7 +1582,7 @@ X(add)
 	int32_t rs = reg(ic->arg[0]), rt = reg(ic->arg[1]);
 	int32_t rd = rs + rt;
 
-	if ((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0)) {
+	if (unlikely((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0))) {
 		/*  Synch. PC and cause an exception:  */
 		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
 		    / sizeof(struct mips_instr_call);
@@ -1496,7 +1599,7 @@ X(dadd)
 	int64_t rs = reg(ic->arg[0]), rt = reg(ic->arg[1]);
 	int64_t rd = rs + rt;
 
-	if ((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0)) {
+	if (unlikely((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0))) {
 		/*  Synch. PC and cause an exception:  */
 		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
 		    / sizeof(struct mips_instr_call);
@@ -1514,7 +1617,7 @@ X(sub)
 	int32_t rs = reg(ic->arg[0]), rt = - reg(ic->arg[1]);
 	int32_t rd = rs + rt;
 
-	if ((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0)) {
+	if (unlikely((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0))) {
 		/*  Synch. PC and cause an exception:  */
 		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
 		    / sizeof(struct mips_instr_call);
@@ -1532,7 +1635,7 @@ X(dsub)
 	int64_t rs = reg(ic->arg[0]), rt = - reg(ic->arg[1]);
 	int64_t rd = rs + rt;
 
-	if ((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0)) {
+	if (unlikely((rs >= 0 && rt >= 0 && rd < 0) || (rs < 0 && rt < 0 && rd >= 0))) {
 		/*  Synch. PC and cause an exception:  */
 		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
 		    / sizeof(struct mips_instr_call);
@@ -1764,7 +1867,7 @@ X(addi)
 	int32_t rs = reg(ic->arg[0]), imm = (int32_t)ic->arg[2];
 	int32_t rt = rs + imm;
 
-	if ((rs >= 0 && imm >= 0 && rt < 0) || (rs < 0 && imm < 0 && rt >= 0)) {
+	if (unlikely((rs >= 0 && imm >= 0 && rt < 0) || (rs < 0 && imm < 0 && rt >= 0))) {
 		/*  Synch. PC and cause an exception:  */
 		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
 		    / sizeof(struct mips_instr_call);
@@ -1785,7 +1888,7 @@ X(daddi)
 	int64_t rs = reg(ic->arg[0]), imm = (int32_t)ic->arg[2];
 	int64_t rt = rs + imm;
 
-	if ((rs >= 0 && imm >= 0 && rt < 0) || (rs < 0 && imm < 0 && rt >= 0)) {
+	if (unlikely((rs >= 0 && imm >= 0 && rt < 0) || (rs < 0 && imm < 0 && rt >= 0))) {
 		/*  Synch. PC and cause an exception:  */
 		int low_pc = ((size_t)ic - (size_t)cpu->cd.mips.cur_ic_page)
 		    / sizeof(struct mips_instr_call);
@@ -2678,10 +2781,8 @@ X(sw_loop)
 }
 
 
-#ifdef MODE32
 /*  multi_{l,s}w_2, _3, etc.  */
 #include "tmp_mips_loadstore_multi.cc"
-#endif
 
 
 /*
@@ -3098,8 +3199,6 @@ void COMBINE(sw_loop)(struct cpu *cpu, struct mips_instr_call *ic, int low_addr)
 }
 
 
-/*  Only for 32-bit virtual address translation so far.  */
-#ifdef MODE32
 /*
  *  Combine:  Multiple SW in a row using the same base register
  *
@@ -3114,8 +3213,18 @@ void COMBINE(multi_sw)(struct cpu *cpu, struct mips_instr_call *ic,
 	int n_back = (low_addr >> MIPS_INSTR_ALIGNMENT_SHIFT)
 	    & (MIPS_IC_ENTRIES_PER_PAGE - 1);
 
-	if (n_back < 3)
+	if (n_back < 4)
 		return;
+
+	/*  Convert a multi_sw_4 to a multi_sw_5:  */
+	if ((ic[-4].f == instr(multi_sw_4_be) ||
+	    ic[-4].f == instr(multi_sw_4_le)) &&
+	    ic[-4].arg[1] == ic[0].arg[1]) {
+		if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+			ic[-4].f = instr(multi_sw_5_le);
+		else
+			ic[-4].f = instr(multi_sw_5_be);
+	}
 
 	/*  Convert a multi_sw_3 to a multi_sw_4:  */
 	if ((ic[-3].f == instr(multi_sw_3_be) ||
@@ -3144,11 +3253,8 @@ void COMBINE(multi_sw)(struct cpu *cpu, struct mips_instr_call *ic,
 			ic[-1].f = instr(multi_sw_2_be);
 	}
 }
-#endif
 
 
-/*  Only for 32-bit virtual address translation so far.  */
-#ifdef MODE32
 /*
  *  Combine:  Multiple LW in a row using the same base register
  *
@@ -3163,8 +3269,19 @@ void COMBINE(multi_lw)(struct cpu *cpu, struct mips_instr_call *ic,
 	int n_back = (low_addr >> MIPS_INSTR_ALIGNMENT_SHIFT)
 	    & (MIPS_IC_ENTRIES_PER_PAGE - 1);
 
-	if (n_back < 3)
+	if (n_back < 4)
 		return;
+
+	/*  Convert a multi_lw_4 to a multi_lw_5:  */
+	if ((ic[-4].f == instr(multi_lw_4_be) ||
+	    ic[-4].f == instr(multi_lw_4_le)) &&
+	    ic[-4].arg[1] == ic[0].arg[1] &&
+	    ic[-1].arg[0] != ic[0].arg[1]) {
+		if (cpu->byte_order == EMUL_LITTLE_ENDIAN)
+			ic[-4].f = instr(multi_lw_5_le);
+		else
+			ic[-4].f = instr(multi_lw_5_be);
+	}
 
 	/*  Convert a multi_lw_3 to a multi_lw_4:  */
 	if ((ic[-3].f == instr(multi_lw_3_be) ||
@@ -3198,7 +3315,6 @@ void COMBINE(multi_lw)(struct cpu *cpu, struct mips_instr_call *ic,
 			ic[-1].f = instr(multi_lw_2_be);
 	}
 }
-#endif
 
 
 /*
@@ -4478,6 +4594,37 @@ X(to_be_translated)
 			}
 			break;
 
+		case REGIMM_TGEI:
+		case REGIMM_TGEIU:
+		case REGIMM_TLTI:
+		case REGIMM_TLTIU:
+		case REGIMM_TEQI:
+		case REGIMM_TNEI:
+			switch (rt) {
+			case REGIMM_TGEI:	ic->f = instr(tgei); break;
+			case REGIMM_TGEIU:	ic->f = instr(tgeiu); break;
+			case REGIMM_TLTI:	ic->f = instr(tlti); break;
+			case REGIMM_TLTIU:	ic->f = instr(tltiu); break;
+			case REGIMM_TEQI:	ic->f = instr(teqi); break;
+			case REGIMM_TNEI:	ic->f = instr(tnei); break;
+			}
+			ic->arg[0] = (size_t)&cpu->cd.mips.gpr[rs];
+			ic->arg[2] = (int64_t)(int16_t)imm;
+
+			if (cpu->cd.mips.cpu_type.isa_level < 32) {
+				static int warning = 0;
+				if (!warning && !cpu->translation_readahead) {
+					fatal("[ WARNING! Trap opcode used, but"
+					    " the %s processor does not implement "
+					    "such instructions. Only printing this "
+					    "warning once. ]\n",
+					    cpu->cd.mips.cpu_type.name);
+					warning = 1;
+				}
+				ic->f = instr(reserved);
+			}
+			break;
+
 		default:if (!cpu->translation_readahead)
 				fatal("UNIMPLEMENTED regimm rt=%i\n", rt);
 			goto bad;
@@ -4529,12 +4676,10 @@ X(to_be_translated)
 
 		/*  Check for multiple loads or stores in a row using the same
 		    base register:  */
-#ifdef MODE32
 		if (main_opcode == HI6_LW)
 			cpu->cd.mips.combination_check = COMBINE(multi_lw);
 		if (main_opcode == HI6_SW)
 			cpu->cd.mips.combination_check = COMBINE(multi_sw);
-#endif
 		break;
 
 	case HI6_LL:

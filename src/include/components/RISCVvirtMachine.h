@@ -1,8 +1,8 @@
-#ifndef SGI_IP32_MACHINE_H
-#define	SGI_IP32_MACHINE_H
+#ifndef RISCVVIRTMACHINE_H
+#define	RISCVVIRTMACHINE_H
 
 /*
- *  Copyright (C) 2009-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2019 Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,21 +28,21 @@
  *  SUCH DAMAGE.
  */
 
-// COMPONENT(sgi_ip32)
+// COMPONENT(riscv-virt)
 
 
 #include "Component.h"
 
 /**
- * \brief A template for creating a "sgi_ip32" Component.
+ * \brief A template for creating a "riscv-virt" Component.
  *
  * Note: This class does not inherit from the Component class.
  */
-class SGI_IP32_Machine
+class RISCVvirtMachine
 {
 public:
 	/**
-	 * \brief Creates a "sgi_ip32" Component tree.
+	 * \brief Creates a "riscv-virt" Component tree.
 	 */
 	static refcount_ptr<Component> Create(const ComponentCreateArgs& args);
 
@@ -52,8 +52,8 @@ public:
 	static string GetAttribute(const string& attributeName);
 
 private:
-	SGI_IP32_Machine();
+	RISCVvirtMachine();
 };
 
 
-#endif	// SGI_IP32_MACHINE_H
+#endif	// RISCVVIRTMACHINE_H

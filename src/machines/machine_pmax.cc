@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -56,6 +56,7 @@
 MACHINE_SETUP(pmax)
 {
 	const char *framebuffer_console_name, *serial_console_name;
+	char bootpath[200];
 	char *init_bootpath;
 	int color_fb_flag, i;
 	int boot_scsi_boardnumber = 3, boot_net_boardnumber = 3;
@@ -794,17 +795,14 @@ abort();
 	 *  slot number of the boot device.
 	 *
 	 *  'rz' for disks, 'tz' for tapes.
-	 *
-	 *  TODO:  Make this nicer.
 	 */
 	{
-		char bootpath[200];
 #if 0
 		if (machine->machine_subtype == MACHINE_DEC_PMAX_3100)
 			strlcpy(bootpath, "rz(0,0,0)", sizeof(bootpath));
 		else
 #endif
-			strlcpy(bootpath, "5/rz1/", sizeof(bootpath));
+			strlcpy(bootpath, "X/rzY/", sizeof(bootpath));
 
 		if (machine->bootdev_id < 0 || machine->force_netboot) {
 			/*  tftp boot:  */
@@ -878,7 +876,7 @@ abort();
 	    (unsigned char *)&machine->md.pmax->memmap->pagesize, 4096);
 
 	for (unsigned int j=0; j<sizeof(machine->md.pmax->memmap->bitmap); j++)
-		machine->md.pmax->memmap->bitmap[j] = ((int)j * 4096*8 <
+		machine->md.pmax->memmap->bitmap[j] = (j * 4096*8 <
 		    1048576*machine->physical_ram_in_mb)? 0xff : 0x00;
 
 	store_buf(cpu, DEC_MEMMAP_ADDR,

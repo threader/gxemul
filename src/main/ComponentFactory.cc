@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2008-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2008-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -130,24 +130,19 @@ refcount_ptr<Component> ComponentFactory::CreateComponent(
 	// call the corresponding create function, if found:
 	size_t i = 0;
 	while (componentList[i].componentName != NULL) {
-		if (componentName == componentList[i].componentName
-#ifndef UNSTABLE_DEVEL
-		    && !componentList[i].GetAttribute("stable").empty()
-#endif
-		    )
+		if (componentName == componentList[i].componentName)
 			return componentList[i].Create(args);
 
 		++ i;
 	}
 
 	for (i=0; componentListRunTime != NULL && i<componentListRunTime->size(); ++i) {
-		if (componentName == (*componentListRunTime)[i].componentName
-#ifndef UNSTABLE_DEVEL
-		    && !(*componentListRunTime)[i].GetAttribute("stable").empty()
-#endif
-		    )
+		if (componentName == (*componentListRunTime)[i].componentName)
 			return (*componentListRunTime)[i].Create(args);
 	}
+
+	if (gxemul != NULL)
+		gxemul->GetUI()->ShowDebugMessage("Unknown component: " + componentNameAndOptionalArgs + "\n");
 
 	return NULL;
 }
@@ -221,22 +216,14 @@ vector<string> ComponentFactory::GetAllComponentNames(bool onlyTemplates)
 	size_t i = 0;
 	while (componentList[i].componentName != NULL) {
 		if ((!onlyTemplates ||
-		    componentList[i].GetAttribute("template") == "yes")
-#ifndef UNSTABLE_DEVEL
-		    && !componentList[i].GetAttribute("stable").empty()
-#endif
-		    )
+		    componentList[i].GetAttribute("template") == "yes"))
 			result.push_back(componentList[i].componentName);
 		++ i;
 	}
 
 	for (i=0; componentListRunTime!=NULL && i<componentListRunTime->size(); ++i) {
 		if ((!onlyTemplates ||
-		    (*componentListRunTime)[i].GetAttribute("template") == "yes")
-#ifndef UNSTABLE_DEVEL
-		    && !(*componentListRunTime)[i].GetAttribute("stable").empty()
-#endif
-		    )
+		    (*componentListRunTime)[i].GetAttribute("template") == "yes"))
 			result.push_back((*componentListRunTime)[i].componentName);
 	}
 
@@ -273,7 +260,7 @@ static void Test_ComponentFactory_SimpleDummy()
 static void Test_ComponentFactory_FromTemplate()
 {
 	refcount_ptr<Component> component =
-	    ComponentFactory::CreateComponent("testmips");
+	    ComponentFactory::CreateComponent("testm88k");
 	UnitTest::Assert("component should be possible to create from template",
 	    component.IsNULL() == false);
 
@@ -299,9 +286,6 @@ static void Test_ComponentFactory_HasAttribute()
 
 	UnitTest::Assert("testm88k is a machine",
 	    ComponentFactory::HasAttribute("testm88k", "machine"));
-
-	UnitTest::Assert("testm88k is stable",
-	    ComponentFactory::HasAttribute("testm88k", "stable"));
 
 	UnitTest::Assert("testm88k has a description",
 	    ComponentFactory::HasAttribute("testm88k", "description"));

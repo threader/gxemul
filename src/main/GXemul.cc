@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -46,11 +46,11 @@
  * information about this version of %GXemul.
  *
  * See GXemul's home page for more information about %GXemul in general:
- * <a href="http://gxemul.sourceforge.net/">http://gxemul.sourceforge.net/</a>
+ * <a href="http://gavare.se/gxemul/">http://gavare.se/gxemul/</a>
  *
- * (<b>NOTE:</b> There is a huge portion of code in
+ * <b>NOTE:</b> There is a huge portion of code in
  * %GXemul which is legacy code. The documentation you will find on this page
- * is only about the new framework, which is available from release 0.6.0.)
+ * is only about the new framework, which is <b><i>still being developed</i></b>.
  *
  * The main program creates a GXemul instance, and does one of two things:
  * <ul>
@@ -289,9 +289,6 @@ void GXemul::GenerateHTMLListOfComponents(bool machines)
 	if (machines)
 		std::cout << " <td><b><u>Screenshot:</u></b>&nbsp;&nbsp;</td>\n";
 	std::cout <<
-#ifdef UNSTABLE_DEVEL
-		" <td><b><u>Status:</u></b>&nbsp;&nbsp;</td>\n"
-#endif
 		" <td><b><u>Description:</u></b>&nbsp;&nbsp;</td>\n"
 		" <td><b><u>Comments:</u></b>&nbsp;&nbsp;</td>\n"
 		" <td><b><u>Contributors:</u></b>&nbsp;&nbsp;</td>\n"
@@ -403,11 +400,6 @@ void GXemul::GenerateHTMLListOfComponents(bool machines)
 		}
 
 		std::cout <<
-#ifdef UNSTABLE_DEVEL
-			" <td valign=top>" << (ComponentFactory::HasAttribute(
-				componentName, "stable")? "stable&nbsp;&nbsp;" :
-				"experimental&nbsp;&nbsp;") << "</td>\n"
-#endif
 			" <td valign=top>" << ComponentFactory::GetAttribute(
 				componentName, "description") <<
 				treeDump << "</td>\n"

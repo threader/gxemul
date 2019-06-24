@@ -17,21 +17,12 @@
 
 <p><br>
 Here are some things, in no specific order, that I'd like to fix or
-implement in GXemul. (Some items in this list are perhaps already fixed.)
-
-<p>This list is split between the new framework (written in C++, version 0.6),
-and the older framework which was written in C.
-
-<p>
-<ul>
-	<li><a href="#new">New framework</a>
-	<li><a href="#legacy">Legacy framework</a>
-	<p>
-	<li><a href="#release">Release checklist</a>
-</ul>
+implement in GXemul. Some items in this list are perhaps already fixed.
 
 
-<p><br><h4><a name="new">New framework</a></h4>
+
+<p><br>
+<b><a name="new">New framework</a></b>
 
 <p><pre><i>Legend:
 
@@ -41,6 +32,28 @@ and the older framework which was written in C.
 
 ------------------------------------------------------------------------
 </i>
+
+  [/]   Intel i960 CPU and machine modes.
+
+	[/]  i960 instruction disassembly.
+		[X]  i960CA
+		[ ]  Other variants.
+
+	[/]  i960 instruction execution.
+		[ ]  Enough to run the HP 700/RX ROM.
+		[ ]  Enough to run uClinux/i960.
+
+  	[ ]  HP 700/RX emulation:
+  		[ ]  Figure out more of the memory map by running the ROM image in the emulator.
+  		[ ]  Interrupt controller(s)?
+  		[ ]  Graphics
+  		[ ]  Serial port(s)
+  		[ ]  Keyboard, mouse, ...
+  		[ ]  Ethernet
+
+  	[ ]  Cyclone/VH i960 evaluation board emulation (for uClinux/i960).
+
+  [ ]	Use std::shared_ptr instead of my own hack (refcount_ptr)?
 
   [/]   Cache components.
   
@@ -247,28 +260,6 @@ and the older framework which was written in C.
 		[ ]  Start thinking about the plugin framework, use sdl
 		     for video output!
 
-  [/]	The testmips machine.
-
-	[X]  Implement basic 32-bit MIPS instruction execution, enough to run
-	     the rectangle drawing demo.
-	[ ]  Implement basic 64-bit MIPS instruction execution, enough to run
-	     the 64-bit variant of the rectangle drawing demo.
-	[ ]  Implement basic 16-bit MIPS instruction encoding, enough to run
-	     the 16-bit-encoded variant of the rectangle drawing demo (on both
-	     64-bit and 32-bit emulated CPUs).
-	[ ]  All the other devices (interrupts, ethernet, serial, SMP, ...)
-
-  [ ]   Intel i960 CPU and machine modes.
-
-	[/]  i960 instruction disassembly.
-		[X]  i960CA
-
-	[ ]  i960 instruction execution.
-
-  	[ ]  HP 700/RX emulation.
-
-  	[ ]  Cyclone/VH i960 evaluation board emulation (for uClinux/i960).
-
   [ ]	SPARC64? Would be nice; multithreaded Niagara emulation etc.
 
   [/]	STEP EXECUTIONS, REVERSE EXECUTION, SNAPSHOTTING, ...
@@ -276,6 +267,10 @@ and the older framework which was written in C.
 	[ ] Try to get away from using doubles for scheduling! The scheduling
 	    must be made more stable, even in the precense of rounding errors.
 	    See e.g. http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=570899
+
+	[ ] Compact mode trace in the new framework: a column to the right with
+		delta EXCEPT program counter deltas. This allows for instruction
+		trace with one instruction per line, like in the legacy modes.
 
 	[/] Continuous execution forward.
 		[ ]  "Sloppy" accuracy mode: it could be possible to
@@ -630,9 +625,7 @@ and the older framework which was written in C.
    [ ]	Components (general):
 	[ ]  "help" about components could show a file:/// link to
 	     the installed documentation about that component or
-	     machine! (If it exists.) Fallback: refer to the machine or
-	     component on gxemul.sourceforge.net (but warn about
-	     versions).
+	     machine! (If it exists.)
 	[ ]  Limit where components can be added. Like "drop targets"?
 		E.g. a machine can be added at the root, but a machine can not
 		be added on a pcibus. Similarly, a pcibus can not be added
@@ -679,7 +672,7 @@ and the older framework which was written in C.
 
 		[ ]  tab completion should use the Shortest Path, not the
 		     full path. E.g.:  cpu + TAB should expand to cpu0 only
-		     in a default testmips machine, NOT root.machine0.mainbus0.cpu0!
+		     in a default testm88k machine, NOT root.machine0.mainbus0.cpu0!
 		     This will most likely require a change in unit tests etc.
 
 		[ ]  syntax based completion? e.g.:
@@ -736,6 +729,7 @@ and the older framework which was written in C.
 	[ ]  Make the save/load of state more efficient. Right now, it's a hex dump! Yuck.
 	[ ]  methods for searching for values (strings, words, etc?)
 	[ ]  methods for bulk fill/copy [from other address/data busses?]
+	[ ]  "put" command.
 
    [ ]	Floating point helper.
 
@@ -766,9 +760,10 @@ and the older framework which was written in C.
 
 
 
-<p><br><h4><a name="legacy">Legacy framework</a></h4>
+<p><br>
+<b><a name="original">Original/old/legacy framework</a></b>
 
-<p><pre>Legacy-mode Debugger:
+<p><pre>Debugger:
 	Extend the
 		put [b|h|w|d|q] addr, data    modify emulated memory contents
 	command with a "s" (string) mode, where data is a string. Also
@@ -787,7 +782,49 @@ and the older framework which was written in C.
 
 		find [b|h|w|d|q|s|z] startaddr, endaddr, data
 
+Disk image end-of-file bug:
+	Triggered when using e.g. a tar.gz file as a disk image in NetBSD/pmax.
+	NetBSD reads beyond the end of the file. Must be fixed! (Once fixed, documentation
+	can be simplified for some guest OS installations.)
+
+GXsatellite -- Gavare's eXperimental Stand-Aline Test Environment
+	for Low-Level Interactive Testing of Emulators. Share or reuse code with YCX5?
+
+Floating point:
+	More tests.
+	
+Documentation:
+	Add the Android ARM machine modes to the documentation, machine_androidarm, color red,
+	once the Linux device tree has been at least implemented enough to see some
+	boot messages or so.
+
+	Add the Alpha mode too even though probably almost nothing works at all.
+	Also red. Try to include instructions for NetBSD, OpenBSD
+	and FreeBSD although the later has been discontinued.
+
+	Add FreeBSD/mips to testmips section? https://wiki.freebsd.org/FreeBSD/MipsEmulation
+	If it works.
+
+Disk image options:
+	'R' (uppercase): don't allow writes to the disk image file, but let
+	the guest OS think that the device is writable, by using a temporary
+	overlay (created automatically in /tmp) which is removed when the
+	emulator exits. If this is implemented, update the misc
+	documentation, and the man page.
+
+X11:
+	-y n: Command line option for taking framebuffer screen shots n times
+	per second? Look for "ppm image dumps" in dev_fb.cc.html. if 
+	implemented, add to man page.
+
 MIPS:
+	o)  ALU operations (typically addiu, or, etc) can be hardcoded/inlined for common
+		register pairs or even triples. Classic generate_blahblah and an array.
+		Reduces memory accesses for common ALU instructions.
+	o)  Profile and make newer instruction combinations for up-to-date versions of NetBSD
+	    (full install, building GXemul inside NetBSD, etc). Make sure to go through all
+		common function cores such as memset, memcpy, memmove, strlen, strcmp, memcmp,
+		and idle functions, for both R3000 and R4400 etc.
 	o)  Floating point exception correctness. Compare to real hardware!
 	o)  Nicer MIPS status bits in register dumps.
 	o)  Some more work on opcodes.
@@ -797,6 +834,7 @@ MIPS:
 			o)  DROTR32 and similar MIPS64 rev 2 instructions,
 			    which have a rotation bit which differs from
 			    previous ISAs.
+	o)  NetBSD has a patch for NOFPU flag for certain CPUs. Investigate and apply if correct.
 	o)  Dyntrans: Count register updates are probably not 100% correct yet.
 	o)  Coprocessor 1x (i.e. 3) should cause cp1 exceptions, not 3?
 		(See http://lists.gnu.org/archive/html/qemu-devel/2007-05/msg00005.html)
@@ -903,15 +941,9 @@ Algor:
 	o)  PCI interrupts... needed for stuff like the tlp NIC?
 
 Malta:
-	o)  The Linux/Malta kernel at people.debian.org/~ths/qemu/malta/
-	    almost works:
-		./gxemul -x -o 'rd_start=0x80800000 rd_size=10000000 init=/bin/sh' -C 4KEc
-		  -e malta 0x80800000:people.debian.org/~ths/qemu/malta/initrd.gz 
-		  people.debian.org/~ths/qemu/malta/vmlinux
-	    (Remove "init=/bin/sh" to boot into the Debian installer.)
-	    There are at least two things that need to be fixed:
-		1. PCI IDE; make Linux oops.
-		2. Implement the NIC.
+	o)  Try FreeBSD/malta: https://wiki.freebsd.org/FreeBSD/MipsEmulation
+	o)  Malta can perhaps have up to 2 GB RAM? Try same hack as for the SGI O2.
+	o)  Reconfigurable PCI memory space would be nice (just like SGI O2).
 
 SGI O2:
 	differences between real hardware and NetBSD's header files?
@@ -990,30 +1022,32 @@ SGI O2:
 
 	video? probably too complicated.
 
+	IRIX? Networking? SCSI? Currently panics due to root vfs not available.
+
 HPCmips:
+	x)  Clock? Is it running at correct speed?
 	x)  Mouse/pad support! :)
 	x)  A NIC? (As a PCMCIA device?)
+	x)  Investigate why not all MobilePro models work any longer with recent NetBSD versions.
 
 ARM:
 	o)  Big endian does not really work: loads and stores are little endian!
-	o)  THUMB disassembly
-	o)  THUMB execution
+	o)  More THUMB disassembly?
+	o)  More THUMB execution.
 	o)  0xf "condition" execution: see http://engold.ui.ac.ir/~nikmehr/Appendix_B2.pdf
+	o)  Android devices.
 	o)  See netwinder_reset() in NetBSD; the current "an internal error
 	    occured" message after reboot/halt is too ugly.
 	o)  Generic ARM "wait"-like instruction?
 	o)  try to get netbsd/evbarm 3.x or 4.x running (iq80321)
 	o)  netbsd/iyonix? the i80321 device currently tells netbsd that
-	    RAM starts at 0xa0000000, but that is perhaps not correct for the
-	    iyonix.
+	    RAM starts at 0xa0000000, but that is perhaps not correct for the iyonix.
 	o)  make the xscale counter registers (ccnt) work
 	o)  make the ata controller usable for FreeBSD!
-	o)  Debian/cats crashes because of unimplemented coproc stuff.
-	    fix this?
+	o)  Debian/cats crashes because of unimplemented coproc stuff. fix this?
 
 Test machines:
-	o)  dev_fb 2D acceleration functions, to make dev_fb useful for
-	    simple graphical OSes:
+	o)  dev_fb 2D acceleration functions, to make dev_fb useful for simple graphical OSes:
 		x) block fill and copy
 		x) draw characters (from the built-in font)?
 	o)  dev_fb input device? mouse pointer coordinates and buttons
@@ -1026,6 +1060,10 @@ Test machines:
 	o)  More demos/examples.
 
 Dyntrans:
+	x)  Try to make the vaddr fix O(1) again instead of O(n), if it
+		is possible to see if a non-canonical address has been
+		inserted into the caches. In other words, keep track of	
+		whether a full O(n) seach is really needed or not.
 	x)  For 32-bit emulation modes, that have emulated TLBs: tlbindex
 	    arrays of mapped pages? Things to think about:
 		x)  Only 32-bit mode! (64-bit => too much code)
@@ -1092,7 +1130,8 @@ Dyntrans:
 	    (containing code)
 	x)  16-bit encodings? (MIPS16, ARM Thumb, etc)
 	x)  Lots of other stuff: see src/cpus/README_DYNTRANS
-	x)  Native code generation backends... think carefully about this.
+	x)  Native code generation backends... think _carefully_ about this.
+	    (Not a priority right now.)
 
 Better CD Image file support:
 	x)  Support CD formats that contain more than 1 track, e.g.
@@ -1103,8 +1142,6 @@ Better CD Image file support:
 	    possibly other live-CD formats.)
 
 Networking:
-[Obsoleted; the new framework will need a much better net implementation. This
-section is kept here, so that the same mistakes may be avoided in the rewrite.]
 	x)  Redesign of the networking subsystem, at least the NAT translation
 		part. The current way of allowing raw ethernet frames to be
 		transfered to/from the emulator via UDP should probably be
@@ -1131,8 +1168,7 @@ section is kept here, so that the same mistakes may be avoided in the rewrite.]
 	    ethernet?
 
 PCI:
-[Obsoleted; the new framework will need a much better bus implementation. This
-section is kept here, so that the same mistakes may be avoided in the rewrite.]
+	o)  Big-endian Malta access?
 	x)  Pretty much everything related to runtime configuration, device
 	    slots, interrupts, etc must be redesigned/cleaned up. The current
 	    code is very hardcoded and ugly.
@@ -1165,8 +1201,6 @@ ASC SCSI controller:
 	    NetBSD 4.x seems to work? :)
 
 Better framebuffer and X-windows functionality:
-[Obsoleted; the new framework will most likely use SDL. This section
-is kept here, so that the same mistakes may be avoided in the rewrite.]
 	o)  Do a complete rewrite of the framebuffer/console stuff, so that:
 		1)  It does not rely on X11 specifically.
 		2)  It is possible to interact with emulated framebuffers
@@ -1204,29 +1238,37 @@ is kept here, so that the same mistakes may be avoided in the rewrite.]
 
 
 
-<p><br><h4><a name="release">Release checklist</a></h4>
+<p><br>
+<b><a name="release">Release checklist</a></b>
 
 <p><ul>
-	<li>Build on as many platforms as possible, including inside guest
-		OSes in GXemul itself.
-	<li>If there is time: Install as many as possible of the guest OSes in the documentation;
-		the documentation may need to be updated if there are
-		regressions.
-	<li>If there is even more time: see what the status is for the "unsupported"
-		guest OSes as well.
-	<li>Update the <tt>README</tt> and <tt>RELEASE</tt> notes.
-	<li>TODO updates (i.e. set goals for the <i>next</i> release, if possible).
-	<li>HISTORY (mention the release).
-	<li>SVN branch/tag.
-	<li>Tarball creation (make_release.sh)
-	<li>Home page <i>Download page</i> update: version number and date.
-	<li>Home page <i>News page</i> update: new Release.
-	<li>Sync the homepage to the web server.
-	<li>Mention release on #GXemul on FreeNode (IRC), set version number in topic if possible.
-	<li>Sourceforge File Release (upload the tarball).
-	<li>gxemul-users mail, content similar to the RELEASE notes.
+	<li>Pre-release regression testing:
+	<ul>
+		<li>Build on as many platforms as possible, including inside guest OSes in GXemul itself.
+		<li>If there is time: Install as many as possible of the guest OSes in the documentation;
+		the documentation may need to be updated if there are regressions.
+		<li>If there is more time: try newer versions of the officially
+			supported guest OSes (sometimes these work, sometimes not).
+		<li>If there is even more time: see what the status is for the
+			"unsupported" guest OSes as well.
+	</ul>
+	<li>Release build, update notes etc:
+	<ul>
+		<li>Update the <tt>README</tt> and <tt>RELEASE</tt> notes.
+		<li>TODO updates (i.e. set goals for the <i>next</i> release, if possible,
+			or strike out things that have been fixed).
+		<li>HISTORY (mention the release).
+		<li>Tarball creation (make_release.sh)
+		<li>Home page <i>Download page</i> update: version number and date.
+		<li>Home page <i>News page</i> update: new Release.
+		<li>Create subversion tag.
+		<li>Sync subversion to SourceForge mirror.
+		<li>Sync the homepage to the web server.
+		<li>Sourceforge File Release (upload the tarball).
+		<li>Mention release on #GXemul on FreeNode (IRC), set version number in topic if possible.
+		<li>gxemul-users mail, content similar to the RELEASE notes.
+	</ul>
 </ul>
 
 </body>
 </html>
-

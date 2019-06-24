@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2008-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2008-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -324,22 +324,12 @@ void CPUComponent::ExecuteMethod(GXemul* gxemul, const string& methodName,
 
 uint64_t CPUComponent::Unassemble(int nRows, bool indicatePC, uint64_t vaddr, ostream& output)
 {
+	LookupAddressDataBus();
+	
 	vector< vector<string> > outputRows;
 
 	for (int i=0; i<nRows; i++) {
 		outputRows.push_back(vector<string>());
-
-		// TODO: GENERALIZE! Some archs will have longer
-		// instructions, or unaligned, or over page boundaries!
-		size_t maxLen = sizeof(uint32_t);
-maxLen += sizeof(uint32_t); // i960 experimentation hack
-		unsigned char instruction[maxLen];
-
-		bool readOk = true;
-		for (size_t k=0; k<maxLen; ++k) {
-			AddressSelect(vaddr + k);
-			readOk &= ReadData(instruction[k], m_isBigEndian? BigEndian : LittleEndian);
-		}
 
 		string symbol = GetSymbolRegistry().LookupAddress(vaddr, false);
 		if (symbol != "") {
@@ -358,24 +348,19 @@ maxLen += sizeof(uint32_t); // i960 experimentation hack
 
 		outputRows[outputRows.size()-1].push_back(ss.str());
 
-		if (!readOk) {
-			stringstream ss2;
-			ss2 << "\tmemory could not be read";
-			if (m_addressDataBus == NULL)
-				ss2 << "; no address/data bus connected to the CPU";
-			ss2 << "\n";
-
-			outputRows[outputRows.size()-1].push_back(ss2.str());
-			break;
+		if (m_addressDataBus == NULL) {
+			outputRows[outputRows.size()-1].push_back("; no address/data bus connected to the CPU");
 		} else {
 			vector<string> result;
 
-			size_t len = DisassembleInstruction(vaddr,
-			    maxLen, instruction, result);
+			size_t len = DisassembleInstruction(vaddr, result);
 			vaddr += len;
 
 			for (size_t j=0; j<result.size(); ++j)
 				outputRows[outputRows.size()-1].push_back(result[j]);
+
+			if (len == 0)
+				break;
 		}
 	}
 
@@ -647,10 +632,10 @@ bool CPUComponent::WriteData(const uint64_t& data, Endianness endianness)
 
 #include "ComponentFactory.h"
 
-static void Test_CPUComponent_IsStable()
+static void Test_CPUComponent_HasAttributes()
 {
 	UnitTest::Assert("the CPUComponent should not have attributes",
-	    !ComponentFactory::HasAttribute("cpu", "stable"));
+	    !ComponentFactory::HasAttribute("cpu", "description"));
 }
 
 static void Test_CPUComponent_Create()
@@ -666,7 +651,7 @@ static void Test_CPUComponent_PreRunCheck()
 	GXemul gxemul;
 
 	// Attempting to run a cpu with nothing connected to it should FAIL!
-	gxemul.GetCommandInterpreter().RunCommand("add mips_cpu");
+	gxemul.GetCommandInterpreter().RunCommand("add m88k_cpu");
 	UnitTest::Assert("preruncheck should fail",
 	    gxemul.GetRootComponent()->PreRunCheck(&gxemul) == false);
 
@@ -679,7 +664,7 @@ static void Test_CPUComponent_PreRunCheck()
 static void Test_CPUComponent_Methods_Reexecutableness()
 {
 	refcount_ptr<Component> cpu =
-	    ComponentFactory::CreateComponent("mips_cpu");
+	    ComponentFactory::CreateComponent("m88k_cpu");
 
 	UnitTest::Assert("dump method SHOULD be re-executable"
 	    " without args", cpu->MethodMayBeReexecutedWithoutArgs("dump") == true);
@@ -696,7 +681,7 @@ static void Test_CPUComponent_Methods_Reexecutableness()
 
 UNITTESTS(CPUComponent)
 {
-	UNITTEST(Test_CPUComponent_IsStable);
+	UNITTEST(Test_CPUComponent_HasAttributes);
 	UNITTEST(Test_CPUComponent_Create);
 	UNITTEST(Test_CPUComponent_PreRunCheck);
 	UNITTEST(Test_CPUComponent_Methods_Reexecutableness);

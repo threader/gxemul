@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,9 @@
  *
  *  and yet another one, with descriptions about THUMB semantics:
  *  https://web.eecs.umich.edu/~prabal/teaching/eecs373-f10/readings/ARM_QRC0006_UAL16.pdf
+ *
+ *  And one with the newer ARM v7 instructions:
+ *  http://vision.gel.ulaval.ca/~jflalonde/cours/1001/h17/docs/ARM_v7.pdf
  */
 
 #include <stdio.h>
@@ -118,6 +121,8 @@ int arm_cpu_new(struct cpu *cpu, struct memory *mem,
 	cpu->name            = strdup(cpu->cd.arm.cpu_type.name);
 	cpu->is_32bit        = 1;
 	cpu->byte_order      = EMUL_LITTLE_ENDIAN;
+
+	cpu->vaddr_mask = 0x00000000ffffffffULL;
 
 	cpu->cd.arm.cpsr = ARM_FLAG_I | ARM_FLAG_F;
 	cpu->cd.arm.control = ARM_CONTROL_PROG32 | ARM_CONTROL_DATA32
@@ -1754,7 +1759,22 @@ int arm_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 	r12 = (iw >> 12) & 15;
 	r8 = (iw >> 8) & 15;
 
-	if ((iw >> 28) == 0xf) {
+	if (iw == 0xf10c0040) {
+		debug("cpsid\tf\n");
+		return sizeof(uint32_t);
+	} else if (iw == 0xf10c0080) {
+		debug("cpsid\ti\n");
+		return sizeof(uint32_t);
+	} else if (iw == 0xf57ff04f) {
+		debug("dsb\tsy\n");
+		return sizeof(uint32_t);
+	} else if (iw == 0xf57ff05f) {
+		debug("dmb\tsy\n");
+		return sizeof(uint32_t);
+	} else if (iw == 0xf57ff06f) {
+		debug("isb\tsy\n");
+		return sizeof(uint32_t);
+	} else if ((iw >> 28) == 0xf) {
 		switch (main_opcode) {
 		case 0xa:
 		case 0xb:
@@ -1782,6 +1802,44 @@ int arm_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 		/*
 		 *  Special cases first:
 		 */
+
+		/*
+		 *  ldrex: Load Register Exclusive
+		 *  strex: Store Register Exclusive
+		 */
+		if ((iw & 0x0ff00fff) == 0x01900f9f) {
+			/*  ldrex rt[,rn]:  */
+			debug("ldrex%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[r16]);
+			debug("\n");
+			break;
+		}
+		if ((iw & 0x0ff00ff0) == 0x01800f90) {
+			/*  strex rd,rt[,rn]:  */
+			debug("strex%s\t%s,%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15],
+				arm_regname[r16]);
+			debug("\n");
+			break;
+		}
+
+		/*
+		 *  Multiplication:
+		 *  xxxx0000 0110dddd aaaammmm 1001nnnn  mls rd,rn,rm,ra
+		 */
+		if ((iw & 0x0ff000f0) == 0x00600090) {
+			debug("mls%s\t", condition);
+			debug("%s,", arm_regname[r16]);
+			debug("%s,", arm_regname[iw & 15]);
+			debug("%s,", arm_regname[r8]);
+			debug("%s", arm_regname[r12]);
+			debug("\n");
+			break;
+		}
 
 		/*
 		 *  Multiplication:
@@ -1893,6 +1951,26 @@ int arm_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 		if ((iw & 0x0fff0ff0) == 0x016f0f10) {
 			debug("clz%s\t", condition);
 			debug("%s,%s\n", arm_regname[r12], arm_regname[iw&15]);
+			break;
+		}
+
+		/*
+		 *  xxxx0011 0000mmm ddddmmm mmmmmmm    MOVW Rd,imm
+		 */
+		if ((iw & 0x0ff00000) == 0x03000000) {
+			debug("movw%s\t", condition);
+			debug("%s,#%i\n", arm_regname[r12],
+				((iw & 0xf0000) >> 4) | (iw & 0xfff));
+			break;
+		}
+
+		/*
+		 *  xxxx0011 0100mmm ddddmmm mmmmmmm    MOVT Rd,imm
+		 */
+		if ((iw & 0x0ff00000) == 0x03400000) {
+			debug("movt%s\t", condition);
+			debug("%s,#%i\n", arm_regname[r12],
+				((iw & 0xf0000) >> 4) | (iw & 0xfff));
 			break;
 		}
 
@@ -2079,12 +2157,137 @@ int arm_cpu_disassemble_instr(struct cpu *cpu, unsigned char *ib,
 	case 0x5:
 	case 0x6:
 	case 0x7:
-		/*  Special case first:  */
+		/*  Special cases first:  */
 		if ((iw & 0xfc70f000) == 0xf450f000) {
 			/*  Preload:  */
 			debug("pld\t[%s]\n", arm_regname[r16]);
 			break;
 		}
+
+		if ((iw & 0x0fff0ff0) == 0x06bf0f30) {
+			/*  rev rd,rm:  */
+			debug("rev%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fff03f0) == 0x06bf0070) {
+			/*  sxth rd,rm[,rot]:  */
+			debug("sxth%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			int rot = ((iw & 0xc00) >> 10) << 3;
+			if (rot != 0)
+				debug(",%i", rot);
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fff03f0) == 0x06ef0070) {
+			/*  uxtb rd,rm[,rot]:  */
+			debug("uxtb%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			int rot = ((iw & 0xc00) >> 10) << 3;
+			if (rot != 0)
+				debug(",%i", rot);
+			debug("\n");
+			break;
+		}
+
+		// Note: uxtab is decoded AFTER uxtb.
+		if ((iw & 0x0ff003f0) == 0x06e00070) {
+			/*  uxtab rd,rn,rm[,rot]:  */
+			debug("uxtab%s\t%s,%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[r16],
+				arm_regname[iw & 15]);
+			int rot = ((iw & 0xc00) >> 10) << 3;
+			if (rot != 0)
+				debug(",%i", rot);
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fff03f0) == 0x06ff0070) {
+			/*  uxth rd,rm[,rot]:  */
+			debug("uxth%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			int rot = ((iw & 0xc00) >> 10) << 3;
+			if (rot != 0)
+				debug(",%i", rot);
+			debug("\n");
+			break;
+		}
+
+		// Note: uxtah is decoded AFTER uxth.
+		if ((iw & 0x0ff003f0) == 0x06f00070) {
+			/*  uxtah rd,rn,rm[,rot]:  */
+			debug("uxtah%s\t%s,%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[r16],
+				arm_regname[iw & 15]);
+			int rot = ((iw & 0xc00) >> 10) << 3;
+			if (rot != 0)
+				debug(",%i", rot);
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fe00070) == 0x07c00010) {
+			/*  bfi rd,rn,#lsb,#width:  */
+			debug("bfi%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			int lsb = (iw >> 7) & 31;
+			int msb = (iw >> 16) & 31;
+			int width = msb - lsb + 1;
+			debug(",%i", lsb);
+			debug(",%i", width);
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fe00070) == 0x07e00050) {
+			/*  ubfx rd,rn,#lsb,#width:  */
+			debug("ubfx%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			debug(",%i", (iw >> 7) & 31);
+			debug(",%i", 1 + ((iw >> 16) & 31));
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fe00070) == 0x07a00050) {
+			/*  sbfx rd,rn,#lsb,#width:  */
+			debug("sbfx%s\t%s,%s",
+				condition,
+				arm_regname[r12],
+				arm_regname[iw & 15]);
+			debug(",%i", (iw >> 7) & 31);
+			debug(",%i", 1 + ((iw >> 16) & 31));
+			debug("\n");
+			break;
+		}
+
+		if ((iw & 0x0fffffff) == 0x07f001f2) {
+			debug("linux_bug%s\t; see https://github.com/torvalds/linux/blob/master/arch/arm/include/asm/bug.h\n",
+				condition);
+			break;
+		}
+
 
 		/*
 		 *  xxxx010P UBWLnnnn ddddoooo oooooooo  Immediate form
@@ -2337,9 +2540,10 @@ void arm_mcr_mrc(struct cpu *cpu, uint32_t iword)
 		cpu->cd.arm.coproc[cp_num](cpu, opcode1, opcode2, l_bit,
 		    crn, crm, rd);
 	else {
-		fatal("[ arm_mcr_mrc: pc=0x%08x, iword=0x%08x: "
+		fatal("[ TODO: arm_mcr_mrc: pc=0x%08x, iword=0x%08x: "
 		    "cp_num=%i ]\n", (int)cpu->pc, iword, cp_num);
-		arm_exception(cpu, ARM_EXCEPTION_UND);
+
+		// arm_exception(cpu, ARM_EXCEPTION_UND);
 		/*  exit(1);  */
 	}
 }

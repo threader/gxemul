@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -58,7 +58,7 @@
 
 
 /*  Let's hope nothing is there already...  */
-#define	FAKE_GBE_FB_ADDRESS	0x380000000
+#define	FAKE_GBE_FB_ADDRESS	0x380000000ULL
 
 
 // #define	GBE_DEBUG
@@ -760,7 +760,7 @@ void dev_sgi_gbe_init(struct machine *machine, struct memory *mem, uint64_t base
 	// Grayscale palette, most likely overwritten immediately by the
 	// guest operating system.
 	for (int i = 0; i < 256; ++i)
-		d->palette[i] = i * 0x01010100;
+		d->palette[i] = i * 0x01010100UL;
 
 	d->fb_data = dev_fb_init(machine, mem, FAKE_GBE_FB_ADDRESS,
 	    VFB_GENERIC, d->xres, d->yres, d->xres, d->yres, 24, "SGI GBE");
