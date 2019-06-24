@@ -4,7 +4,7 @@ Upstream-Contact: Anders Gavare <gavare@gmail.com>
 Source: http://gavare.se/gxemul/
 
 Files: *
-Copyright: 2003-2018 Anders Gavare <gavare@gmail.com>
+Copyright: 2003-2019 Anders Gavare <gavare@gmail.com>
 License: BSD-3-clause
 
 Files: demos/*
@@ -423,7 +423,7 @@ Comment:
  | Yes, scramble.c is also in the public domain.
 
 Files: debian/*
-Copyright: 2004-2018, Göran Weinholt <weinholt@debian.org>
+Copyright: 2004-2019, Göran Weinholt <weinholt@debian.org>
            2008-2010 Jonathan Wiltshire <debian@jwiltshire.org.uk>
 License: BSD-3-clause
 Comment: No explicit license historically; assuming 'LICENSE' applies
