@@ -1,3 +1,13 @@
+gxemul (0.6.2-2) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Set debhelper-compat version in Build-Depends.
+
+  [ Göran Weinholt ]
+  * debian/control: Standards-Version 4.5.0 (no changes)
+
+ -- Göran Weinholt <weinholt@debian.org>  Tue, 25 Aug 2020 21:25:06 +0200
+
 gxemul (0.6.2-1) experimental; urgency=low
 
   * New upstream version
