@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2019  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2020  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -322,8 +322,9 @@ static void usage(int longusage)
 	printf("  -Z n      set nr of graphics cards, for emulating a "
 	    "dual-head or tripple-head\n"
 	    "            environment (only for DECstation emulation)\n");
-	printf("  -z disp   add disp as an X11 display to use for "
-	    "framebuffers\n");
+#ifdef WITH_X11
+	printf("  -z disp   add disp as an X11 display to use for framebuffers\n");
+#endif /*  WITH_X11  */
 
 	printf("\nGeneral options:\n");
 	printf("  -c cmd    add cmd as a command to run before starting "
@@ -383,7 +384,6 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 	int using_switch_e = 0, using_switch_E = 0;
 	bool using_switch_B = false;
 	char *type = NULL, *subtype = NULL;
-	int n_cpus_set = 0;
 	int msopts = 0;		/*  Machine-specific options used  */
 	struct machine *m = emul_add_machine(emul, NULL);
 
@@ -463,8 +463,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			msopts = 1;
 			break;
 		case 'j':
-			CHECK_ALLOCATION(m->boot_kernel_filename =
-			    strdup(optarg));
+			CHECK_ALLOCATION(m->boot_kernel_filename = strdup(optarg));
 			msopts = 1;
 			break;
 		case 'k':
@@ -488,7 +487,6 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			break;
 		case 'n':
 			m->ncpus = atoi(optarg);
-			n_cpus_set = 1;
 			msopts = 1;
 			break;
 		case 'O':
@@ -496,8 +494,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			msopts = 1;
 			break;
 		case 'o':
-			CHECK_ALLOCATION(m->boot_string_argument =
-			    strdup(optarg));
+			CHECK_ALLOCATION(m->boot_string_argument = strdup(optarg));
 			msopts = 1;
 			break;
 		case 'p':

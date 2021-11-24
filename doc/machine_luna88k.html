@@ -16,7 +16,7 @@
 
 <!--
 
-Copyright (C) 2006-2019  Anders Gavare.  All rights reserved.
+Copyright (C) 2006-2021  Anders Gavare.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -46,13 +46,29 @@ SUCH DAMAGE.
 
 
 <p>This emulation mode attempts to emulate a Luna 88K workstation. Note that these
-were based on Motorola 88000 processors, not 68000.
+were based on <a href="https://en.wikipedia.org/wiki/Motorola_88000">Motorola
+88000</a> processors, not 68000.
 
-<p><font color="red">NOTE:</font> The Luna 88K emulation mode is not fully working yet.
-An older OpenBSD/luna88k
-ramdisk kernel can reach userland and be interacted with, and some framebuffer
-output can be seen. Newer kernels, however, panic. Most likely, this is due
-to bugs in the emulator.
+<p>Emulated hardware:
+<ul>
+	<li>88100 CPU  (Only a single CPU works. Real LUNA machines could have up to 4.)
+	<li>Interrupt controller and parts of the system board
+	<li>Serial console
+	<li>Keyboard
+	<li>Graphical monochrome framebuffer, 1280 x 1024
+	<li>Lance Ethernet
+</ul>
+
+<p><b>NOT</b> emulated yet:
+<ul>
+	<li>SCSI
+	<li>Mouse
+	<li><i>Color</i> framebuffers
+</ul>
+
+<p>OpenBSD/luna88k running as a guest OS can reach userland and be
+interacted with, using either serial console or a graphical framebuffer,
+when using root-on-nfs.
 
 
 
@@ -61,37 +77,220 @@ to bugs in the emulator.
 <a name="openbsdluna88k"></a>
 <h3>OpenBSD/luna88k:</h3>
 
-<p><font color="#ff0000">IT DOES <b>NOT</b> WORK YET!</font>
+<p>GXemul does not yet emulate the SCSI controller in the LUNA88K machine,
+so OpenBSD/luna88k needs to boot with root-on-nfs.
+Another emulated machine must then be used as the nfs root server, and the
+emulated LUNA88K machine must boot as a <a href="http://man.openbsd.org/diskless">diskless</a>
+client. To make matters even more complicated, the OpenBSD/luna88k 6.8 RAMDISK
+kernel has support for Ethernet, but it does not seem to have a driver for
+nfs included or at least it doesn't work in the emulator. Therefore, a <i>separate</i>
+OpenBSD ramdisk kernel, e.g. for OpenBSD/sgi, needs to be used to run the final
+step of the root-on-nfs installation.
 
-<p>These instructions are here mostly for me to remember how to debug/proceed:
+<p>Performing this setup is quite time consuming, but necessary.
+
+<p><a href="openbsd-luna88k-20210130.png"><img src="openbsd-luna88k-20210130-small.png"></a>
+<a href="openbsd-luna88k-20210209.png"><img src="openbsd-luna88k-20210209-small.png"></a>
+
+<p>Let's get started.
 
 <p>
-Download a RAMDISK kernel:
+<ol>
+  <li>First of all, the "<tt>nfs server</tt>" machine must be set up.
+	<a href="machine_decstation.html#netbsdpmaxinstall">Install NetBSD/pmax 8.0 from CDROM</a>,
+	perform a default install (without X11) from CDROM without configuring the
+	network, but add a 4000 MB <tt>/tftpboot</tt> partition when
+	configuring the disk!
+  <p>
+  <li>On the host, download the OpenBSD distribution:
+<p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/base68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/comp68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xbase68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xfont68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xserv68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xshare68.tgz
+</pre></td></tr></table>
+  <li>Start the emulation of the DECstation NFS server using this command line:
+<p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>gxemul -xe 3max -d nbsd_pmax.img -d base68.tgz -d comp68.tgz -d xbase68.tgz -d xfont68.tgz -d xserv68.tgz -d xshare68.tgz
+</pre></td></tr></table>
+and enter the following commands to configure the server for NFS serving and
+extract the OpenBSD distribution:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<b>echo hostname=server &gt;&gt; /etc/rc.conf
+echo ifconfig_le0=\"inet 10.0.0.2\" &gt;&gt; /etc/rc.conf
+echo nameserver 10.0.0.254 &gt;&gt; /etc/resolv.conf
+echo 10.0.0.254 &gt; /etc/mygate
+echo /tftpboot -maproot=root 10.0.0.3 &gt; /etc/exports
+echo rpcbind=YES &gt;&gt; /etc/rc.conf
+echo nfs_server=YES &gt;&gt; /etc/rc.conf
+echo mountd=YES &gt;&gt; /etc/rc.conf
+echo bootparamd=YES &gt;&gt; /etc/rc.conf
+printf "client root=10.0.0.2:/tftpboot swap=10.0.0.2:/tftpboot/swap\n" &gt; /etc/bootparams
+echo "00:00:0a:10:20:30 client" &gt; /etc/ethers
+echo 10.0.0.3 client &gt; /etc/hosts
+
+cd /tftpboot
+tar xzf /dev/sd1c
+tar xzf /dev/sd2c
+tar xzf /dev/sd3c
+tar xzf /dev/sd4c
+tar xzf /dev/sd5c
+tar xzf /dev/sd6c
+
+tar zxfv var/sysmerge/etc.tgz
+tar zxfv var/sysmerge/xetc.tgz
+
+dd if=/dev/zero of=swap bs=1024 count=262144
+
+echo inet 10.0.0.3 > /tftpboot/etc/hostname.le0
+echo 10.0.0.254 > /tftpboot/etc/mygate
+echo nameserver 10.0.0.254 > /tftpboot/etc/resolv.conf
+echo 127.0.0.1 client localhost > /tftpboot/etc/hosts
+echo 10.0.0.2:/tftpboot / nfs rw 0 0 > /tftpboot/etc/fstab
+echo 10.0.0.2:/tftpboot/swap none swap sw,nfsmntpt=/swap >> /tftpboot/etc/fstab
+
+halt</b>
+</pre></td></tr></table>
+  <li>Download the OpenBSD/luna88k GENERIC and RAMDISK kernels:<pre>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd</a>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd</a>
+
+</pre>
+  <li>Create a configuration file called <tt>config_client</tt>:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<font color="#2020cf">!  Configuration file for running OpenBSD/luna88k diskless with
+!  a NetBSD/pmax machine as the nfs server.
+!
+!  This config file is for the client.</font>
+
+<b>net(
+	add_remote("localhost:12444")   </b>! the server<b>
+	local_port(12445)               </b>! the client<b>
+)
+
+machine(
+	name("client machine")
+	serial_nr(1)
+
+        type("luna88k")
+        subtype("luna-88k")
+	! use_x11(1)
+
+        ! load("bsd.rd")
+        load("bsd")
+)
+</b>
+</pre></td></tr></table>
+	... and another configuration file for the server,
+	<tt>config_server</tt>:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<b>net(
+	local_port(12444)               </b>! the server<b>
+	add_remote("localhost:12445")   </b>! the client<b>
+)
+
+machine(
+	name("nfs server")
+	serial_nr(2)
+
+        type("dec")
+        subtype("5000/200")
+
+        disk("nbsd_pmax.img")
+)
+</b>
+</pre></td></tr></table>
+
+  <li>Download an OpenBSD/sgi RAMDISK kernel (only used to run MAKEDEV):<pre>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.7/sgi/bsd.rd.IP32">http://ftp.eu.openbsd.org/pub/OpenBSD/6.7/sgi/bsd.rd.IP32</a>
+
+</pre>
+
+  <li>Create a configuration file called <tt>config_client_sgi</tt>:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<font color="#2020cf">!  Configuration file for running OpenBSD/sgi diskless with
+!  a NetBSD/pmax machine as the nfs server.
+!
+!  This config file is for the client.</font>
+
+<b>net(
+	add_remote("localhost:12444")   </b>! the server<b>
+	local_port(12445)               </b>! the client<b>
+)
+
+machine(
+	name("client machine")
+	serial_nr(1)
+
+        type("sgi")
+        subtype("o2")
+	use_x11(1)
+	memory(1024)
+
+        load("bsd.rd.IP32")
+        ! load("bsd.IP32")
+)
+</b>
+</pre></td></tr></table>
+
+  <li>Boot the "nfs server" and the OpenBSD/sgi
+	"client machine" as two separate emulator instances:<pre>
+	in one xterm:
+	<b>gxemul @config_server</b>
+
+	and then, in another xterm:
+	<b>gxemul @config_client_sgi</b>
+
+</pre>
+
+  <li>In the emulated OpenBSD/sgi client, type 's' for Shell and run these commands:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<b>ifconfig mec0 10.0.0.3; route add default 10.0.0.254
+mount -v 10.0.0.2:/tftpboot /mnt
+cd /mnt/dev; ./MAKEDEV all; cd /; umount /mnt
+halt -p</b>
+</pre></td></tr></table>
+  <li>Finally, run the luna88k client:<pre>
+	<b>gxemul @config_client</b>
+
+</pre>
+	When asked about root device, enter <tt>le0</tt>.
+</ol>
+
+
+<p><br>
+If you want to run with the graphical framebuffer, uncomment the
+<tt>use_x11(1)</tt> line in <tt>config_client</tt> first.
+Unfortunately, Xorg lacks a driver for <tt>wsfb</tt> in OpenBSD/luna88k
+6.8, which is needed. A naive attempt at simply copying the driver from
+OpenBSD/luna88k 6.7 randomly resulted in Xorg's gray default background being
+visible for a second or so, when running <tt>startx</tt>.
+
+<p>(I also attempted to do the entire install using 6.7, but then logging in
+as root on the console was not possible.)
+
+
+<p><br>
+<p>
+One can also experiment with the RAMDISK kernel (much easier than following
+the rather involved process above):
 
 <ul>
-	<li><a href="https://ftp.eu.openbsd.org/pub/OpenBSD/5.4/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/5.4/luna88k/bsd.rd</a>
-	<li><a href="https://ftp.eu.openbsd.org/pub/OpenBSD/5.9/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/5.9/luna88k/bsd.rd</a>
-	<li><a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/bsd.rd</a>
+	<li>Download <a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd</a>
 </ul>
 
-<p>For 5.4 and below:
-<pre>
-	<b>gxemul -e luna-88k 0x20000:0x20:bsd.rd</b>
-</pre>
-
-<p>or for the newer ones:
-
+<p>
+Start the emulator like this:
 <pre>
 	<b>gxemul -e luna-88k bsd.rd</b>
+
+	<i>(For older OpenBSD/luna88k kernels, 5.4 and below:)
+	gxemul -e luna-88k 0x20000:0x20:bsd.rd</i>
 </pre>
 
-<p>From 6.0 and newer, bugs are triggered (most likely in GXemul):
-<pre>
-	panic: amap_wipeout: corrupt amap
-</pre>
+<p>Add <tt>-X</tt> if you want to use the graphical framebuffer.
 
-<p>The 5.9 kernel gets further than 6.0 (reaching userland) when run without graphical framebuffer:
-
+<p>This is what can be expected of the RAMDISK kernel:
 <pre>
 CPU0 is associated to 2 MC88200 CMMUs
 CPU1 is associated to 2 MC88200 CMMUs
@@ -99,18 +298,19 @@ CPU2 is associated to 2 MC88200 CMMUs
 CPU3 is associated to 2 MC88200 CMMUs
 Copyright (c) 1982, 1986, 1989, 1991, 1993
 	The Regents of the University of California.  All rights reserved.
-Copyright (c) 1995-2016 OpenBSD. All rights reserved.  http://www.OpenBSD.org
+Copyright (c) 1995-2020 OpenBSD. All rights reserved.  https://www.OpenBSD.org
 
-OpenBSD 5.9 (RAMDISK) #0: Fri Mar  4 23:48:03 JST 2016
-    aoyama@rhea.in.nk-home.net:/w1/o/5.9/src/sys/arch/luna88k/compile/RAMDISK
+OpenBSD 6.8 (RAMDISK) #0: Tue Oct 13 00:19:54 JST 2020
+    aoyama@aurora.in.nk-home.net:/w1/o/6.8/src/sys/arch/luna88k/compile/RAMDISK
 real mem = 117440512 (112MB)
-avail mem = 110456832 (105MB)
+avail mem = 110452736 (105MB)
+random: boothowto does not indicate good seed
 mainbus0 at root: OMRON LUNA-88K, 25MHz
 cpu0: M88100 rev 0x3, 2 CMMU
 cpu0: M88200 (16K) rev 0x9, full Icache
 cpu0: M88200 (16K) rev 0x9, full Dcache
 clock0 at mainbus0: MK48T02
-le0 at mainbus0: address 00:00:00:00:00:00
+le0 at mainbus0: address 00:00:0a:10:20:30
 le0: 32 receive buffers, 8 transmit buffers
 sio0 at mainbus0: 7201a
 siotty0 at sio0 channel 0 (console)
@@ -134,69 +334,69 @@ spc0: SCSI bus reset
 spc0: SCSI bus reset
 spc0: SCSI bus reset
 spc0: SCSI bus reset
-boot device: &lt;unknown>
+boot device: <unknown>
 root on rd0a swap on rd0b dump on rd0b
-WARNING: clock lost 281 days -- CHECK AND RESET THE DATE!
+WARNING: bad clock chip time
+WARNING: CHECK AND RESET THE DATE!
 erase ^?, werase ^W, kill ^U, intr ^C, status ^T
 
-Welcome to the OpenBSD/luna88k 5.9 installation program.
-(I)nstall, (U)pgrade, (A)utoinstall or (S)hell? s
-# echo $OBSD
-OpenBSD/luna88k 5.9
-# 
+Welcome to the OpenBSD/luna88k 6.8 installation program.
+(I)nstall, (U)pgrade, (A)utoinstall or (S)hell? <b>s</b>
+# <b>set</b>
+ARCH=luna88k
+DONEPROFILE=YES
+HOME
+IFS=' 	
+'
+MAILCHECK=600
+OBSD='OpenBSD/luna88k 6.8'
+OLDPWD
+OPTIND=1
+PATH=/sbin:/bin:/usr/bin:/usr/sbin:/
+PPID=1
+PS1='\h\$ '
+PS2='> '
+PS3='#? '
+PS4='+ '
+PWD=/
+RANDOM
+REPLY=s
+SECONDS=213
+SHELL
+SH_VERSION='@(#)PD KSH v5.2.14 99/07/13.2'
+TMOUT=0
+VERSION=68
+VNAME=6.8
+rootdisk=rd0a
+timeout=false
+timer_pid=
+# <b>ls -l</b>
+total 156
+-rw-r--r--  1 root  wheel   1480 Oct 12 16:50 .profile
+lrwxr-xr-x  1 root  wheel     11 Oct 12 16:50 autoinstall -> install.sub
+drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 bin
+drwxr-xr-x  2 root  wheel   8192 Oct 12 16:46 dev
+drwxr-xr-x  5 root  wheel    512 Oct 12 16:50 etc
+lrwxr-xr-x  1 root  wheel     11 Oct 12 16:50 install -> install.sub
+-rw-r--r--  1 root  wheel    335 Oct 12 16:50 install.md
+-rwxr-xr-x  1 root  wheel  59228 Oct 12 16:50 install.sub
+drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 mnt
+drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 mnt2
+drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 sbin
+drwxrwxrwt  4 root  wheel    512 Oct 12 16:50 tmp
+lrwxr-xr-x  1 root  wheel     11 Oct 12 16:50 upgrade -> install.sub
+drwxr-xr-x  6 root  wheel    512 Oct 12 16:45 usr
+drwxr-xr-x  6 root  wheel    512 Oct 12 16:50 var
+# <b>halt</b>
+syncing disks... done
+halted
+
 </pre>
 
-<p>It seems that some versions of OpenBSD had a tiny bug in the framebuffer
-scroll up routine, so it does not contain any loads or stores.
 
-<p>Using a breakpoint
-<tt>-p om1_windowmove</tt> in both OpenBSD 5.9 and 6.2 indicates that 
-5.9 must have been optimized too heavily or had a bug; it loops when trying to copy
-pixels to scroll up the text, but the loop contains "nothing":
-
-<pre>
-s001553b8: 64e70001	subu	r7,r7,1
-s001553bc: 61270001	addu	r9,r7,1
-s001553c0: ec4c0004	bcnd.n	eq0,r12,0x001553d0	; &lt;om1_windowmove+0x3b0>
-s001553c4: 59600000 (d)	or	r11,r0,0x0
-s001553c8: f1a08832	set	r13,r0,1&lt;18>
-s001553cc: f562600d	addu	r11,r2,r13
-s001553d0: 60420004	addu	r2,r2,4
-s001553d4: eda9fff9	bcnd.n	ne0,r9,0x001553b8	; &lt;om1_windowmove+0x398>
-s001553d8: 616b0004 (d)	addu	r11,r11,4
-s001553b8: 64e70001	subu	r7,r7,1
-...
-</pre>
-
-<p>compared to what it looks like in 6.2:
-
-<pre>
-s001547a4: 64e70001	subu	r7,r7,1
-s001547a8: 61270001	addu	r9,r7,1
-s001547ac: 60420004	addu	r2,r2,4
-s001547b0: eda9fffa	bcnd.n	ne0,r9,0x00154798	; &lt;om1_windowmove+0x398>
-s001547b4: 616b0004 (d)	addu	r11,r11,4
-s00154798: edac003e	bcnd.n	ne0,r12,0x00154890	; &lt;om1_windowmove+0x490>
-s0015479c: f1208832 (d)	set	r9,r0,1&lt;18>
-s00154890: f5021409	ld	r8,r2,r9	; [0xb10c958c]
-s00154894: c7ffffc4	br.n	0x001547a4	; &lt;om1_windowmove+0x3a4>
-s00154898: f500240b (d)	st	r8,r0,r11	; [0xb1087f8c]
-s001547a4: 64e70001	subu	r7,r7,1
-</pre>
-
-<p>Note the actual loads and stores to video ram (0xb10.....).
-
-<p>Going back all the way to an old 5.4 kernel allows the framebuffer to 
-be used:
-<pre>
-	<b>gxemul -X -e luna-88k 0x20000:0x20:bsd.rd</b>
-</pre>
 
 <p>
-<a href="20180220-openbsd-luna88k-5.4.png"><img src="20180220-openbsd-luna88k-5.4-small.png"></a>
-
-
-<p>The following is not needed in order to experiment with booting OpenBSD,
+The following is not needed in order to experiment with booting OpenBSD,
 but can be interesting nonetheless: Download 
 <a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/boot">https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/boot</a> and try
 
@@ -204,11 +404,6 @@ but can be interesting nonetheless: Download
 	<b>gxemul -v -e luna-88k 0x00700000:0x20:0x00700000:boot</b>
 </pre>
 
-
-
-
-
-<p><br>
 
 
 

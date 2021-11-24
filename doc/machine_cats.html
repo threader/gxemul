@@ -53,6 +53,9 @@ old versions of <a href="#netbsdcatsinstall">NetBSD/cats</a> and
 perhaps run in the future.
 
 <p>Known issue: Clocks inside the emulated guest OS run at the wrong pace.
+For example, typing "<tt>date; sleep 10; date</tt>" inside NetBSD/cats takes
+10 seconds to run, but outputs dates that are over 2 minute apart (!) on
+my machine.
 
 
 
@@ -77,14 +80,14 @@ To install NetBSD/cats onto a disk image, follow these instructions:
 
 </pre>
   <li>Download the NetBSD/cats ISO image and the generic and install kernels:<pre>
-	<a href="ftp://ftp.de.netbsd.org/pub/NetBSD/iso/8.0/NetBSD-8.0-cats.iso">ftp://ftp.de.netbsd.org/pub/NetBSD/iso/8.0/NetBSD-8.0-cats.iso</a>
-	<a href="ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.0/cats/binary/kernel/netbsd-GENERIC.aout.gz">ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.0/cats/binary/kernel/netbsd-GENERIC.aout.gz</a>
-	<a href="ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.0/cats/binary/kernel/netbsd-INSTALL.aout.gz">ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.0/cats/binary/kernel/netbsd-INSTALL.aout.gz</a>
+	<a href="ftp://ftp.de.netbsd.org/pub/NetBSD/iso/8.1/NetBSD-8.1-cats.iso">ftp://ftp.de.netbsd.org/pub/NetBSD/iso/8.1/NetBSD-8.1-cats.iso</a>
+	<a href="ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.1/cats/binary/kernel/netbsd-GENERIC.aout.gz">ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.1/cats/binary/kernel/netbsd-GENERIC.aout.gz</a>
+	<a href="ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.1/cats/binary/kernel/netbsd-INSTALL.aout.gz">ftp://ftp.de.netbsd.org/pub/NetBSD/NetBSD-8.1/cats/binary/kernel/netbsd-INSTALL.aout.gz</a>
 
 </pre>
   <p>
   <li>Start the installation like this:<pre>
-	<b>gxemul -X -E cats -d nbsd_cats.img -d NetBSD-8.0-cats.iso netbsd-INSTALL.aout.gz</b>
+	<b>gxemul -X -E cats -d nbsd_cats.img -d NetBSD-8.1-cats.iso netbsd-INSTALL.aout.gz</b>
 
 </pre>
 	and proceed like you would do if you were installing NetBSD on a real
@@ -93,10 +96,14 @@ To install NetBSD/cats onto a disk image, follow these instructions:
 
 <p>Note that there may be some long delays during bootup.
 
-<p>Alternatively, to install from FTP, you can skip downloading the ISO,
-and start the install without <tt>-d xxxxx.iso</tt>. Suitable network 
-settings are IP 10.0.0.1, gateway/default route 10.0.0.254, netmask 
-255.0.0.0, nameserver 10.0.0.254.
+<p>(NOTE: Older versions of NetBSD could install via FTP in older versions
+of GXemul. Right now, that seems to not be possible, resulting in ethernet
+timeouts etc. Whether it is due to bit rot in the emulator, or due to NetBSD
+having changed over time, has not been debugged.
+If you want to try an FTP install anyway, 
+start the install without <tt>-d xxxxx.iso</tt> and use
+IPv4 address 10.0.0.1, gateway/default route 10.0.0.254, netmask 
+255.0.0.0, and nameserver 10.0.0.254, when asked to configure the network.)
 
 <p>If everything worked, NetBSD should now be installed on the disk image.
 Use the following command line to boot the emulated CATS machine:<pre>

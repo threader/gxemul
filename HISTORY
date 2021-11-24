@@ -4910,3 +4910,45 @@ Changelog for GXemul:
 
 ==============  RELEASE 0.6.2  ==============
 
+20190626	Rounding up disk image sizes to full cylinders; fixes a bug
+		where guest OSes could fail to read the end of e.g. a .tar.gz
+		file supplied as a disk image on the command line.
+20201006	Applying a rather large patch from Jason Thorpe for using
+		/dev/tap devices in addition to the existing networking modes.
+		The patch also consists of enhancements to the DEC21143 and
+		Lance ethernet devices to perform packet filtering.
+20201015	Adding support for masks for memory mapped components in the
+		new framework. Used so far by the HP 700/RX, which has 2 MB
+		RAM repeated throughout 0x30000000..0x3fffffff.
+20201101	bootblock.cc now parses SGI disk boot blocks, and tries to
+		load the OSLoader (sash), if booting without an explicitly
+		provided OS kernel.
+20201103	The ECOFF file loader can now (barely) load relocated binaries,
+		such as "sash" from an IRIX installation on my real O2.
+20201105	Some minor refactoring of arcbios environment variables etc,
+		to attempt to get emulated O2 boot-from-disk image (or cdrom
+		image) to work better.
+20210116	Include ASID and VPN2 in MIPS load/store misalignment
+		exceptions (patch from Nick Hudson).
+20210123	Adding a patch from Luchezar Georgiev for missing variant of
+		rot for 88100 (immediate argument), and for missing addu_cio
+		and subu_cio instructions.
+		Inspired by Luchezar Georgiev's patch for subu_cio, a closer
+		look at the subu borrow bit resulted in a bug fix which finally
+		allows a OpenBSD/luna88k 6.8 ramdisk to boot all the way to
+		userland.
+20210127	Writing some ugly glue code to connect the Lance Ethernet
+		device (dev_le) to the LUNA88K machine. An OpenBSD/luna88k 6.8
+		ramdisk can now (barely) reach the internet using TCP/IPv4.
+20210130	Writing guest OS install instructions for running OpenBSD/
+		luna88k with root-on-nfs, which involves using NetBSD/pmax as
+		an NFS server and OpenBSD/sgi (!) to run MAKEDEV.
+20210207	Fixing a spelling mistake in the 88K fdiv.sss instruction,
+		making self-compilation of [an older version of] GXemul inside
+		OpenBSD/luna88k get further.
+20210209	Adding keyboard support to dev_luna88k.
+20210213	Implementing exception cases in 88K xmem_slow implementation.
+20210214	Implementing the fdiv.dss 88K instruction.
+20210215	Implementing the fsub.sss 88K instruction.
+
+==============  RELEASE 0.6.3  ==============

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2018-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,22 @@
  *
  *  Almost everything in here is just dummy code which returns nonsense,
  *  just enough to fake hardware well enough to get OpenBSD/luna88k to
- *  not stop early during bootup. It does not really work yet.
+ *  work to some basic degree.
+ *
+ *  Things that are implemented:
+ *	Interrupt controller for CPU #0
+ *	Serial I/O
+ *	Keyboard
+ *	Monochrome framebuffer
+ *	Lance ethernet
+ *
+ *  Things that are NOT implemented yet:
+ *	Actually working multi-CPU interrupt support:
+ *		Interrupt mask & status, clocks, etc.
+ *	SCSI
+ *	Parallel I/O
+ *	Mouse
+ *	Color framebuffer
  *
  *  TODO: Separate out these devices to their own files, so that they can
  *  potentially be reused for a luna68k mode if necessary.
@@ -55,13 +70,16 @@
 
 #define	TICK_STEPS_SHIFT	14
 
+// TODO: Actually make this configurable. Currently hardcoded to match OpenBSD/luna88k.
+#define	LUNA88K_PSEUDO_TIMER_HZ	100.0
 
 #define	LUNA88K_REGISTERS_BASE		0x3ffffff0UL
-#define	LUNA88K_REGISTERS_END		0xff000000UL
+#define	LUNA88K_REGISTERS_END		0xf0800000UL
 #define	LUNA88K_REGISTERS_LENGTH	(LUNA88K_REGISTERS_END - LUNA88K_REGISTERS_BASE)
 
 #define	MAX_CPUS	4
 
+#define	SIO_QUEUE_SIZE	256
 
 #define	BCD(x) ((((x) / 10) << 4) + ((x) % 10))
 
@@ -70,31 +88,72 @@ struct luna88k_data {
 	struct vfb_data *fb;
 
 	struct interrupt cpu_irq;
-	bool		irqActive;
+	int		irqActive;
 	uint32_t	interrupt_enable[MAX_CPUS];
 	uint32_t	interrupt_status[MAX_CPUS];
-
 	uint32_t	software_interrupt_status[MAX_CPUS];
 
-	int		timer_tick_counter_bogus;
+	/*  Timer stuff  */
+	struct timer	*timer;
+	int		pending_timer_interrupts;
 	struct interrupt timer_irq;
 
+	/*  sio: Serial controller, two channels.  */
 	int		console_handle;
-	int		interrupt_delay;
-	struct interrupt irqX;
-
-	/*  Two channels.  */
+	struct interrupt sio_irq;
+	int		sio_tx_interrupt_countdown;
 	int		obio_sio_regno[2];
 	uint8_t		obio_sio_rr[2][8];
 	uint8_t		obio_sio_wr[2][8];
+	uint8_t		sio_queue[2][SIO_QUEUE_SIZE];
+	int		sio_queue_head[2];
+	int		sio_queue_tail[2];
 
+	/*  ROM and RAM (used by the Ethernet interface)  */
 	uint32_t	fuse_rom[FUSE_ROM_SPACE / sizeof(uint32_t)];
 	uint8_t		nvram[NVRAM_SPACE];
+	uint8_t		tri_port_ram[TRI_PORT_RAM_SPACE];
 };
 
 
+static int anything_in_sio_queue(struct luna88k_data* d, int n)
+{
+	return d->sio_queue_head[n] != d->sio_queue_tail[n];
+}
+
+static int space_available_in_sio_queue(struct luna88k_data* d, int n)
+{
+	int diff = d->sio_queue_head[n] - d->sio_queue_tail[n];
+	if (diff <= 0)
+		diff += SIO_QUEUE_SIZE;
+
+	return diff;
+}
+
+static uint8_t get_from_sio_queue(struct luna88k_data* d, int n)
+{
+	uint8_t result = d->sio_queue[n][d->sio_queue_head[n]++];
+	if (d->sio_queue_head[n] >= SIO_QUEUE_SIZE)
+		d->sio_queue_head[n] = 0;
+
+	return result;
+}
+
+static void add_to_sio_queue(struct luna88k_data* d, int n, uint8_t c)
+{
+	d->sio_queue[n][d->sio_queue_tail[n]++] = c;
+	if (d->sio_queue_tail[n] >= SIO_QUEUE_SIZE)
+		d->sio_queue_tail[n] = 0;
+
+	if (d->sio_queue_tail[n] == d->sio_queue_head[n])
+		fatal("[ luna88k: add_to_sio_queue overrun; increase SIO_QUEUE_SIZE ]\n");
+}
+
 static void reassert_interrupts(struct luna88k_data *d)
 {
+	// TODO: Per-cpu, for multiprocessor machines.
+	// MAYBE just one interrupt_status, but 4 enable words?
+	//
 	// printf("status = 0x%08x, enable = 0x%08x\n",
 	//	d->interrupt_status[0], d->interrupt_enable[0]);
 
@@ -102,12 +161,12 @@ static void reassert_interrupts(struct luna88k_data *d)
 		if (!d->irqActive)
 	                INTERRUPT_ASSERT(d->cpu_irq);
 
-		d->irqActive = true;
+		d->irqActive = 1;
 	} else {
 		if (d->irqActive)
 	                INTERRUPT_DEASSERT(d->cpu_irq);
 
-		d->irqActive = false;
+		d->irqActive = 0;
 	}
 }
 
@@ -125,41 +184,57 @@ static void luna88k_interrupt_deassert(struct interrupt *interrupt)
 	reassert_interrupts(d);
 }
 
+static void reassert_timer_interrupt(struct luna88k_data* d)
+{
+	if (d->pending_timer_interrupts)
+		INTERRUPT_ASSERT(d->timer_irq);
+	else
+		INTERRUPT_DEASSERT(d->timer_irq);
+}
 
 static void reassert_serial_interrupt(struct luna88k_data* d)
 {
-	bool assertSerial = false;
+	int assertSerial = 0;
 
-	if (d->fb != NULL) {
-		/*  Workstation keyboard:  */
-		if ((d->obio_sio_wr[1][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
-		    (d->obio_sio_wr[1][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
-			if (console_charavail(d->console_handle))
-				assertSerial = true;
-		}
-	} else {
-		/*  Serial:  */
-		if ((d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
-		    (d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
-			if (console_charavail(d->console_handle))
-				assertSerial = true;
-		}
+	if ((d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
+	    (d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
+		if (anything_in_sio_queue(d, 0))
+			assertSerial = 1;
+	}
+
+	if ((d->obio_sio_wr[1][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
+	    (d->obio_sio_wr[1][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
+		if (anything_in_sio_queue(d, 1))
+			assertSerial = 1;
 	}
 
 	if (d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_TX_IE) {
-		assertSerial = true;
+		if (--d->sio_tx_interrupt_countdown <= 0) {
+			assertSerial = 1;
+			d->sio_tx_interrupt_countdown = 30;
+		}
 	}
 
-	if (d->interrupt_delay > 0) {
-		assertSerial = false;
-		d->interrupt_delay --;
-	}
+	if (assertSerial)
+		INTERRUPT_ASSERT(d->sio_irq);
+	else
+		INTERRUPT_DEASSERT(d->sio_irq);
+}
 
-	if (assertSerial) {
-		INTERRUPT_ASSERT(d->irqX);
-		d->interrupt_delay = 130;
-	} else {
-		INTERRUPT_DEASSERT(d->irqX);
+
+/*
+ *  luna88k_timer_tick():
+ *
+ *  This function is called LUNA88K_PSEUDO_TIMER_HZ times per real-world second.
+ */
+static void luna88k_timer_tick(struct timer *t, void *extra)
+{
+	struct luna88k_data* d = (struct luna88k_data*) extra;
+	d->pending_timer_interrupts ++;
+	
+	if (d->pending_timer_interrupts > (int)(LUNA88K_PSEUDO_TIMER_HZ/2)) {
+		d->pending_timer_interrupts = 0;
+		debug("[ luna88k_timer_tick: tick lost... restarting timer ticks. ]\n");
 	}
 }
 
@@ -168,14 +243,136 @@ DEVICE_TICK(luna88k)
 {
 	struct luna88k_data *d = (struct luna88k_data *) extra;
 
-	/*  TODO: Correct timing.  */
-	if (d->timer_tick_counter_bogus < 3) {
-		if (++d->timer_tick_counter_bogus >= 3)
-			INTERRUPT_ASSERT(d->timer_irq);
+	/*  Serial console:  */
+	if (d->fb == NULL && space_available_in_sio_queue(d, 0) > 3) {
+		if (console_charavail(d->console_handle)) {
+			int c = console_readchar(d->console_handle);
+			add_to_sio_queue(d, 0, c);
+		}
 	}
 
-	/*  Serial:  */
+	/*  Keyboard:  */
+	if (d->fb != NULL && space_available_in_sio_queue(d, 1) > 7) {
+		if (console_charavail(d->console_handle)) {
+			int c = console_readchar(d->console_handle);
+			int shifted = 0;
+			int controlled = 0;
+			int sc = 0;
+
+			if (c >= 'A' && c <= 'Z') {
+				shifted = 1;
+				c += 'a' - 'A';
+			}
+			
+			if (c >= 1 && c <= 26) {
+				controlled = 1;
+				c += 'a' - 1;
+			}
+			
+			switch (c) {
+			case 'a':	sc = 0x42;	break;
+			case 'b':	sc = 0x56;	break;
+			case 'c':	sc = 0x54;	break;
+			case 'd':	sc = 0x44;	break;
+			case 'e':	sc = 0x34;	break;
+			case 'f':	sc = 0x45;	break;
+			case 'g':	sc = 0x46;	break;
+			case 'h':	sc = 0x47;	break;
+			case 'i':	sc = 0x39;	break;
+			case 'j':	sc = 0x48;	break;
+			case 'k':	sc = 0x49;	break;
+			case 'l':	sc = 0x4a;	break;
+			case 'm':	sc = 0x58;	break;
+			case 'n':	sc = 0x57;	break;
+			case 'o':	sc = 0x3a;	break;
+			case 'p':	sc = 0x3b;	break;
+			case 'q':	sc = 0x32;	break;
+			case 'r':	sc = 0x35;	break;
+			case 's':	sc = 0x43;	break;
+			case 't':	sc = 0x36;	break;
+			case 'u':	sc = 0x38;	break;
+			case 'v':	sc = 0x55;	break;
+			case 'w':	sc = 0x33;	break;
+			case 'x':	sc = 0x53;	break;
+			case 'y':	sc = 0x37;	break;
+			case 'z':	sc = 0x52;	break;
+
+			case '1':	sc = 0x22;	break;
+			case '2':	sc = 0x23;	break;
+			case '3':	sc = 0x24;	break;
+			case '4':	sc = 0x25;	break;
+			case '5':	sc = 0x26;	break;
+			case '6':	sc = 0x27;	break;
+			case '7':	sc = 0x28;	break;
+			case '8':	sc = 0x29;	break;
+			case '9':	sc = 0x2a;	break;
+			case '0':	sc = 0x2b;	break;
+			case '-':	sc = 0x2c;	break;
+			case '^':	sc = 0x2d;	break;
+			case '\\':	sc = 0x2e;	break;
+
+			case '!':	sc = 0x22; shifted = 1;	break;
+			case '"':	sc = 0x23; shifted = 1;	break;
+			case '#':	sc = 0x24; shifted = 1;	break;
+			case '$':	sc = 0x25; shifted = 1;	break;
+			case '%':	sc = 0x26; shifted = 1;	break;
+			case '&':	sc = 0x27; shifted = 1;	break;
+			case '\'':	sc = 0x28; shifted = 1;	break;
+			case '(':	sc = 0x29; shifted = 1;	break;
+			case ')':	sc = 0x2a; shifted = 1;	break;
+			case '=':	sc = 0x2c; shifted = 1;	break;
+			case '~':	sc = 0x2d; shifted = 1;	break;
+			case '|':	sc = 0x2e; shifted = 1;	break;
+
+			case '@':	sc = 0x3c;	break;
+			case '[':	sc = 0x3d;	break;
+			case ';':	sc = 0x4b;	break;
+			case ':':	sc = 0x4c;	break;
+			case ']':	sc = 0x4d;	break;
+			case ',':	sc = 0x59;	break;
+			case '.':	sc = 0x5a;	break;
+			case '/':	sc = 0x5b;	break;
+			case '_':	sc = 0x5c;	break;
+
+			case '`':	sc = 0x3c; shifted = 1;	break;
+			case '{':	sc = 0x3d; shifted = 1;	break;
+			case '+':	sc = 0x4b; shifted = 1;	break;
+			case '*':	sc = 0x4c; shifted = 1;	break;
+			case '}':	sc = 0x4d; shifted = 1;	break;
+			case '<':	sc = 0x59; shifted = 1;	break;
+			case '>':	sc = 0x5a; shifted = 1;	break;
+			case '?':	sc = 0x5b; shifted = 1;	break;
+
+			case '\t':	sc = 0x09;	break;
+			case '\e':	sc = 0x10;	break;
+			case '\b':	sc = 0x11;	break;
+			case '\r':	sc = 0x12;	break;
+			case ' ':	sc = 0x14;	break;
+			case '\x7f':	sc = 0x15;	break;
+			}
+
+			if (sc > 0) {
+				if (sc <= 0x15)
+					controlled = 0;
+
+				if (shifted)
+					add_to_sio_queue(d, 1, 0x0d);
+				if (controlled)
+					add_to_sio_queue(d, 1, 0x0a);
+			
+				add_to_sio_queue(d, 1, sc);
+				add_to_sio_queue(d, 1, sc | 0x80);
+
+				if (controlled)
+					add_to_sio_queue(d, 1, 0x0a | 0x80);
+				if (shifted)
+					add_to_sio_queue(d, 1, 0x0d | 0x80);
+			}
+		}
+	}
+
 	reassert_serial_interrupt(d);
+	reassert_timer_interrupt(d);
 }
 
 
@@ -290,7 +487,14 @@ DEVICE_ACCESS(luna88k)
 	}
 
 	if (addr >= TRI_PORT_RAM && addr < TRI_PORT_RAM + TRI_PORT_RAM_SPACE) {
-		/*  Ignore for now.  */
+		size_t offset = addr - TRI_PORT_RAM;
+
+		cpu->memory_rw(cpu, cpu->mem, LANCE_ADDR - 0x100000 + offset,
+			data, len, writeflag, NO_EXCEPTIONS | PHYSICAL);
+// if(len==2)
+// printf("OFFSET 0x%06x WRITE=%i 0x%02x%02x\n", (int)offset, (int)writeflag, data[0],data[1]);
+// else
+// printf("OFFSET 0x%06x WRITE=%i 0x%02x\n", (int)offset, (int)writeflag, data[0]);
 		return 1;
 	}
 
@@ -357,6 +561,7 @@ DEVICE_ACCESS(luna88k)
 
 	case OBIO_PIO1A:	/*  0x4d000000: PIO-0 port A  */
 	case OBIO_PIO1B:	/*  0x4d000004: PIO-0 port B  */
+	case OBIO_PIO1C:	/*  0x4d000008: PIO-0 port C  */
 	case OBIO_PIO1:		/*  0x4d00000C: PIO-0 control  */
 		/*  Ignore for now. (?)  */
 		break;
@@ -393,9 +598,7 @@ DEVICE_ACCESS(luna88k)
 			} else {
 				d->obio_sio_rr[sio_devnr][SCC_RR0] = SCC_RR0_TX_EMPTY | SCC_RR0_DCD | SCC_RR0_CTS;
 
-				if (console_charavail(d->console_handle) &&
-				      ( (d->fb == NULL && sio_devnr == 0) ||
-					(d->fb != NULL && sio_devnr == 1)) )
+				if (anything_in_sio_queue(d, sio_devnr))
 					d->obio_sio_rr[sio_devnr][SCC_RR0] |= SCC_RR0_RX_AVAIL;
 
 				d->obio_sio_rr[sio_devnr][SCC_RR1] = SCC_RR1_ALL_SENT;
@@ -409,27 +612,29 @@ DEVICE_ACCESS(luna88k)
 			/*  data  */
 			if (writeflag == MEM_WRITE) {
 				if (sio_devnr == 0) {
-					console_putchar(cpu->machine->main_console_handle, idata);
+					console_putchar(d->console_handle, idata);
+					d->sio_tx_interrupt_countdown = 0;
 				} else
-					fatal("[ luna88k sio dev1 write data: TODO ]\n");
+					fatal("[ luna88k sio write data to dev 1 (keyboard/mouse): TODO ]\n");
 			} else {
-				if (sio_devnr == 0) {
-					if (d->fb == NULL && console_charavail(d->console_handle)) {
-						odata = console_readchar(d->console_handle);
-					}
+				if (anything_in_sio_queue(d, sio_devnr)) {
+					odata = get_from_sio_queue(d, sio_devnr);
 				} else {
-					fatal("[ luna88k sio dev1 read data: TODO ]\n");
+					odata = 0;
 				}
 			}
 
-			INTERRUPT_DEASSERT(d->irqX);
+			reassert_serial_interrupt(d);
 		}
 
 		break;
 
+	/*  TODO: One clock per CPU.  */
 	case OBIO_CLOCK0:	/*  0x63000000: Clock ack?  */
-		d->timer_tick_counter_bogus = 0;
-		INTERRUPT_DEASSERT(d->timer_irq);
+		if (d->pending_timer_interrupts > 0)
+			d->pending_timer_interrupts --;
+
+		reassert_timer_interrupt(d);
 		break;
 
 	case INT_ST_MASK0:	/*  0x65000000: Interrupt status CPU 0.  */
@@ -546,11 +751,6 @@ DEVICE_ACCESS(luna88k)
 		odata = 0xffffffff;
 		break;
 
-	case 0xf1000000:	/*  Lance Ethernet. TODO.  */
-	case 0xf1000004:
-	case 0xf1000008:
-		break;
-
 	default:fatal("[ luna88k: unimplemented %s address 0x%x",
 		    writeflag == MEM_WRITE? "write to" : "read from",
 		    (int) addr);
@@ -637,14 +837,22 @@ DEVINIT(luna88k)
 	/*  Timer.  */
 	snprintf(n, sizeof(n), "%s.luna88k.6", devinit->interrupt_path);
 	INTERRUPT_CONNECT(n, d->timer_irq);
-	machine_add_tickfunction(devinit->machine,
-	    dev_luna88k_tick, d, TICK_STEPS_SHIFT);
+	d->timer = timer_add(LUNA88K_PSEUDO_TIMER_HZ, luna88k_timer_tick, d);
 
-	/*  IRQ 5,4,3 (?): "autovec" according to OpenBSD  */
+	machine_add_tickfunction(devinit->machine, dev_luna88k_tick, d, TICK_STEPS_SHIFT);
+
+	/*
+	 *  IRQ 5,4,3 (?): "autovec" according to OpenBSD
+	 *
+	 *  5 = sio0 (serial controller)
+	 *  4 = le0  (lance ethernet)
+	 *  3 = spc0 (SCSI)
+	 */
 	snprintf(n, sizeof(n), "%s.luna88k.5", devinit->interrupt_path);
-	INTERRUPT_CONNECT(n, d->irqX);
+	INTERRUPT_CONNECT(n, d->sio_irq);
 
 	d->console_handle = console_start_slave(devinit->machine, "SIO", 1);
+	devinit->machine->main_console_handle = d->console_handle;
 
 	if (devinit->machine->x11_md.in_use)
 	{
@@ -663,6 +871,22 @@ DEVINIT(luna88k)
 	add_cmmu_for_cpu(devinit, 1, CMMU_I1, CMMU_D1);
 	add_cmmu_for_cpu(devinit, 2, CMMU_I2, CMMU_D2);
 	add_cmmu_for_cpu(devinit, 3, CMMU_I3, CMMU_D3);
+
+	// The address is a hack because dev_le assumes that the data and register ports
+	// are at offset 0x100000 and "ram" (used for packets) is at 0x000000.
+	snprintf(n, sizeof(n), "%s.luna88k.4", devinit->interrupt_path);
+	dev_le_init(devinit->machine, devinit->machine->memory, LANCE_ADDR - 0x100000, 0, 0, n, DEV_LE_LENGTH);
+
+	// TODO: actual address from the le device!
+	// According to OpenBSD's if_le.c, the format for
+	// real Luna machines is 00000Axxxxxx.
+	const char *enaddr = "ENADDR=00000A102030";
+	size_t i = 0;
+	while (enaddr[i]) {
+		d->fuse_rom[i*2+0] = (enaddr[i] & 0xf0) << 24;
+		d->fuse_rom[i*2+1] = (enaddr[i] & 0x0f) << 28;
+		++i;
+	}
 
 	return 1;
 }
