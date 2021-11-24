@@ -10,7 +10,7 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 endif
 
 override_dh_auto_configure:
-	CFLAGS="${CFLAGS}" PREFIX="/usr" DESTDIR=$(shell pwd)/debian/tmp ./configure --disable-valgrind
+	CFLAGS="${CFLAGS}" PREFIX="/usr" DESTDIR=$(shell pwd)/debian/tmp ./configure
 	touch configure-stamp
 
 override_dh_install:
