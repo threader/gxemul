@@ -1,0 +1,116 @@
+From: =?utf-8?q?G=C3=B6ran_Weinholt?= <goran@weinholt.se>
+Date: Wed, 24 Nov 2021 20:57:00 +0100
+Subject: Upstream: "Removing weird defines,
+ hopefully enabling build on Linux."
+
+---
+ doc/TODO.html                        |  4 ----
+ src/include/thirdparty/bootblock.h   | 11 -----------
+ src/include/thirdparty/dp83932reg.h  | 11 -----------
+ src/include/thirdparty/pcireg.h      | 11 -----------
+ src/include/thirdparty/sgi_arcbios.h | 11 -----------
+ 5 files changed, 48 deletions(-)
+
+diff --git a/doc/TODO.html b/doc/TODO.html
+index da69628..25a34c8 100644
+--- a/doc/TODO.html
++++ b/doc/TODO.html
+@@ -49,10 +49,6 @@ implement in GXemul. Some items in this list are perhaps already fixed.
+ 		e.g. verbosity disk debug		<-- print all messages, but
+ 		     breakpoint subsystem disk warn	<-- break only for warn and error.
+ 
+-<font color="blue">Build problems:</font>
+-	o) Building a default build on my Linux machine currently fails with duplicate definitions from
+-		Linux' bits/socket.h being "extern inlined" twice? (configure --debug works fine though)
+-
+ <font color="blue">Misc.:</font>
+ 	o) Try X11 grabbing with multiple host displays? ssh with X11 forwarding from laptop?
+ 		with multiple mouse pointers, _which_ mouse pointer is grabbed?
+diff --git a/src/include/thirdparty/bootblock.h b/src/include/thirdparty/bootblock.h
+index cf70798..cc2bf7a 100644
+--- a/src/include/thirdparty/bootblock.h
++++ b/src/include/thirdparty/bootblock.h
+@@ -121,17 +121,6 @@
+ #ifndef _SYS_BOOTBLOCK_H
+ #define	_SYS_BOOTBLOCK_H
+ 
+-#ifdef __attribute__
+-#undef __attribute__
+-#endif
+-
+-#ifdef __noreturn__
+-#undef __noreturn__
+-#endif
+-
+-#define __attribute__(x)  /*  */
+-#define __noreturn__  /*  */
+-
+ #if !defined(__ASSEMBLER__)
+ #if defined(_KERNEL) || defined(_STANDALONE)
+ #include <sys/stdint.h>
+diff --git a/src/include/thirdparty/dp83932reg.h b/src/include/thirdparty/dp83932reg.h
+index 06d9298..ed2f6e0 100644
+--- a/src/include/thirdparty/dp83932reg.h
++++ b/src/include/thirdparty/dp83932reg.h
+@@ -4,17 +4,6 @@
+ #ifndef _DEV_IC_DP83932REG_H_
+ #define	_DEV_IC_DP83932REG_H_
+ 
+-#ifdef __attribute__
+-#undef __attribute__
+-#endif
+-
+-#ifdef __noreturn__
+-#undef __noreturn__
+-#endif
+-
+-#define __attribute__(x)  /*  */
+-#define __noreturn__  /*  */
+-
+ /*-
+  * Copyright (c) 2001 The NetBSD Foundation, Inc.
+  * All rights reserved.
+diff --git a/src/include/thirdparty/pcireg.h b/src/include/thirdparty/pcireg.h
+index 162a516..1c2007e 100644
+--- a/src/include/thirdparty/pcireg.h
++++ b/src/include/thirdparty/pcireg.h
+@@ -4,17 +4,6 @@
+ #ifndef _DEV_PCI_PCIREG_H_
+ #define	_DEV_PCI_PCIREG_H_
+ 
+-#ifdef __attribute__
+-#undef __attribute__
+-#endif
+-
+-#ifdef __noreturn__
+-#undef __noreturn__
+-#endif
+-
+-#define __attribute__(x)  /*  */
+-#define __noreturn__  /*  */
+-
+ /*
+  * Copyright (c) 1995, 1996, 1999, 2000
+  *     Christopher G. Demetriou.  All rights reserved.
+diff --git a/src/include/thirdparty/sgi_arcbios.h b/src/include/thirdparty/sgi_arcbios.h
+index ccd4df3..51f3e38 100644
+--- a/src/include/thirdparty/sgi_arcbios.h
++++ b/src/include/thirdparty/sgi_arcbios.h
+@@ -6,17 +6,6 @@
+ 
+ /*  It's better to not #define sgimips here, and assume generic ARC instead  */
+ 
+-#ifdef __attribute__
+-#undef __attribute__
+-#endif
+-
+-#ifdef __noreturn__
+-#undef __noreturn__
+-#endif
+-
+-#define	__attribute__(x)  /*  */
+-#define	__noreturn__  /*  */
+-
+ /*	$NetBSD: arcbios.h,v 1.3 2001/12/06 14:59:02 rafal Exp $	*/
+ 
+ /*-
