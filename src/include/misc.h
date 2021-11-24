@@ -32,6 +32,8 @@
  */
 
 
+#include <stdbool.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <inttypes.h>
 
@@ -52,37 +54,6 @@
 // Example:  "Modified by XYZ to include support for machine type UVW.\n"
 //
 #define	SECONDARY_MSG	""
-
-
-#include <string>
-using std::string;
-typedef char stringchar;
-
-#include <map>
-using std::map;
-using std::pair;
-
-#include <list>
-using std::list;
-
-#include <vector>
-using std::vector;
-
-#include <sstream>
-using std::stringstream;
-
-#include <ostream>
-using std::ostream;
-
-#include <iostream>
-using std::cout;
-using std::cerr;
-
-#ifndef NDEBUG
-#include "thirdparty/debug_new.h"
-#endif
-
-#include "refcount_ptr.h"
 
 
 #ifdef NO_C99_PRINTF_DEFINES
@@ -207,34 +178,14 @@ enum Endianness
 #endif
 
 
-/*  Debug stuff:  */
-#define	DEBUG_BUFSIZE		1024
-#define	DEBUG_INDENTATION	4
-
-
-#ifdef HAVE___FUNCTION__
-
 #define	FAILURE(error_msg)					{	\
 		char where_msg[400];					\
 		snprintf(where_msg, sizeof(where_msg),			\
 		    "%s, line %i, function %s().\n",			\
-		    __FILE__, __LINE__, __FUNCTION__);			\
+		    __FILE__, __LINE__, __func__);			\
         	fprintf(stderr, "\n%s, in %s\n", error_msg, where_msg);	\
 		exit(1);						\
 	}
-
-#else
-
-#define	FAILURE(error_msg)					{	\
-		char where_msg[400];					\
-		snprintf(where_msg, sizeof(where_msg),			\
-		    "%s, line %i\n", __FILE__, __LINE__);		\
-        	fprintf(stderr, "\n%s, in %s.\n", error_msg, where_msg);\
-		exit(1);						\
-	}
-
-#endif	/*  !HAVE___FUNCTION__  */
-
 
 #define	CHECK_ALLOCATION(ptr)					{	\
 		if ((ptr) == NULL)					\
@@ -262,6 +213,38 @@ int iso_load_bootblock(struct machine *m, struct cpu *cpu,
 int decstation_prom_emul(struct cpu *cpu);
 
 
+/*  debugmsg.c:  */
+#define	SUBSYS_ALL		-1
+#define	SUBSYS_STARTUP		0	/*  Startup messages  */
+#define	SUBSYS_EMUL		1	/*  Emulation setup related  */
+#define	SUBSYS_DISK		2	/*  Disk I/O related  */
+#define	SUBSYS_NET		3	/*  Network related  */
+#define	SUBSYS_MACHINE		4	/*  Machine related  */
+#define	SUBSYS_DEVICE		5	/*  Device specific  */
+#define	SUBSYS_CPU		6	/*  General CPU  */
+#define	SUBSYS_MEMORY		7	/*  Memory related  */
+#define	SUBSYS_EXCEPTION	8	/*  CPU exceptions  */
+#define	SUBSYS_PROMEMUL		9	/*  PROM emulation related  */
+#define	SUBSYS_X11		10	/*  X11 related  */
+#define	VERBOSITY_ERROR		0
+#define	VERBOSITY_WARNING	1
+#define	VERBOSITY_INFO		2
+#define	VERBOSITY_DEBUG		3
+#define	ENOUGH_VERBOSITY(subsys,reqverb)	(debugmsg_current_verbosity[(subsys)] >= (reqverb))
+extern int *debugmsg_current_verbosity;
+void debug_indentation(int diff);
+void debug(const char *fmt, ...);
+void fatal(const char *fmt, ...);
+void debugmsg_init();
+int debugmsg_register_subsystem(const char* name);
+void debugmsg_change_settings(char *subsystem_name, char *n);
+void debugmsg_print_settings(const char *subsystem_name);
+void debugmsg_add_verbosity_level(int subsystem, int verbosity_delta);
+void debugmsg_set_verbosity_level(int subsystem, int verbosity);
+void debugmsg(int subsystem, const char *name, int verbosity_required, const char *fmt, ...);
+void debugmsg_cpu(struct cpu* cpu, int subsystem, const char *name, int verbosity_required, const char *fmt, ...);
+
+
 /*  dreamcast.c:  */
 void dreamcast_machine_setup(struct machine *);
 void dreamcast_emul(struct cpu *cpu);
@@ -283,13 +266,16 @@ void luna88kprom_init(struct machine *machine);
 int luna88kprom_emul(struct cpu *cpu);
 
 
-/*  main.c:  */
-void debug_indentation(int diff);
-void debug(const char *fmt, ...);
-void fatal(const char *fmt, ...);
-
-
 /*  misc.c:  */
+void color_prompt();
+void color_normal();
+void color_error(bool bold);
+void color_debugmsg_subsystem();
+void color_debugmsg_name();
+void color_banner();
+void color_pc_indicator();
+const char* color_symbol_ptr();
+const char* color_normal_ptr();
 unsigned long long mystrtoull(const char *s, char **endp, int base);
 int mymkstemp(char *templ);
 #ifdef USE_STRLCPY_REPLACEMENTS

@@ -2,7 +2,7 @@
 #define	CPU_H
 
 /*
- *  Copyright (C) 2005-2019  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@
  */
 
 
+#include <stdbool.h>
 #include <sys/types.h>
 #include <inttypes.h>
 #include <sys/time.h>
@@ -72,7 +73,7 @@
 #define DYNTRANS_MISC_DECLARATIONS(arch,ARCH,addrtype)  struct \
 	arch ## _instr_call {					\
 		void	(*f)(struct cpu *, struct arch ## _instr_call *); \
-		size_t	arg[ARCH ## _N_IC_ARGS];			\
+		uintptr_t arg[ARCH ## _N_IC_ARGS];			\
 	};								\
 									\
 	/*  Translation cache struct for each physical page:  */	\
@@ -228,12 +229,28 @@ struct physpage_ranges {
 	struct arch ## _l2_64_table	*l1_64[1 << DYNTRANS_L1N];
 
 
-/*  Include all CPUs' header files here:  */
+/*  CPU architectures:  */
+#define	ARCH_ALPHA		1
+#define	ARCH_ARM		2
+#define	ARCH_I960		3
+#define	ARCH_M88K		4
+#define	ARCH_MIPS		5
+#define	ARCH_PPC		6
+#define	ARCH_RISCV		7
+#define	ARCH_SH			8
+
+/*
+ *  Include all CPUs' header files here. At the end of the
+ *  cpu struct there is a union of the architecture-specific
+ *  parts (cd).
+ */
 #include "cpu_alpha.h"
 #include "cpu_arm.h"
+#include "cpu_i960.h"
 #include "cpu_m88k.h"
 #include "cpu_mips.h"
 #include "cpu_ppc.h"
+#include "cpu_riscv.h"
 #include "cpu_sh.h"
 
 struct cpu;
@@ -251,10 +268,12 @@ struct settings;
  *  architecture-specific functions.
  *
  *  Except for the next and arch fields at the top, all fields in the
- *  cpu_family struct are filled in by ecah CPU family's init function.
+ *  cpu_family struct are filled in by each CPU family's init function.
  */
 struct cpu_family {
 	struct cpu_family	*next;
+
+	/*  E.g. ARCH_MIPS:  */
 	int			arch;
 
 	/*  Familty name, e.g. "MIPS", "Alpha" etc.  */
@@ -281,11 +300,10 @@ struct cpu_family {
 				    int gprs, int coprocs);
 
 	/*  Dump generic CPU info in readable format.  */
-	void			(*dumpinfo)(struct cpu *cpu);
+	void			(*dumpinfo)(struct cpu *cpu, bool verbose);
 
-	/*  Dump TLB data for CPU id x.  */
-	void			(*tlbdump)(struct machine *m, int x,
-				    int rawflag);
+	/*  Dump TLB data for a CPU.  */
+	void			(*tlbdump)(struct cpu *cpu, int rawflag);
 
 	/*  Print architecture-specific function call arguments.
 	    (This is called for each function call, if running with -t.)  */
@@ -310,6 +328,8 @@ struct cpu_family {
 #define	N_SAFE_DYNTRANS_LIMIT_SHIFT	14
 #define	N_SAFE_DYNTRANS_LIMIT	((1 << (N_SAFE_DYNTRANS_LIMIT_SHIFT - 1)) - 1)
 
+#define	N_DYNTRANS_IDLE_BREAK		N_SAFE_DYNTRANS_LIMIT
+
 #define	MAX_DYNTRANS_READAHEAD		128
 
 #define	DEFAULT_DYNTRANS_CACHE_SIZE	(96*1048576)
@@ -330,6 +350,9 @@ struct cpu {
 	/*  Settings:  */
 	struct settings *settings;
 
+	/*  Contains the arch (e.g. ARCH_MIPS), and some function pointers.  */
+	struct cpu_family* cpu_family;
+
 	/*  CPU-specific name, e.g. "R2000", "21164PC", etc.  */
 	char		*name;
 
@@ -349,11 +372,11 @@ struct cpu {
 	/*  0 for emulated 64-bit CPUs, 1 for 32-bit.  */
 	uint8_t		is_32bit;
 
-	/*  1 while running, 0 when paused/stopped.  */
-	uint8_t		running;
-
 	/*  See comment further up.  */
 	uint8_t		delay_slot;
+
+	/*  true while running, false when paused/stopped.  */
+	bool		running;
 
 	/*  0-based CPU id, in an emulated SMP system.  */
 	int		cpu_id;
@@ -389,6 +412,12 @@ struct cpu {
 	int		trace_tree_depth;
 
 	/*
+	 *  If wants_to_idle is true, then N_DYNTRANS_IDLE_BREAK is assumed
+	 *  to have been added to n_translated_instructions and should
+	 *  thus be subtracted when the dyntrans loop exits. An attempt is
+	 *  then made to "idle the host", if all running CPUs in all
+	 *  machines want to idle at the same time.
+	 *
 	 *  If is_halted is true when an interrupt trap occurs, the pointer
 	 *  to the next instruction to execute will be the instruction
 	 *  following the halt instruction, not the halt instrucion itself.
@@ -397,8 +426,9 @@ struct cpu {
 	 *  instructions per second, "idling" is printed instead. (The number
 	 *  of instrs per second when idling is meaningless anyway.)
 	 */
-	char		is_halted;
-	char		has_been_idling;
+	bool		wants_to_idle;
+	bool		is_halted;
+	bool		has_been_idling;
 
 	/*
 	 *  Dynamic translation:
@@ -442,9 +472,11 @@ struct cpu {
 	union {
 		struct alpha_cpu      alpha;
 		struct arm_cpu        arm;
+		struct i960_cpu       i960;
 		struct m88k_cpu       m88k;
 		struct mips_cpu       mips;
 		struct ppc_cpu        ppc;
+		struct riscv_cpu      riscv;
 		struct sh_cpu         sh;
 	} cd;
 };
@@ -455,7 +487,7 @@ struct cpu *cpu_new(struct memory *mem, struct machine *machine,
         int cpu_id, char *cpu_type_name);
 void cpu_destroy(struct cpu *cpu);
 
-void cpu_tlbdump(struct machine *m, int x, int rawflag);
+void cpu_tlbdump(struct cpu *cpu, int rawflag);
 void cpu_register_dump(struct machine *m, struct cpu *cpu,
 	int gprs, int coprocs);
 int cpu_disassemble_instr(struct machine *m, struct cpu *cpu,
@@ -469,11 +501,11 @@ void cpu_create_or_reset_tc(struct cpu *cpu);
 void cpu_run_init(struct machine *machine);
 void cpu_run_deinit(struct machine *machine);
 
-void cpu_dumpinfo(struct machine *m, struct cpu *cpu);
+void cpu_dumpinfo(struct machine *m, struct cpu *cpu, bool verbose);
 void cpu_list_available_types(void);
-void cpu_show_cycles(struct machine *machine, int forced);
+void cpu_show_cycles(struct machine *machine, bool forced);
+void cpu_print_pc_indicator_in_disassembly(struct cpu *cpu, int running, uint64_t dumpaddr);
 
-struct cpu_family *cpu_family_ptr_by_number(int arch);
 void cpu_init(void);
 
 
@@ -501,7 +533,7 @@ void cpu_init(void);
 	    SETTINGS_FORMAT_HEX8, (void *) &(var));
 
 
-#define CPU_FAMILY_INIT(n,s)	int n ## _cpu_family_init(		\
+#define CPU_FAMILY_INIT(n,s)	void n ## _cpu_family_init(		\
 	struct cpu_family *fp) {					\
 	/*  Fill in the cpu_family struct with valid data for this arch.  */ \
 	fp->name = strdup(s);						\
@@ -513,7 +545,6 @@ void cpu_init(void);
 	fp->functioncall_trace = n ## _cpu_functioncall_trace;		\
 	fp->tlbdump = n ## _cpu_tlbdump;				\
 	fp->init_tables = n ## _cpu_init_tables;			\
-	return 1;							\
 	}
 
 

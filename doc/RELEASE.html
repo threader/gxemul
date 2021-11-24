@@ -9,15 +9,14 @@
 
 <!-- 10 lines header.  -->
 
-<h1>Release notes for GXemul 0.6.3.1</h1>
+<h1>Release notes for GXemul 0.7.0</h1>
 
 <p><i>Copyright (C) 2003-2021  Anders Gavare</i>
 
 <p><br>GXemul is a framework for full-system computer architecture emulation. 
 Several processor architectures and machine types have been implemented. 
-It is working well enough to allow unmodified
-"guest" operating systems to run inside the emulator,
-as if they were running on real hardware.
+It is working well enough to allow unmodified "guest" operating systems to run
+inside the emulator, as if they were running on real hardware.
 
 <p>The emulator emulates (networks of) real machines. The machines may consist
 of ARM, MIPS, Motorola 88K, PowerPC, and SuperH processors, and various 
@@ -25,56 +24,164 @@ surrounding hardware components such as framebuffers, busses, interrupt
 controllers, ethernet controllers, disk controllers, and serial port 
 controllers.
 
-<p>The documentation <a href="intro.html#emulmodes">lists the machines and
-guest operating systems</a> that can be regarded as "working" in GXemul.
-The first guest operating system that worked in GXemul was
-<a href="machine_decstation.html#netbsdpmaxinstall">NetBSD/pmax</a> on
-an emulated DECstation 5000/200, and that is
-still one of the guest OSes that works best.
 
-
-
-<p><br>The most important changes between release 0.6.3 and 0.6.3.1 are:
+<p><br>The changes between release 0.6.3.1 and 0.7.0 include:
 <ul>
-	<li>Many small fixes that allow
-		<a href="machine_luna88k.html#openbsdluna88k">OpenBSD/luna88k</a>
-		to run better, including running X11.
+	<li>The <a href="machine_luna88k.html">LUNA-88K machine</a> now has
+		working SCSI emulation. This allows
+		OpenBSD/luna88k to be installed and run using a harddisk image.
+		(Previously, a more complicated root-on-nfs setup had to be used.)
 
 	<p>
-	<li>A bug regarding checking the return value from <tt>select()</tt>
-		calls when detecting whether console input was available
-		has now been fixed. This bug resulted in spuriously broken
-		interactivity on some systems (at least Linux), e.g. when
-		typing CTRL-C to enter the GXemul command prompt, which
-		required extra keypresses.
+	<li>There is now a shorthand disk image prefix 'R' (uppercase), to reduce
+		the amount of typing when one wants to use a temporary throwaway
+		disk image overlay, that is when one does not want to allow
+		writes to a disk image. Previously, this would require
+		something like:
+<ul style="list-style: none;"><li><pre>
+<font color="#606000"><b>touch overlay.img overlay.img.map</b></font>
+<font color="#4040ff">gxemul -e ..... -d disk.img </font><font color="#606000"><b>-d V0:overlay.img</b></font>
+<font color="#606000"><b>rm overlay.img overlay.img.map</b></font>
+</pre></ul>
+		<p>which now becomes just:
+<ul style="list-style: none;"><li><pre><font color="#4040ff">gxemul -e ..... -d <font color="#008000"><b>R:</b></font>disk.img</font>
+</pre></ul>
+		<p>The difference to using an explicit V: overlay is that the
+		temporary file is
+		removed automatically when the GXemul process exits. A guest
+		operating system will still perceive the disk as writable.
+
+	<p>
+	<li>Networking using a tap device can now be enabled directly on the
+		command line using a new <tt>-L</tt> option. Previously,
+		tap devices could only be enabled when using configuration files.
+
+	<p>
+	<li>A bug has been fixed for MIPS R2000/R3000 when writing to
+		coprocessor 0's ENTRY LO register. This fixes a regression
+		introduced between 0.6.1 and 0.6.2
+		where running <tt>xinit</tt> inside Sprite (on an emulated
+		DECstation) suddenly failed.
+
+	<p>
+	<li>A "mouse grab" mechanism has been implemented for X11 framebuffer
+		windows. Previously,
+		mouse movements occuring inside a framebuffer window were always
+		forwarded to the guest OS. Interaction was akward, in particular
+		due to mouse acceleration being performed by the guest OS.
+		Now, instead, the framebuffer window needs to
+		be clicked in, in order to activate mouse pointer grabbing.
+		When the grab mode is active, mouse movements (and button clicks)
+		are forwarded to the guest OS, and the host's mouse cursor is
+		hidden. Grab mode is released when typing Left CTRL + ALT, or
+		when otherwise changing focus to another X11 window.
+
+	<p>
+	<li>Previously, the behavior when using configuration files was to
+		always start new terminal windows (xterms) for emulated serial
+		I/O ports, similar to the <tt>-x</tt> command line option. This
+		has now been changed, so that new terminal windows are only used
+		if there are <i>two or more machines</i> in the same configuration
+		file. If you still want separate terminal windows to be launched
+		when using a configuration file with a single machine in it, you
+		now need to add <tt>-x</tt> to the command line.
+
+	<p>
+	<li>Some cleanup to make the <tt>-K</tt> command line option work
+		more like it was always supposed to.
+		This option should cause the emulator to show the
+		<tt>GXemul&gt;</tt> debugger prompt whenever
+		the emulated program or guest operating system ends,
+		regardless of whether it was a normal shutdown or some form
+		of error. This is useful for example if you wish to disassemble
+		the code, or inspect register or memory content, at the point
+		of failure. Starting the emulator with <tt>-V</tt> also
+		implicitly sets <tt>-K</tt>. If neither <tt>-V</tt> nor <tt>-K</tt>
+		is used, and the guest OS halts with powerdown or "reboots", the emulator
+		should exit gracefully (for the machine modes where shutdown
+		functionality has been implemented via device support or
+		prom emulation support).
+
+		<p>(There are still many explicit <tt>exit()</tt> calls throughout the
+		code, which over time will need to be manually converted to work
+		with <tt>-K</tt>, but the most common ones are fixed.)
+
+	<p>
+	<li><tt>-T</tt> has been fixed to work the way it was always intended to
+		work, namely to abort immediately on the first load or store
+		to non-existant memory. This is useful in combination with
+		<tt>-K</tt>, for example when implementing new machine modes
+		in the emulator or trying out unsupported guest operating
+		systems that access memory or devices in a not-yet-implemented
+		way.
+
+	<p>
+	<li>Debug messages have traditionally been printed using the rather
+		course-grained <tt>debug()</tt> and <tt>fatal()</tt>
+		functions. Work has now begun to separate this into a number of
+		<i>subsystems</i>, which can have their verbosity levels be
+		individually controlled using the new <tt>verbosity</tt>
+		debugger command. This also standardizes the way debug messages
+		are formatted:
+
+<ul style="list-style: none;"><li><pre>[ machine-and-cpu-path: <font color="brown">subsystem-name</font> <font color="#4040ff">component-or-function-name</font>: text ]</pre></ul>
+
+		<p>Most of the time, not all of these are shown.
+		machine-and-cpu-path, for example, is only shown if the message comes
+		from a context where a CPU is known to cause the message,
+		and there are multiple machines or CPUs being emulated.
+		The [ ] brackets are only shown when intermixing debug messages
+		with serial I/O coming from the emulated program or guest
+		operating system.
+		<p>(There are still a huge amount of <tt>debug()</tt>
+		and <tt>fatal()</tt> calls in the code, especially in the
+		less commonly used code paths.)
+
+	<p>
+	<li>Output from the emulator is now subtly colorized, to make it
+		easier to quickly interpret the text. This is enabled by
+		launching the emulator with the environment variable
+		CLICOLOR set, or by usign the <tt>-G</tt> command line option.
+		The choice of colors was done to
+		a) be reasonably subtle, and b) work
+		with both light and dark terminal backgrounds.
+		Coloring can be explicitly disabled using <tt>-A</tt> (overriding
+		the presence of CLICOLOR), and
+		it is also disabled when outputting to a non-tty.
 </ul>
 
-<p><br>The most important changes between release 0.6.2 and 0.6.3 are:
+<p>The source code has been switched back from C++ to plain C:
 <ul>
-	<li>OpenBSD/luna88k can now run in GXemul with root-on-nfs.
-		The installation instructions are somewhat involved, but
-		it works well enough to self-compile at least an older
-		version of GXemul inside OpenBSD running in the emulator.
+	<li>The "new" framework was removed. Instead of two different emulators
+		in the same program, there's just the traditional emulation
+		framework.
 
 	<p>
-	<li><a href="networking.html#tap">/dev/tap devices in the host can now be used for networking</a>.
-		(Patch contributed by Jason Thorpe.)
+	<li>A C compiler supporting the C99 standard is needed in
+		order to build GXemul.
 
 	<p>
-	<li>A bug which caused reads at the end of files supplied as
-		disk images to fail has been fixed.
-		Usage of tar archives for passing files to and from
-		emulated machines that lack networking capability is thus
-		somewhat less buggy.
+	<li>For third parties that package GXemul (e.g. for package managing
+		systems used by operating systems or distributions),
+		build scripts may need to be modified:
+	<ul>
+		<li>The unit tests (<tt>make test</tt>) are gone.
+		<li>The (optional) dependency on Valgrind is gone. It was used for
+			running leak detection during unit test execution, but
+			the unit tests were for the C++ framework.
+		<li>The (optional) dependency on Doxygen is gone. It was used for
+			building documentation of the source code in the
+			C++ framework.
+		<li>Automatic generation of machine and component documentation
+			is gone (<tt>make documentation</tt>).
+		<li>In summary: the <tt>doc/</tt> directory is now just a
+			single level without sub-directories, containing static
+			content; nothing is generated at build time.
+	</ul>
 </ul>
-
 
 
 <p><br>Please read the HISTORY file for more details.
-
-<p>To build the emulator, run the <tt>configure</tt> script, and then run 
-<tt>make</tt>. This should hopefully work on most Unix-like systems, with few
-or no modifications to the source code.
 
 <p>Regarding files in the <tt>src/include/thirdparty/</tt> directory:
 most of these are from other open source projects such as NetBSD. See individual
@@ -85,7 +192,5 @@ or reuse the source code.
 <a href="http://gavare.se/gxemul/">http://gavare.se/gxemul/</a>.
 
 
-
 </body>
 </html>
-

@@ -4967,3 +4967,88 @@ Changelog for GXemul:
 
 ==============  RELEASE 0.6.3.1  ==============
 
+20210228	Switching back from C++ to plain C.
+		Implementing a helper method for registering device addresses
+		as symbols (so that it can be used from several machines).
+20210307	Subtle colorized output when stdin/stdout are connected to a
+		tty, to make it quicker to interpret text output. Enabled with
+		-G or by setting the CLICOLOR environment variable. Can be
+		disabled with -A.
+20210309	Beginning to separate debug messages into subsystems, that have
+		individual verbosity levels.
+		Making -K work more consistently (enter the debugger at the
+		end of a run). -V implies -K.
+		Making -T work better for M88K (breaking into the debugger
+		directly on bad memory accesses, if -K is used).
+20210310	All MIPS machines now register their devices as symbols (based
+		in kseg1, i.e. 0xffffffffa0000000).
+20210311	Making -T work better for MIPS, PPC, ARM, and SuperH.
+20210314	Adding a -L command line option for enabling tap networking
+		without using configuration files.
+		-x is now needed if one wants separate xterm windows for serial
+		I/O when using configuration files with a single machine.
+20210316	debugmsg subsystems can now be registered at runtime; this is
+		so far done from the Lance Ethernet device.
+		Adding a 'verbosity' debugger command for inspecting and
+		setting the verbosity level for individual subsystems.
+20210318	Fixing an annoying 'backspace' bug in the debugger command
+		line handling, where the response sometimes could become
+		"unknown command ''".
+		Implementing CTRL-W (erase word) in the debugger.
+		Implementing CTRL-T (SIGINFO-like status line) in the debugger.
+20210320	Removing the UNSTABLE_DEVEL configure define; it was not used
+		much, and the debugmsg verbosity levels can be used in its
+		place.
+		Fixing a bug for MIPS R2000/R3000 when writing to coprocessor 0
+		"entrylo" register (if the lowest 8 bits were 0, the code took
+		the non-R2000/R3000 code path).
+20210321	Adding an empty i960 CPU skeleton [again].
+		Moving 'arch' from struct machine to struct cpu; in the future,
+		perhaps this would allow a machine to have heterogenous CPU
+		sets (such as the Dreamcast with both SuperH and ARM).
+		Removing "slow_serial_interrupts_hack_for_linux" (-U) command
+		line option, since it is not used for most guest OSes, and
+		occupied a command line option char.
+20210323	Breaking out the mb89352 SCSI Protocol Controller from the
+		luna88k device, and beginning to implement it. Works well
+		enough for OpenBSD's "boot" to read the disk and load the
+		kernel, but not well enough for the kernel to like it.
+20210324	Adding support for 00 99 01 07 variant of luna88k a.out.
+20210325	The mb89352 SCSI controller uses its own subsystem for debug
+		messages.
+20210327	Adding an empty RISC-V CPU skeleton [again].
+		Implementing enough of the mb89352 to allow OpenBSD/luna88k
+		to boot with SCSI (both the boot loader and the kernel)!
+20210401	Applying a patch from George Matsumura to make things build
+		better on Linux: __attribute__((__packed__));  in bootblock.h.
+20210405	Adding hardcoded boot_unit=0 and boot_partition=0 NVRAM
+		variables to the LUNA-88K machine, allowing OpenBSD/luna88k
+		to boot from disk without asking for root and swap partitions.
+		Adding 'R' (upper-case) disk image prefix, as a shorthand for
+		creating temporary overlays.
+20210407	Code for idling the host processor has been moved out from
+		individual CPU implementations to the main emul loop.
+		Implementing an X11 mouse pointer grab mechanism. Grab is
+		activated by clicking in a framebuffer window, and released
+		using left CTRL + ALT. When grab is active, the host mouse
+		cursor is hidden and the window caption changes to indicate
+		that grab is active.
+20210408	Implementing an unusual 88K "not_maxneg_nor_zero" bcnd
+		condition.
+20210409	Moving the LUNA88K framebuffer to its own device file.
+		Beginning to implement the LUNA88K front panel LCD.
+		Also fixing a bug where the rightmost pixel (or 8 pixels in
+		the case of monochrome) were not drawn.
+20210410	Also check for X11R7 in the configure script, in addition
+		to X11R6.
+20210417	Porting over i960CA disassembly from the C++ framework.
+20210418	More i960 stuff, including re-adding the (so far dummy)
+		Cyclone VH machine.
+		Assuming availabilty of __func__ (C99 standard).
+20210422	Enabling idle detection for OpenBSD/luna88k, which uses a
+		bcnd.n instruction. A hack, but it seems to work.
+		Fixing a bug where console input could randomly be lost when
+		idling, if there were multiple emulated serial ports.
+
+==============  RELEASE 0.7.0  ==============
+

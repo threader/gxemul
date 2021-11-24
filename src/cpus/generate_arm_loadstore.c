@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -59,14 +59,13 @@ int main(int argc, char *argv[])
 	    "#define DYNTRANS_PC_TO_POINTERS arm_pc_to_pointers\n"
 	    "#include \"quick_pc_to_pointers.h\"\n"
 	    "#define reg(x) (*((uint32_t *)(x)))\n");
-	printf("extern void arm_instr_nop(struct cpu *, "
-	    "struct arm_instr_call *);\n");
-	printf("extern void arm_instr_invalid(struct cpu *, "
-	    "struct arm_instr_call *);\n");
+	printf("extern void arm_instr_nop(struct cpu *, struct arm_instr_call *);\n");
+	printf("extern void arm_instr_nothing(struct cpu *, struct arm_instr_call *);\n");
+	printf("extern void arm_instr_invalid(struct cpu *, struct arm_instr_call *);\n");
 	printf("extern void arm_pc_to_pointers(struct cpu *);\n");
-
-    if (!only_array)
-	for (reg=0; reg<=1; reg++)
+	
+	if (!only_array)
+	  for (reg=0; reg<=1; reg++)
 	      for (b=0; b<=1; b++)
 		  for (l=0; l<=1; l++) {
 			printf("#define A__NAME__general arm_instr_%s_"
@@ -103,7 +102,7 @@ int main(int argc, char *argv[])
 			if (u)	printf("#define A__U\n");
 			if (p)	printf("#define A__P\n");
 			if (reg)printf("#define A__REG\n");
-			printf("#include \"cpu_arm_instr_loadstore.cc\"\n");
+			printf("#include \"cpu_arm_instr_loadstore.c\"\n");
 			if (l)	printf("#undef A__L\n");
 			if (w)	printf("#undef A__W\n");
 			if (b)	printf("#undef A__B\n");
@@ -217,8 +216,8 @@ int main(int argc, char *argv[])
 
 	/*  "Addressing mode 3":  */
 
-    if (!only_array)
-	for (reg=0; reg<=1; reg++)
+	if (!only_array)
+	  for (reg=0; reg<=1; reg++)
 	      for (h=0; h<=1; h++)
 		  for (s=0; s<=1; s++)
 		    for (l=0; l<=1; l++) {
@@ -268,7 +267,7 @@ int main(int argc, char *argv[])
 			if (u)	printf("#define A__U\n");
 			if (p)	printf("#define A__P\n");
 			if (reg)printf("#define A__REG\n");
-			printf("#include \"cpu_arm_instr_loadstore.cc\"\n");
+			printf("#include \"cpu_arm_instr_loadstore.c\"\n");
 			if (s)	printf("#undef A__SIGNED\n");
 			if (l)	printf("#undef A__L\n");
 			if (w)	printf("#undef A__W\n");
