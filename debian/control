@@ -53,6 +53,7 @@ Package: gxemul-doc
 Section: doc
 Architecture: all
 Depends: ${misc:Depends}
+Multi-Arch: foreign
 Description: gxemul documentation
  This package contains the documentation for gxemul, the machine
  emulator for multiple architectures. Among other things, instructions
