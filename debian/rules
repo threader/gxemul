@@ -15,6 +15,7 @@ override_dh_auto_configure:
 	sed -e 's/#define VERSION.*/#define VERSION \"$(DEB_VERSION_UPSTREAM)\"/g' \
 	    -e 's/#define COMPILE_DATE.*/#define COMPILE_DATE "compiled by Debian"/' \
 	    -i config.h
+	sed -e 's/-Wl,-rpath,[^\w]*//g' -i Makefile
 	touch configure-stamp
 
 override_dh_install:
