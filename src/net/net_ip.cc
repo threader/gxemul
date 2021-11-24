@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2020  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -155,7 +155,7 @@ void net_ip_tcp_checksum(unsigned char *tcp_header, int chksumoffset,
  *	1c1d1e1f202122232425262728292a2b
  *	2c2d2e2f3031323334353637
  */
-static void net_ip_icmp(struct net *net, void *extra,
+static void net_ip_icmp(struct net *net, struct nic_data *nic,
 	unsigned char *packet, int len)
 {
 	int type;
@@ -166,7 +166,7 @@ static void net_ip_icmp(struct net *net, void *extra,
 	switch (type) {
 	case 8:	/*  ECHO request  */
 		debug("[ ICMP echo ]\n");
-		lp = net_allocate_ethernet_packet_link(net, extra, len);
+		lp = net_allocate_ethernet_packet_link(net, nic, len);
 
 		/*  Copy the old packet first:  */
 		memcpy(lp->data + 12, packet + 12, len - 12);
@@ -225,7 +225,7 @@ static void tcp_closeconnection(struct net *net, int con_id)
  *  This creates an ethernet packet for the guest OS with an ACK to the
  *  initial SYN packet.
  */
-void net_ip_tcp_connectionreply(struct net *net, void *extra,
+void net_ip_tcp_connectionreply(struct net *net, struct nic_data *nic,
 	int con_id, int connecting, unsigned char *data, int datalen, int rst)
 {
 	struct ethernet_packet_link *lp;
@@ -238,7 +238,7 @@ void net_ip_tcp_connectionreply(struct net *net, void *extra,
 	net->tcp_connections[con_id].tcp_id ++;
 	tcp_length = 20 + option_len + datalen;
 	ip_len = 20 + tcp_length;
-	lp = net_allocate_ethernet_packet_link(net, extra, 14 + ip_len);
+	lp = net_allocate_ethernet_packet_link(net, nic, 14 + ip_len);
 
 	/*  Ethernet header:  */
 	memcpy(lp->data + 0, net->tcp_connections[con_id].ethernet_address, 6);
@@ -339,15 +339,12 @@ void net_ip_tcp_connectionreply(struct net *net, void *extra,
 	net_ip_tcp_checksum(lp->data + 34, 16, tcp_length,
 	    lp->data + 26, lp->data + 30, 0);
 
-#if 0
-	{
-		int i;
+	if (false) {
 		fatal("[ net_ip_tcp_connectionreply(%i): ", connecting);
-		for (i=0; i<ip_len+14; i++)
+		for (int i=0; i<ip_len+14; i++)
 			fatal("%02x", lp->data[i]);
 		fatal(" ]\n");
 	}
-#endif
 
 	if (connecting)
 		net->tcp_connections[con_id].outside_seqnr ++;
@@ -376,7 +373,7 @@ void net_ip_tcp_connectionreply(struct net *net, void *extra,
  *	http://www.networksorcery.com/enp/protocol/tcp.htm
  *	http://www.tcpipguide.com/free/t_TCPIPTransmissionControlProtocolTCP.htm
  */
-static void net_ip_tcp(struct net *net, void *extra,
+static void net_ip_tcp(struct net *net, struct nic_data *nic,
 	unsigned char *packet, int len)
 {
 	int con_id, free_con_id, i, res;
@@ -388,12 +385,12 @@ static void net_ip_tcp(struct net *net, void *extra,
 	struct timeval tv;
 	int send_ofs;
 
-#if 0
-	fatal("[ net: TCP: ");
-	for (i=0; i<26; i++)
-		fatal("%02x", packet[i]);
-	fatal(" ");
-#endif
+	if (false) {
+		fatal("[ net: TCP: ");
+		for (i=0; i<26; i++)
+			fatal("%02x", packet[i]);
+		fatal(" ");
+	}
 
 	srcport = (packet[34] << 8) + packet[35];
 	dstport = (packet[36] << 8) + packet[37];
@@ -403,12 +400,11 @@ static void net_ip_tcp(struct net *net, void *extra,
 	acknr   = (packet[42] << 24) + (packet[43] << 16)
 		+ (packet[44] << 8) + packet[45];
 
-#if 0
-	fatal("%i.%i.%i.%i:%i -> %i.%i.%i.%i:%i, seqnr=%lli acknr=%lli ",
-	    packet[26], packet[27], packet[28], packet[29], srcport,
-	    packet[30], packet[31], packet[32], packet[33], dstport,
-	    (long long)seqnr, (long long)acknr);
-#endif
+	if (false)
+		fatal("%i.%i.%i.%i:%i -> %i.%i.%i.%i:%i, seqnr=%lli acknr=%lli ",
+		    packet[26], packet[27], packet[28], packet[29], srcport,
+		    packet[30], packet[31], packet[32], packet[33], dstport,
+		    (long long)seqnr, (long long)acknr);
 
 	data_offset = (packet[46] >> 4) * 4 + 34;
 	/*  data_offset is now data offset within packet :-)  */
@@ -423,27 +419,26 @@ static void net_ip_tcp(struct net *net, void *extra,
 	checksum = (packet[50] << 8) + packet[51];
 	urgptr   = (packet[52] << 8) + packet[53];
 
-#if 0
-	fatal(urg? "URG " : "");
-	fatal(ack? "ACK " : "");
-	fatal(psh? "PSH " : "");
-	fatal(rst? "RST " : "");
-	fatal(syn? "SYN " : "");
-	fatal(fin? "FIN " : "");
+	if (false) {
+		fatal(urg? "URG " : "");
+		fatal(ack? "ACK " : "");
+		fatal(psh? "PSH " : "");
+		fatal(rst? "RST " : "");
+		fatal(syn? "SYN " : "");
+		fatal(fin? "FIN " : "");
 
-	fatal("window=0x%04x checksum=0x%04x urgptr=0x%04x ",
-	    window, checksum, urgptr);
+		fatal("window=0x%04x checksum=0x%04x urgptr=0x%04x ", window, checksum, urgptr);
 
-	fatal("options=");
-	for (i=34+20; i<data_offset; i++)
-		fatal("%02x", packet[i]);
+		fatal("options=");
+		for (i=34+20; i<data_offset; i++)
+			fatal("%02x", packet[i]);
 
-	fatal(" data=");
-	for (i=data_offset; i<len; i++)
-		fatal("%02x", packet[i]);
+		fatal(" data=");
+		for (i=data_offset; i<len; i++)
+			fatal("%02x", packet[i]);
 
-	fatal(" ]\n");
-#endif
+		fatal(" ]\n");
+	}
 
 	net_ip_tcp_checksum(packet + 34, 16, len - 34,
 		packet + 26, packet + 30, 0);
@@ -585,7 +580,7 @@ static void net_ip_tcp(struct net *net, void *extra,
 
 	if (rst) {
 		debug("[ 'rst': disconnecting TCP connection %i ]\n", con_id);
-		net_ip_tcp_connectionreply(net, extra, con_id, 0, NULL, 0, 1);
+		net_ip_tcp_connectionreply(net, nic, con_id, 0, NULL, 0, 1);
 		tcp_closeconnection(net, con_id);
 		return;
 	}
@@ -596,7 +591,7 @@ static void net_ip_tcp(struct net *net, void *extra,
 		    "connection %i ]\n", con_id);
 
 		/*  Send an RST?  (TODO, this is wrong...)  */
-		net_ip_tcp_connectionreply(net, extra, con_id, 0, NULL, 0, 1);
+		net_ip_tcp_connectionreply(net, nic, con_id, 0, NULL, 0, 1);
 
 		/*  ... and forget about this connection:  */
 		tcp_closeconnection(net, con_id);
@@ -610,7 +605,7 @@ static void net_ip_tcp(struct net *net, void *extra,
 
 		/*  Send an ACK:  */
 		net->tcp_connections[con_id].state = TCP_OUTSIDE_CONNECTED;
-		net_ip_tcp_connectionreply(net, extra, con_id, 0, NULL, 0, 0);
+		net_ip_tcp_connectionreply(net, nic, con_id, 0, NULL, 0, 0);
 		net->tcp_connections[con_id].state = TCP_OUTSIDE_DISCONNECTED2;
 		return;
 	}
@@ -620,7 +615,7 @@ static void net_ip_tcp(struct net *net, void *extra,
 		    con_id);
 
 		/*  Send ACK:  */
-		net_ip_tcp_connectionreply(net, extra, con_id, 0, NULL, 0, 0);
+		net_ip_tcp_connectionreply(net, nic, con_id, 0, NULL, 0, 0);
 		net->tcp_connections[con_id].state = TCP_OUTSIDE_DISCONNECTED2;
 
 		/*  Return and send FIN:  */
@@ -725,7 +720,7 @@ debug("  all acked\n");
 
 ret:
 	/*  Send an ACK (or FIN) to the guest OS:  */
-	net_ip_tcp_connectionreply(net, extra, con_id, 0, NULL, 0, 0);
+	net_ip_tcp_connectionreply(net, nic, con_id, 0, NULL, 0, 0);
 }
 
 
@@ -746,7 +741,7 @@ ret:
  *	srcport=fffc dstport=0035 length=0028 chksum=76b6
  *	43e20100000100000000000003667470066e6574627364036f726700001c0001
  */
-static void net_ip_udp(struct net *net, void *extra,
+static void net_ip_udp(struct net *net, struct nic_data *nic,
 	unsigned char *packet, int len)
 {
 	int con_id, free_con_id, i, srcport, dstport, udp_len;
@@ -882,7 +877,8 @@ static void net_ip_udp(struct net *net, void *extra,
  *
  *  Handle an IP packet, coming from the emulated NIC.
  */
-void net_ip(struct net *net, void *extra, unsigned char *packet, int len)
+void net_ip(struct net *net, struct nic_data *nic, unsigned char *packet,
+	int len)
 {
 #if 1
 	int i;
@@ -913,13 +909,13 @@ void net_ip(struct net *net, void *extra, unsigned char *packet, int len)
 		/*  IPv4:  */
 		switch (packet[23]) {
 		case 1:	/*  ICMP  */
-			net_ip_icmp(net, extra, packet, len);
+			net_ip_icmp(net, nic, packet, len);
 			break;
 		case 6:	/*  TCP  */
-			net_ip_tcp(net, extra, packet, len);
+			net_ip_tcp(net, nic, packet, len);
 			break;
 		case 17:/*  UDP  */
-			net_ip_udp(net, extra, packet, len);
+			net_ip_udp(net, nic, packet, len);
 			break;
 		default:
 			fatal("[ net: IP: UNIMPLEMENTED protocol %i ]\n",
@@ -939,7 +935,7 @@ void net_ip(struct net *net, void *extra, unsigned char *packet, int len)
  *  Read http://tools.ietf.org/html/rfc2131 for details on DHCP.
  *  (And http://users.telenet.be/mydotcom/library/network/dhcp.htm.)
  */
-static void net_ip_broadcast_dhcp(struct net *net, void *extra,
+static void net_ip_broadcast_dhcp(struct net *net, struct nic_data *nic,
 	unsigned char *packet, int len)
 {
 	/*
@@ -964,10 +960,11 @@ static void net_ip_broadcast_dhcp(struct net *net, void *extra,
 	    packet[26], packet[27], packet[28], packet[29]);
 	fatal("dst=%02x%02x%02x%02x ",
 	    packet[30], packet[31], packet[32], packet[33]);
-#if 0
-	for (i=34; i<len; i++)
-		fatal("%02x", packet[i]);
-#endif
+
+	if (false) {
+		for (i=34; i<len; i++)
+			fatal("%02x", packet[i]);
+	}
 
 	if (len < 34 + 8 + 236) {
 		fatal("[ DHCP packet too short? Len=%i ]\n", len);
@@ -1008,7 +1005,7 @@ static void net_ip_broadcast_dhcp(struct net *net, void *extra,
 	fatal(" ]\n");
 
         reply_len = 307;
-        lp = net_allocate_ethernet_packet_link(net, extra, reply_len);
+        lp = net_allocate_ethernet_packet_link(net, nic, reply_len);
 
         /*  From old packet, copy everything before options field:  */
         memcpy(lp->data, packet, 278);
@@ -1130,31 +1127,31 @@ packet = lp->data;
  *  Handle an IP broadcast packet, coming from the emulated NIC.
  *  (This is usually a DHCP request, or similar.)
  */
-void net_ip_broadcast(struct net *net, void *extra,
+void net_ip_broadcast(struct net *net, struct nic_data *nic,
 	unsigned char *packet, int len)
 {
 	unsigned char *p = (unsigned char *) &net->netmask_ipv4;
 	uint32_t x, y;
 	int i, xl, warning = 0, match = 0;
 
-#if 0
-	fatal("[ net: IP BROADCAST: ");
-	fatal("ver=%02x ", packet[14]);
-	fatal("tos=%02x ", packet[15]);
-	fatal("len=%02x%02x ", packet[16], packet[17]);
-	fatal("id=%02x%02x ",  packet[18], packet[19]);
-	fatal("ofs=%02x%02x ", packet[20], packet[21]);
-	fatal("ttl=%02x ", packet[22]);
-	fatal("p=%02x ", packet[23]);
-	fatal("sum=%02x%02x ", packet[24], packet[25]);
-	fatal("src=%02x%02x%02x%02x ",
-	    packet[26], packet[27], packet[28], packet[29]);
-	fatal("dst=%02x%02x%02x%02x ",
-	    packet[30], packet[31], packet[32], packet[33]);
-	for (i=34; i<len; i++)
-		fatal("%02x", packet[i]);
-	fatal(" ]\n");
-#endif
+	if (false) {
+		fatal("[ net: IP BROADCAST: ");
+		fatal("ver=%02x ", packet[14]);
+		fatal("tos=%02x ", packet[15]);
+		fatal("len=%02x%02x ", packet[16], packet[17]);
+		fatal("id=%02x%02x ",  packet[18], packet[19]);
+		fatal("ofs=%02x%02x ", packet[20], packet[21]);
+		fatal("ttl=%02x ", packet[22]);
+		fatal("p=%02x ", packet[23]);
+		fatal("sum=%02x%02x ", packet[24], packet[25]);
+		fatal("src=%02x%02x%02x%02x ",
+		    packet[26], packet[27], packet[28], packet[29]);
+		fatal("dst=%02x%02x%02x%02x ",
+		    packet[30], packet[31], packet[32], packet[33]);
+		for (i=34; i<len; i++)
+			fatal("%02x", packet[i]);
+		fatal(" ]\n");
+	}
 
 	/*  Check for 10.0.0.255 first, maybe some guest OSes think that
 	    it's a /24 network, regardless of what it actually is.  */
@@ -1193,7 +1190,7 @@ void net_ip_broadcast(struct net *net, void *extra,
 	    packet[23] == 0x11 &&			/*  UDP  */
 	    packet[34] == 0 && packet[35] == 68 &&	/*  DHCP client  */
 	    packet[36] == 0 && packet[37] == 67) {	/*  DHCP server  */
-		net_ip_broadcast_dhcp(net, extra, packet, len);
+		net_ip_broadcast_dhcp(net, nic, packet, len);
 		return;
 	}
 
@@ -1213,7 +1210,7 @@ void net_ip_broadcast(struct net *net, void *extra,
 	    packet[30], packet[31], packet[32], packet[33]);
 	for (i=34; i<len; i++)
 		fatal("%02x", packet[i]);
-	fatal(" ]\n");
+	fatal(" (match=%i) ]\n", match);
 }
 
 
@@ -1222,7 +1219,7 @@ void net_ip_broadcast(struct net *net, void *extra,
  *
  *  Receive any available UDP packets (from the outside world).
  */
-void net_udp_rx_avail(struct net *net, void *extra)
+void net_udp_rx_avail(struct net *net, struct nic_data *nic)
 {
 	int received_packets_this_tick = 0;
 	int max_packets_this_tick = 200;
@@ -1326,7 +1323,7 @@ void net_udp_rx_avail(struct net *net, void *extra)
 
 			ip_len = 20 + this_packets_data_length;
 
-			lp = net_allocate_ethernet_packet_link(net, extra,
+			lp = net_allocate_ethernet_packet_link(net, nic,
 			    14 + 20 + this_packets_data_length);
 
 			/*  Ethernet header:  */
@@ -1381,7 +1378,7 @@ void net_udp_rx_avail(struct net *net, void *extra)
  *
  *  Receive any available TCP packets (from the outside world).
  */
-void net_tcp_rx_avail(struct net *net, void *extra)
+void net_tcp_rx_avail(struct net *net, struct nic_data *nic)
 {
 	int received_packets_this_tick = 0;
 	int max_packets_this_tick = 200;
@@ -1445,7 +1442,7 @@ void net_tcp_rx_avail(struct net *net, void *extra)
 			net->tcp_connections[con_id].state =
 			    TCP_OUTSIDE_CONNECTED;
 			debug("CHANGING TO TCP_OUTSIDE_CONNECTED\n");
-			net_ip_tcp_connectionreply(net, extra, con_id, 1,
+			net_ip_tcp_connectionreply(net, nic, con_id, 1,
 			    NULL, 0, 0);
 		}
 
@@ -1477,7 +1474,7 @@ void net_tcp_rx_avail(struct net *net, void *extra)
 				    net->tcp_connections[con_id].
 				    incoming_buf_seqnr;
 
-				net_ip_tcp_connectionreply(net, extra, con_id,
+				net_ip_tcp_connectionreply(net, nic, con_id,
 				    0, net->tcp_connections[con_id].
 				    incoming_buf,
 				    net->tcp_connections[con_id].
@@ -1519,21 +1516,21 @@ void net_tcp_rx_avail(struct net *net, void *extra)
 			memcpy(net->tcp_connections[con_id].incoming_buf,
 			    buf, res);
 
-			net_ip_tcp_connectionreply(net, extra, con_id, 0,
+			net_ip_tcp_connectionreply(net, nic, con_id, 0,
 			    buf, res, 0);
 		} else if (res == 0) {
 			net->tcp_connections[con_id].state =
 			    TCP_OUTSIDE_DISCONNECTED;
 			debug("CHANGING TO TCP_OUTSIDE_DISCONNECTED, read"
 			    " res=0\n");
-			net_ip_tcp_connectionreply(net, extra, con_id, 0,
+			net_ip_tcp_connectionreply(net, nic, con_id, 0,
 			    NULL, 0, 0);
 		} else {
 			net->tcp_connections[con_id].state =
 			    TCP_OUTSIDE_DISCONNECTED;
 			fatal("CHANGING TO TCP_OUTSIDE_DISCONNECTED, "
 			    "read res<=0, errno = %i\n", errno);
-			net_ip_tcp_connectionreply(net, extra, con_id, 0,
+			net_ip_tcp_connectionreply(net, nic, con_id, 0,
 			    NULL, 0, 0);
 		}
 

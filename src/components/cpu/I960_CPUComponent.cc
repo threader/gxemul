@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2019  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2018-2020  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,25 @@
 #include "GXemul.h"
 #include "components/I960_CPUComponent.h"
 
+
+// Register conventions according to
+// https://people.cs.clemson.edu/~mark/subroutines/i960.html
+
+static const char* i960_regnames[N_I960_REGS] = {
+	"pfp",		// r0 = previous frame pointer
+	"sp",		// r1 = stack pointer
+	"rip",		// r2 = return instruction pointer
+	"r3", "r4", "r5", "r6", "r7",
+	"r8", "r9", "r10", "r11", "r12",
+	"r13", "r14", "r15",
+
+	"g0", "g1", "g2", "g3",	// parameters 0-3; return words 0-3
+	"g4", "g5", "g6", "g7", // parameters 4-7; temporaries
+	"g8", "g9", "g10", "g11", "g12",	// preserved accross call
+	"g13",		// structure return pointer
+	"g14",		// argument block pointer; leaf return address (HW)
+	"fp" 		// g15 = frame pointer (16-byte aligned HW)
+};
 
 struct reg_instruction {
 	int opcode;
@@ -331,8 +350,10 @@ size_t I960_CPUComponent::DisassembleInstruction(uint64_t vaddr, vector<string>&
 	// Read the instruction word:
 	AddressSelect(vaddr);
 	bool readOk = ReadData(instructionWord, m_isBigEndian? BigEndian : LittleEndian);
-	if (!readOk)
+	if (!readOk) {
+		result.push_back("memory could not be read");
 		return 0;
+	}
 
 	const uint32_t iword = instructionWord;
 

@@ -2,7 +2,7 @@
 #define	MISC_H
 
 /*
- *  Copyright (C) 2003-2019  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -43,7 +43,7 @@
 
 #include "../../config.h"
 
-#define	COPYRIGHT_MSG	"Copyright (C) 2003-2019  Anders Gavare"
+#define	COPYRIGHT_MSG	"Copyright (C) 2003-2021  Anders Gavare"
 
 // The recommended way to add a specific message to the startup banner or
 // about box is to use the SECONDARY_MSG. This should end with a newline
@@ -297,6 +297,7 @@ size_t mystrlcpy(char *dst, const char *src, size_t size);
 size_t mystrlcat(char *dst, const char *src, size_t size);
 #endif
 void print_separator_line(void);
+uint64_t size_to_mask(uint64_t size);
 
 
 /*  mvmeprom.c:  */

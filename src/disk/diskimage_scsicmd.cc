@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2019  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -215,7 +215,7 @@ int diskimage_scsicommand(struct cpu *cpu, int id, int type,
 	struct scsi_transfer *xferp)
 {
 	char namebuf[16];
-	int retlen, i, q, result;
+	int retlen, i, q;
 	uint64_t size;
 	int64_t ofs;
 	int pagecode;
@@ -425,9 +425,7 @@ xferp->data_in[4] = 0x2c - 4;	/*  Additional length  */
 
 		diskimage_recalc_size(d);
 
-		size = d->total_size / d->logical_block_size;
-		if (d->total_size & (d->logical_block_size-1))
-			size ++;
+		size = d->nr_of_logical_blocks - 1;
 
 		xferp->data_in[0] = (size >> 24) & 255;
 		xferp->data_in[1] = (size >> 16) & 255;
@@ -527,11 +525,10 @@ xferp->data_in[4] = 0x2c - 4;	/*  Additional length  */
 		case 4:		/*  rigid disk geometry page  */
 			xferp->data_in[q + 0] = pagecode;
 			xferp->data_in[q + 1] = 22;
-			xferp->data_in[q + 2] = (d->ncyls >> 16) & 255;
-			xferp->data_in[q + 3] = (d->ncyls >> 8) & 255;
-			xferp->data_in[q + 4] = d->ncyls & 255;
+			xferp->data_in[q + 2] = (d->cylinders >> 16) & 255;
+			xferp->data_in[q + 3] = (d->cylinders >> 8) & 255;
+			xferp->data_in[q + 4] = d->cylinders & 255;
 			xferp->data_in[q + 5] = d->heads;
-
 			xferp->data_in[q + 20] = (d->rpms >> 8) & 255;
 			xferp->data_in[q + 21] = d->rpms & 255;
 			break;
@@ -551,8 +548,8 @@ xferp->data_in[4] = 0x2c - 4;	/*  Additional length  */
 			    & 255;
 			xferp->data_in[q + 7] = d->logical_block_size & 255;
 
-			xferp->data_in[q + 8] = (d->ncyls >> 8) & 255;
-			xferp->data_in[q + 9] = d->ncyls & 255;
+			xferp->data_in[q + 8] = (d->cylinders >> 8) & 255;
+			xferp->data_in[q + 9] = d->cylinders & 255;
 
 			xferp->data_in[q + 28] = (d->rpms >> 8) & 255;
 			xferp->data_in[q + 29] = d->rpms & 255;
@@ -669,8 +666,7 @@ xferp->data_in[4] = 0x2c - 4;	/*  Additional length  */
 
 			d->filemark = 1;
 		} else {
-			result = diskimage__internal_access(d, 0, ofs,
-			    xferp->data_in, size);
+			/* int result = */  diskimage__internal_access(d, 0, ofs, xferp->data_in, size);
 		}
 
 		if (d->is_a_tape && d->f != NULL)
@@ -733,8 +729,7 @@ xferp->data_in[4] = 0x2c - 4;	/*  Additional length  */
 		debug("WRITE ofs=%i size=%i offset=%i\n", (int)ofs,
 		    (int)size, (int)xferp->data_out_offset);
 
-		result = diskimage__internal_access(d, 1, ofs,
-		    xferp->data_out, size);
+		/*  int result = */  diskimage__internal_access(d, 1, ofs, xferp->data_out, size);
 
 		/*  TODO: how about return code?  */
 
@@ -942,9 +937,7 @@ xferp->data_in[4] = 0x2c - 4;	/*  Additional length  */
 
 		diskimage_recalc_size(d);
 
-		size = d->total_size / d->logical_block_size;
-		if (d->total_size & (d->logical_block_size-1))
-			size ++;
+		size = d->nr_of_logical_blocks;
 
 		xferp->data_in[0] = (size >> 24) & 255;
 		xferp->data_in[1] = (size >> 16) & 255;
