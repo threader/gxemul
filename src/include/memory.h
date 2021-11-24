@@ -2,7 +2,7 @@
 #define	MEMORY_H
 
 /*
- *  Copyright (C) 2004-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2004-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -31,6 +31,7 @@
  *  Memory related functions.
  */
 
+#include <stdbool.h>
 #include <sys/types.h>
 #include <inttypes.h>
 
@@ -101,7 +102,7 @@ void memory_writemax64(struct cpu *cpu, unsigned char *buf, int len,
 
 void *zeroed_alloc(size_t s);
 
-struct memory *memory_new(uint64_t physical_max, int arch);
+struct memory *memory_new(uint64_t physical_max);
 
 int memory_points_to_string(struct cpu *cpu, struct memory *mem,
 	uint64_t addr, int min_string_length);
@@ -158,8 +159,6 @@ void memory_device_register(struct memory *mem, const char *,
 	void *extra, int flags, unsigned char *dyntrans_data);
 void memory_device_remove(struct memory *mem, int i);
 
-uint64_t memory_checksum(struct memory *mem);
-
 void dump_mem_string(struct cpu *cpu, uint64_t addr);
 void store_string(struct cpu *cpu, uint64_t addr, const char *s);
 int store_64bit_word(struct cpu *cpu, uint64_t addr, uint64_t data64);
@@ -182,8 +181,8 @@ void add_environment_string_dual(struct cpu *cpu,
 void store_pointer_and_advance(struct cpu *cpu, uint64_t *addrp,
         uint64_t data, int flag64);
 
-void memory_warn_about_unimplemented_addr(struct cpu *cpu, struct memory *mem,
-	int writeflag, uint64_t paddr, uint8_t *data, size_t len);
+bool memory_warn_about_unimplemented_addr(struct cpu *cpu, struct memory *mem,
+	int writeflag, uint64_t paddr, size_t len);
 
 
 #endif	/*  MEMORY_H  */

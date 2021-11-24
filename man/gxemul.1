@@ -29,7 +29,7 @@
 .\"
 .\"     groff -man -Tascii gxemul.1    or    nroff -man gxemul.1
 .\"
-.Dd FEBRUARY 2021
+.Dd MARCH 2021
 .Dt GXEMUL 1
 .Os
 .Sh NAME
@@ -171,6 +171,10 @@ is 0. A suitable offset when booting from Dreamcast ISO9660 filesystem
 images, which are offset by 11702 sectors, is 23965696.
 .It r
 Read-only (don't allow changes to be written to the file).
+.It R
+Don't allow changes to the file, but add a temporary overlay for the
+disk image to allow guest operating systems to write to the disk.
+(These changes are lost when the GXemul process exits.)
 .It s
 SCSI.
 .It t
@@ -230,6 +234,8 @@ When booting from an ISO9660 filesystem, the emulator will try to boot
 using this file. (In some emulation modes, eg. DECstation, this name is passed 
 along to the boot program. Useful names are "bsd" for OpenBSD/pmax, 
 "vmunix" for Ultrix, or "vmsprite" for Sprite.)
+.It Fl L Ar tapdev
+Enable tap networking using device 'tapdev', on systems that support it.
 .It Fl M Ar m
 Emulate
 .Ar m
@@ -327,21 +333,8 @@ flag is added to the command line).
 Halt if the emulated program attempts to access non-existing memory.
 .It Fl t
 Show a trace tree of all function calls being made.
-.It Fl U
-Enable slow_serial_interrupts_hack_for_linux.
 .It Fl X
 Use X11. This option enables graphical framebuffers.
-.It Fl x
-Open up new xterms for emulated serial ports. The default behaviour is to 
-open up xterms when using configuration files, or if X11 is enabled. When 
-starting up a simple emulation session with settings directly on the 
-command line, and neither
-.Fl X
-nor
-.Fl x
-is used, then all output is confined to the terminal that
-.Nm
-started in.
 .It Fl Y Ar n
 Scale down framebuffer windows by
 .Ar n
@@ -369,6 +362,8 @@ as an X11 display to use for framebuffers.
 .Pp
 General options:
 .Bl -tag -width Ds
+.It Fl A
+Disable colorized output.
 .It Fl c Ar cmd
 Add
 .Ar cmd
@@ -382,6 +377,9 @@ more deterministic behaviour than running without this option.
 However, if the emulated machine has clocks or timer interrupt sources,
 or if user interaction is taking place (e.g. keyboard input at irregular
 intervals), then this option is meaningless.
+.It Fl G
+Enable colorized output. If the environment variable CLICOLOR is set, then
+this is the default behavior.
 .It Fl H
 Display a list of available CPU types and machine types.
 (Most of these don't work. Please read the HTML documentation included in the
@@ -394,16 +392,31 @@ Set the size of the dyntrans cache (per emulated CPU) to
 .Ar n
 MB. The default size is 96 MB.
 .It Fl K
-Force the single-step debugger to be entered at the end of a simulation.
+Show the debugger prompt instead of exiting, when a simulation ends.
 .It Fl q
 Quiet mode; this suppresses startup messages.
 .It Fl V
-Start up in the single-step debugger, paused. If this option is used,
+Start up in the interactive debugger, paused. If this option is used,
 .Fl q
-is ignored.
+is ignored. This option also sets
+.Fl K.
 .It Fl v
 Increase verbosity (show more debug messages). This option can be used
 multiple times.
+.It Fl x
+Open up separate terminal windows for emulated serial ports. The default behaviour is to 
+open up new terminals when using configuration files with more than one machine
+specified, or if X11 is enabled. When starting up a simple emulation
+session with settings directly on the command line (or when using configuration
+files with a single machine specification), and neither
+.Fl X
+nor
+.Fl x
+is used, then all output is confined to the terminal that
+.Nm
+started in.
+The default terminal to use is 'xterm', but this can be overriden by
+the XTERM environment variable.
 .El
 .Pp
 Configuration file startup:
@@ -451,87 +464,6 @@ another emulation mode.
 .Pp
 In general, however, real ROM images require much more emulation detail 
 than GXemul provides, so they can usually not run.
-.Sh SYNOPSIS (NEW FRAMEWORK, EXPERIMENTAL)
-.Nm
-.Op options
-.Fl e
-.Ar name
-.Op additional components and files Ar ...
-.Nm
-.Op options
-.Ar configfile
-.Nm
-.Fl V
-.Nm
-.Fl H
-.Sh DESCRIPTION
-The options available for the new framework are:
-.Pp
-.Bl -tag -width Ds
-.It Fl B
-Enables snapshotting (required for reverse execution/stepping).
-.It Fl e Ar name
-Start with a machine based on template 'name'. The name may be followed by
-optional arguments in parentheses, e.g.
-.Pp
-.Dl "gxemul -V -e 'testm88k(cpu=88110,ram=10485760)'"
-.Pp
-Remember to use quotes if your shell gives special meaning to parentheses.
-.It Fl H
-Display a list of available machine templates.
-.It Fl q
-Start up in Quiet mode (i.e. suppress debug messages). If an error occurs
-during emulation which stops execution and drops the user into the debugger,
-quiet mode is turned off.
-.It Fl V
-Start up in interactive mode, paused. If this option is used,
-.Fl q
-is ignored.
-.El
-.Pp
-When using the
-.Fl e
-option, the remainder of the command line consists of zero or more additional
-files to load, or components to add to the emulation setup.
-Including these on the command line is equivalent to using the 'add' command
-(although with a different syntax) in the interactive debugger.
-A simple example is a file name to load
-into the emulated machine, but they can be more complex as well.
-.Pp
-When not using the
-.Fl e
-option, the config file should be one that was previously saved from within
-the emulator using the 'save' command.
-.Pp
-Starting the emulator with the
-.Fl V
-switch will bring you to the interactive debugger environment, without
-starting the emulation.
-.Pp
-The general syntax for adding components is:
-.Pp
-.Dl "existing_component_path:component(args)"
-.Pp
-If existing_component_path part is omitted, it is assumed to be cpu0.
-The component(args) part may be written as just args, in which case the
-name of the component is autodetected, and the args is given as an
-argument called "name" to that component.
-.Pp
-For example, if the additional component/filename is just
-.Pp
-.Dl "netbsd-GENERIC"
-.Pp
-this will be equivalent to
-.Pp
-.Dl "cpu0:file(name=netbsd-GENERIC)"
-.Pp
-An attempt will be made to load the file netbsd-GENERIC
-into cpu0, which is the default component if none is specified. This will most
-likely be expanded into root.machine0.mainbus0.cpu0. If cpu0 is ambiguous,
-then this will not work; the specific cpu0 name must be supplied instead, like
-this:
-.Pp
-.Dl "machine3.mainbus0.cpu0:netbsd-GENERIC"
 .Sh BUGS
 There are many bugs. Some of the known bugs are mentioned in the TODO 
 file in the

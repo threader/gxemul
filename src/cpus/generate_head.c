@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -53,7 +53,7 @@ char *uppercase(char *l)
 
 int main(int argc, char *argv[])
 {
-	char *a, *b;
+	char *a; //, *b;
 
 	if (argc != 3) {
 		fprintf(stderr, "usage: %s arch Arch\n", argv[0]);
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	}
 
 	a = argv[1];
-	b = argv[2];
+	// b = argv[2];
 
 
 	printf("\n/*  AUTOMATICALLY GENERATED! Do not edit.  */\n\n");
@@ -114,10 +114,9 @@ int main(int argc, char *argv[])
 	printf("#define COMBINE_INSTRUCTIONS %s_combine_instructions\n", a);
 	printf("#define DISASSEMBLE %s_cpu_disassemble_instr\n", a);
 
-	printf("\nextern volatile int single_step, single_step_breakpoint;"
-	    "\nextern int debugger_n_steps_left_before_interaction;\n"
-	    "extern int old_show_trace_tree;\n"
-	    "extern int old_instruction_trace;\n"
+	printf("\nextern bool single_step;\n"
+	    "extern bool about_to_enter_single_step;\n"
+	    "extern int single_step_breakpoint;\n"
 	    "extern int old_quiet_mode;\n"
 	    "extern int quiet_mode;\n");
 
@@ -138,6 +137,7 @@ int main(int argc, char *argv[])
 	    "translated\n *  mode.\n */\n");
 	printf("X(nothing)\n{\n");
 	printf("\tcpu->cd.%s.next_ic --;\n", a);
+	printf("\tcpu->ninstrs --;\n");
 	printf("}\n\n");
 
 	/*  Ugly special hacks for SH[34]:  */

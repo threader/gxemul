@@ -2,7 +2,7 @@
 #define	CONSOLE_H
 
 /*
- *  Copyright (C) 2003-2010  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2003-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -38,16 +38,19 @@
 
 #define	CONSOLE_OUTPUT_ONLY	-1
 
+struct emul;
+
 void console_deinit_main(void);
 void console_sigcont(int x);
 void console_makeavail(int handle, char ch);
 int console_charavail(int handle);
+bool console_any_input_available(struct emul *emul);
 int console_readchar(int handle);
 void console_putchar(int handle, int ch);
 void console_flush(void);
-void console_mouse_coordinates(int x, int y, int fb_nr);
+void console_mouse_coordinate_update(int dx, int dy, int fb_nr);
 void console_mouse_button(int, int);
-void console_getmouse(int *x, int *y, int *buttons, int *fb_nr);
+void console_getmouse(int *dx, int *dy, int *buttons, int *fb_nr);
 void console_slave(const char *arg);
 int console_are_slaves_allowed(void);
 int console_warn_if_slaves_are_needed(int init);

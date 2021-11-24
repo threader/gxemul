@@ -45,11 +45,30 @@ SUCH DAMAGE.
 
 
 
-<p>This emulation mode attempts to emulate a Luna 88K workstation. Note that these
+<p>This emulation mode attempts to emulate an OMRON Luna-88K workstation. Note that these
 were based on <a href="https://en.wikipedia.org/wiki/Motorola_88000">Motorola
 88000</a> processors, not 68000.
 
-<p>Emulated hardware:
+<p>Originally, they ran OMRON's UniOS. But also of historical interest:
+<ul>
+	<li>Carnegie-Mellon University's MACH was partially
+		<a href="https://www.cbronline.com/news/omron_together_with_motorola_donate_40_workstations_to_carnegie_mellon_university/">developed
+		on these machines</a>. Some <a href="http://www.cs.cmu.edu/~jmcm/omron/luna88k.html">source code still exists (luna88k.MK84.tar.Z)</a>
+		but I have not found any ready-to-run binary distribution
+		of MACH/luna88k.
+
+	<p>
+	<li><a href="http://cap-lore.com/CapTheory/upenn/">KeyKOS</a> ran on
+		<a href="http://www.cap-lore.com/CapTheory/KK/88K.html">88K</a>,
+		and in particular
+		<a href="http://cap-lore.com/CapTheory/upenn/NanoKernel/NanoKernel.html#RTFToC21">KeyNIX</a> (a UNIX-layer on top of KeyKOS,
+		supposedly capable of running X11).
+</ul>
+
+<p>In modern times, the only still maintained and freely available operating
+system for these machines is <a href="https://www.openbsd.org/luna88k.html">OpenBSD/luna88k</a>.
+
+<p>GXemul emulates the following devices:
 <ul>
 	<li>88100 CPU  (Only a single CPU works well, up to 4 can be experimented with.)
 	<li>Interrupt controller and parts of the system board
@@ -57,26 +76,127 @@ were based on <a href="https://en.wikipedia.org/wiki/Motorola_88000">Motorola
 	<li>Keyboard and mouse
 	<li>Graphical monochrome framebuffer, 1280 x 1024
 	<li>Lance Ethernet
+	<li>SCSI
 </ul>
+
+<p>well enough to run OpenBSD. It is highly likely that running
+other operating systems (or the original OMRON firmware) will trigger
+bugs of various kinds in the device implementations.
 
 <p><b>NOT</b> emulated yet:
 <ul>
-	<li>SCSI
+	<li>Front panel LCD display
+	<li>Parallel port
 	<li><i>Color</i> framebuffers
 </ul>
 
-<p>OpenBSD/luna88k works as a guest OS, with either serial console or
-graphical framebuffer, when using root-on-nfs.
+<!-- TODO: 64 MB luna88k, 112 MB luna88k2, max 256 MB in emulator  -->
+
+<p><a href="openbsd-luna88k-20210130.png"><img src="openbsd-luna88k-20210130-small.png"></a>
+<a href="openbsd-luna88k-20210209.png"><img src="openbsd-luna88k-20210209-small.png"></a>
+<a href="openbsd-luna88k-20210220.png"><img src="openbsd-luna88k-20210220-small.png"></a>
+<a href="20210328-openbsd-luna88k-inside-openbsd-luna88k.png"><img src="20210328-openbsd-luna88k-inside-openbsd-luna88k-small.png"></a>
+
+<p><small>The last of the screenshots above shows the OpenBSD/luna88k kernel booting
+inside GXemul, compiled inside emulated OpenBSD/luna88k running in GXemul on
+a FreeBSD/amd64 host.</small>
+
+<p>There are a couple of ways to run and/or install OpenBSD in the emulator.
+
+<p>
+<ul>
+	<li><a href="#openbsdluna88klive">From a "live" harddisk image</a>
+	<li><a href="#openbsdluna88k">Via network installation</a>
+	<li><a href="#openbsdluna88knfs">With root-on-nfs</a>
+	<li><a href="#openbsdluna88kmp">Experimenting with the MultiProcessor kernel</a>
+</ul>
+
+
+
+<p><br>
+<a name="openbsdluna88klive"></a>
+<h3>OpenBSD/luna88k from a "live" harddisk image:</h3>
+
+<p>Kenji Aoyama has made available full harddisk images from a real
+OpenBSD installation. Download the latest such harddisk image and
+<tt>boot</tt> program from
+<a href="http://www.nk-home.net/~aoyama/liveimage/">http://www.nk-home.net/~aoyama/liveimage/</a>,
+and start the emulator like this:
+
+<p>
+<pre>
+	<b>gxemul -e luna-88k -d liveimage-luna88k-raw-20201206.img boot</b>
+</pre>
+
+<p>To run with a graphical framebuffer, add <tt>-X</tt> to the command line.
+
+<p>To shut down the machine gracefully, run <tt>reboot</tt> as root.
 
 
 
 
 <p><br>
 <a name="openbsdluna88k"></a>
-<h3>OpenBSD/luna88k:</h3>
+<h3>OpenBSD/luna88k network installation:</h3>
 
-<p>GXemul does not yet emulate the SCSI controller in the LUNA88K machine,
-so OpenBSD/luna88k needs to boot with root-on-nfs.
+<p>To install OpenBSD, you first need to create an empty harddisk image
+onto which the operating system will be installed:
+
+<p><pre>
+	<b>dd if=/dev/zero of=obsd_luna88k.img bs=1024 count=1 seek=5500000</b>
+</pre>
+
+<p>Then download the ramdisk kernel, a regular kernel, and the boot program:
+<ul>
+	<li><a href="https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd.rd">https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd.rd</a>
+	<li><a href="https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd">https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd</a>
+	<li><a href="https://ftp.nluug.nl/OpenBSD/6.8/luna88k/boot">https://ftp.nluug.nl/OpenBSD/6.8/luna88k/boot</a>
+</ul>
+
+<p>Start the emulator like this, and install as if you were doing a network
+(http) install on a real machine:
+<pre>
+	<b>gxemul -e luna-88k -d obsd_luna88k.img bsd.rd</b>
+</pre>
+
+<p>For networking configuration, enter IPv4 address 10.0.0.1, netmask 255.0.0.0,
+and skip IPv6 configuration. Default route and DNS nameserver should both be 10.0.0.254.
+
+<p><b>NOTE:</b> Doing a network install is currently really really slow.
+It is so slow that it will probably say "stalled" in the download progress
+reporting, but just leave it on and eventually it will have downloaded
+everything.
+
+<p>Finally, once the installation finishes, reboot the emulated machine and
+start again using either the boot loader, or using the regular kernel:
+<pre>
+	<b>gxemul -e luna-88k -d obsd_luna88k.img boot</b>
+
+	or
+
+	<b>gxemul -e luna-88k -d obsd_luna88k.img bsd</b>
+</pre>
+
+<p>Using the boot loader mimics how a real machine would start up OpenBSD
+on the luna88k. Using the regular kernel has the advantage that it includes
+symbols, which are useful when debugging the kernel.
+
+<p>To run with a graphical framebuffer, add <tt>-X</tt> to the command line.
+
+<p>To shut down the machine gracefully, run <tt>reboot</tt> as root.
+
+
+
+
+<p><br>
+<a name="openbsdluna88knfs"></a>
+<h3>OpenBSD/luna88k with root-on-nfs:</h3>
+
+<p>Back when GXemul did not emulate the SCSI controller in the LUNA88K machine,
+the only way to run OpenBSD/luna88k was using root-on-nfs. These instructions
+can still be used, if you want to do it that way.
+
+<p>
 Another emulated machine must then be used as the nfs root server, and the
 emulated LUNA88K machine must boot as a <a href="http://man.openbsd.org/diskless">diskless</a>
 client. To make matters even more complicated, the OpenBSD/luna88k 6.8 RAMDISK
@@ -84,12 +204,6 @@ kernel has support for Ethernet, but it does not seem to have a driver for
 nfs included or at least it doesn't work in the emulator. Therefore, a <i>separate</i>
 OpenBSD ramdisk kernel, e.g. for OpenBSD/sgi, needs to be used to run the final
 step of the root-on-nfs installation.
-
-<p>Performing this setup is quite time consuming, but necessary.
-
-<p><a href="openbsd-luna88k-20210130.png"><img src="openbsd-luna88k-20210130-small.png"></a>
-<a href="openbsd-luna88k-20210209.png"><img src="openbsd-luna88k-20210209-small.png"></a>
-<a href="openbsd-luna88k-20210220.png"><img src="openbsd-luna88k-20210220-small.png"></a>
 
 <p>Let's get started.
 
@@ -281,6 +395,14 @@ Unfortunately, Xorg lacks a driver for <tt>wsfb</tt> in OpenBSD/luna88k
 rest of the OS is version 6.8. If you have extracted the files above,
 then start X by running <tt>startx</tt>.
 
+
+
+
+
+<p><br>
+<a name="openbsdluna88kmp"></a>
+<h3>OpenBSD/luna88k MultiProcessor experiments:</h3>
+
 <p>You can experiment with the multiprocessor kernel (bsd.mp), with up to
 4 emulated CPUs. It is not as stable as running single-processor, though.
 Also, the emulator itself is not multithreaded, so all CPUs are emulated
@@ -290,39 +412,12 @@ a slower total emulation speed.
 <p><a href="20210222-openbsd-luna88k-mp-1.png"><img src="20210222-openbsd-luna88k-mp-1-small.png"></a>
 <a href="20210222-openbsd-luna88k-mp-2.png"><img src="20210222-openbsd-luna88k-mp-2-small.png"></a>
 
-<p>Uncomment the bsd.mp file in the configuration file, and set ncpus to the
+<p>Assuming you have done the root-on-nfs setup detailed above, uncomment
+the bsd.mp file in the configuration file, and set ncpus to the
 number of cpus (1 through 4).
 
-
-<p>
-One can also experiment with the RAMDISK kernel (much easier than following
-the rather involved process above):
-
-<ul>
-	<li>Download <a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd">https://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd</a>
-</ul>
-
-<p>
-Start the emulator like this:
-<pre>
-	<b>gxemul -e luna-88k bsd.rd</b>
-
-	<i>(For older OpenBSD/luna88k kernels, 5.4 and below:)
-	gxemul -e luna-88k 0x20000:0x20:bsd.rd</i>
-</pre>
-
-<p>Add <tt>-X</tt> if you want to use the graphical framebuffer.
-
-
-
-<p>
-The following is not needed in order to experiment with booting OpenBSD,
-but can be interesting nonetheless: Download 
-<a href="https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/boot">https://ftp.eu.openbsd.org/pub/OpenBSD/6.2/luna88k/boot</a> and try
-
-<pre>
-	<b>gxemul -v -e luna-88k 0x00700000:0x20:0x00700000:boot</b>
-</pre>
+<p>If you want to start the emulator from the command line with multiple
+processors, use the <tt>-n</tt> option.
 
 
 

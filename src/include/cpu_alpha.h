@@ -2,7 +2,7 @@
 #define	CPU_ALPHA_H
 
 /*
- *  Copyright (C) 2005-2011  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2005-2021  Anders Gavare.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -190,7 +190,7 @@ void alpha_init_64bit_dummy_tables(struct cpu *cpu);
 int alpha_run_instr(struct cpu *cpu);
 int alpha_memory_rw(struct cpu *cpu, struct memory *mem, uint64_t vaddr,
 	unsigned char *data, size_t len, int writeflag, int cache_flags);
-int alpha_cpu_family_init(struct cpu_family *);
+void alpha_cpu_family_init(struct cpu_family *);
 
 /*  cpu_alpha_palcode.c:  */
 void alpha_palcode_name(uint32_t palcode, char *buf, size_t buflen);
