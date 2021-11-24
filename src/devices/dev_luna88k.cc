@@ -32,18 +32,17 @@
  *  work to some basic degree.
  *
  *  Things that are implemented:
- *	Interrupt controller for CPU #0
- *	Serial I/O
- *	Keyboard
+ *	Interrupt controller (hopefully working with all 4 CPUs)
+ *	Time-of-day clock
+ *	Serial I/O (including Keyboard and Mouse)
  *	Monochrome framebuffer
  *	Lance ethernet
  *
  *  Things that are NOT implemented yet:
- *	Actually working multi-CPU interrupt support:
- *		Interrupt mask & status, clocks, etc.
+ *	LUNA-88K2 specifics. (Some registers are at different addresses etc.)
  *	SCSI
  *	Parallel I/O
- *	Mouse
+ *	Front LCD display
  *	Color framebuffer
  *
  *  TODO: Separate out these devices to their own files, so that they can
@@ -87,10 +86,10 @@
 struct luna88k_data {
 	struct vfb_data *fb;
 
-	struct interrupt cpu_irq;
-	int		irqActive;
+	struct interrupt cpu_irq[MAX_CPUS];
+	int		irqActive[MAX_CPUS];
 	uint32_t	interrupt_enable[MAX_CPUS];
-	uint32_t	interrupt_status[MAX_CPUS];
+	uint32_t	interrupt_status;
 	uint32_t	software_interrupt_status[MAX_CPUS];
 
 	/*  Timer stuff  */
@@ -101,13 +100,17 @@ struct luna88k_data {
 	/*  sio: Serial controller, two channels.  */
 	int		console_handle;
 	struct interrupt sio_irq;
-	int		sio_tx_interrupt_countdown;
+	int		sio_tx_pending[2];
 	int		obio_sio_regno[2];
 	uint8_t		obio_sio_rr[2][8];
 	uint8_t		obio_sio_wr[2][8];
 	uint8_t		sio_queue[2][SIO_QUEUE_SIZE];
 	int		sio_queue_head[2];
 	int		sio_queue_tail[2];
+	int		mouse_enable;
+	int		mouse_x;
+	int		mouse_y;
+	int		mouse_buttons;
 
 	/*  ROM and RAM (used by the Ethernet interface)  */
 	uint32_t	fuse_rom[FUSE_ROM_SPACE / sizeof(uint32_t)];
@@ -151,36 +154,47 @@ static void add_to_sio_queue(struct luna88k_data* d, int n, uint8_t c)
 
 static void reassert_interrupts(struct luna88k_data *d)
 {
-	// TODO: Per-cpu, for multiprocessor machines.
-	// MAYBE just one interrupt_status, but 4 enable words?
-	//
-	// printf("status = 0x%08x, enable = 0x%08x\n",
-	//	d->interrupt_status[0], d->interrupt_enable[0]);
+	int cpu;
 
-        if (d->interrupt_status[0] & d->interrupt_enable[0]) {
-		if (!d->irqActive)
-	                INTERRUPT_ASSERT(d->cpu_irq);
+	for (cpu = 0; cpu < MAX_CPUS; cpu++) {
+		// printf("cpu%i: status = 0x%08x, enable = 0x%08x\n",
+		//	cpu, d->interrupt_status, d->interrupt_enable[0]);
 
-		d->irqActive = 1;
-	} else {
-		if (d->irqActive)
-	                INTERRUPT_DEASSERT(d->cpu_irq);
+		// General interrupt status is for the entire machine,
+		// but the Software interrupts (IPIs) are per CPU.
+		uint32_t status = d->interrupt_status;
+		uint32_t enable = d->interrupt_enable[cpu];
 
-		d->irqActive = 0;
+		if (d->software_interrupt_status[cpu])
+			status |= (1 << 26);
+
+	        if (status & enable) {
+			if (!d->irqActive[cpu])
+		                INTERRUPT_ASSERT(d->cpu_irq[cpu]);
+
+			d->irqActive[cpu] = 1;
+		} else {
+			if (d->irqActive[cpu])
+		                INTERRUPT_DEASSERT(d->cpu_irq[cpu]);
+
+			d->irqActive[cpu] = 0;
+		}
 	}
+
+	// printf("--\n");
 }
 
 static void luna88k_interrupt_assert(struct interrupt *interrupt)
 {
         struct luna88k_data *d = (struct luna88k_data *) interrupt->extra;
-	d->interrupt_status[0] |= (1 << (interrupt->line + 25));
+	d->interrupt_status |= (1 << (interrupt->line + 25));
 	reassert_interrupts(d);
 }
 
 static void luna88k_interrupt_deassert(struct interrupt *interrupt)
 {
         struct luna88k_data *d = (struct luna88k_data *) interrupt->extra;
-	d->interrupt_status[0] &= ~(1 << (interrupt->line + 25));
+	d->interrupt_status &= ~(1 << (interrupt->line + 25));
 	reassert_interrupts(d);
 }
 
@@ -195,24 +209,18 @@ static void reassert_timer_interrupt(struct luna88k_data* d)
 static void reassert_serial_interrupt(struct luna88k_data* d)
 {
 	int assertSerial = 0;
+	int port;
 
-	if ((d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
-	    (d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
-		if (anything_in_sio_queue(d, 0))
-			assertSerial = 1;
-	}
-
-	if ((d->obio_sio_wr[1][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
-	    (d->obio_sio_wr[1][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
-		if (anything_in_sio_queue(d, 1))
-			assertSerial = 1;
-	}
-
-	if (d->obio_sio_wr[0][SCC_WR1] & SCC_WR1_TX_IE) {
-		if (--d->sio_tx_interrupt_countdown <= 0) {
-			assertSerial = 1;
-			d->sio_tx_interrupt_countdown = 30;
+	for (port = 0; port <= 1; port++) {
+		if ((d->obio_sio_wr[port][SCC_WR1] & SCC_WR1_RXI_ALL_CHAR) ||
+		    (d->obio_sio_wr[port][SCC_WR1] & SCC_WR1_RXI_FIRST_CHAR)) {
+			if (anything_in_sio_queue(d, port))
+				assertSerial = 1;
 		}
+
+		if (d->obio_sio_wr[port][SCC_WR1] & SCC_WR1_TX_IE &&
+		    d->sio_tx_pending[port])
+			assertSerial = 1;
 	}
 
 	if (assertSerial)
@@ -244,16 +252,18 @@ DEVICE_TICK(luna88k)
 	struct luna88k_data *d = (struct luna88k_data *) extra;
 
 	/*  Serial console:  */
-	if (d->fb == NULL && space_available_in_sio_queue(d, 0) > 3) {
-		if (console_charavail(d->console_handle)) {
+	if (d->fb == NULL) {
+		 while (space_available_in_sio_queue(d, 0) > 2 &&
+		    console_charavail(d->console_handle)) {
 			int c = console_readchar(d->console_handle);
 			add_to_sio_queue(d, 0, c);
 		}
 	}
 
-	/*  Keyboard:  */
-	if (d->fb != NULL && space_available_in_sio_queue(d, 1) > 7) {
-		if (console_charavail(d->console_handle)) {
+	/*  Keyboard and mouse:  */
+	if (d->fb != NULL) {
+		while (space_available_in_sio_queue(d, 1) > 7 &&
+		    console_charavail(d->console_handle)) {
 			int c = console_readchar(d->console_handle);
 			int shifted = 0;
 			int controlled = 0;
@@ -367,6 +377,47 @@ DEVICE_TICK(luna88k)
 					add_to_sio_queue(d, 1, 0x0a | 0x80);
 				if (shifted)
 					add_to_sio_queue(d, 1, 0x0d | 0x80);
+			}
+		}
+
+		if (space_available_in_sio_queue(d, 1) > 4 && d->mouse_enable) {
+			int mouse_x, mouse_y, mouse_buttons, mouse_fb_nr;
+			console_getmouse(&mouse_x, &mouse_y, &mouse_buttons, &mouse_fb_nr);
+
+			int xdelta = mouse_x - d->mouse_x;
+			int ydelta = d->mouse_y - mouse_y;	// note: inverted
+
+			const int m = 100;
+
+			if (xdelta > m)
+				xdelta = m;
+			if (xdelta < -m)
+				xdelta = -m;
+			if (ydelta > m)
+				ydelta = m;
+			if (ydelta < -m)
+				ydelta = -m;
+
+			/*  Only send update if there is an actual diff.  */
+			if (xdelta != 0 || ydelta != 0 || d->mouse_buttons != mouse_buttons) {
+				d->mouse_x = mouse_x;
+				d->mouse_y = mouse_y;
+				d->mouse_buttons = mouse_buttons;
+
+				// 3-byte protocol according to
+				// OpenBSD/luna88k's lunaws.c.
+				uint8_t b1 = 0x80;
+				int8_t b2 = xdelta;
+				int8_t b3 = ydelta;
+
+				// Buttons are L=4, M=2, R=1, but off means
+				// button down, on means button up! Weird...
+				b1 |= ((~mouse_buttons) & 7);
+
+				//printf("x=%i y=%i b1=%02x %02x %02x\n", xdelta, ydelta, b1,b2,b3);
+				add_to_sio_queue(d, 1, b1);
+				add_to_sio_queue(d, 1, b2);
+				add_to_sio_queue(d, 1, b3);
 			}
 		}
 	}
@@ -510,6 +561,8 @@ DEVICE_ACCESS(luna88k)
 		break;
 
 	case OBIO_CAL_CTL:	/*  calendar control register  */
+		// TODO: Freeze bit etc.
+		// Perhaps same as dev_mk48txx.cc?
 		break;
 	case OBIO_CAL_SEC:
 		timet = time(NULL); tmp = gmtime(&timet);
@@ -537,7 +590,8 @@ DEVICE_ACCESS(luna88k)
 		break;
 	case OBIO_CAL_YEAR:
 		timet = time(NULL); tmp = gmtime(&timet);
-		odata = BCD(tmp->tm_year - 2000) << 24;  // ?
+		// TODO: 1970 for LUNA88K (MK), 1990 for LUNA88K2 (DS)
+		odata = BCD((tmp->tm_year + 1900) - 1970) << 24;
 		break;
 
 	case OBIO_PIO0A:	/*  0x49000000: PIO-0 port A  */
@@ -577,14 +631,21 @@ DEVICE_ACCESS(luna88k)
 
 			/*  Similar to dev_scc.cc ?  */
 			if (writeflag == MEM_WRITE) {
+				int old_tx_enable = d->obio_sio_wr[sio_devnr][SCC_WR1] & SCC_WR1_TX_IE;
 				if (d->obio_sio_regno[sio_devnr] == 0) {
 					int regnr = idata & 7;
+					int cmd = idata & ~7;
 
-					d->obio_sio_regno[sio_devnr] = regnr;
-
-					// printf("[ sio: setting regno for next operation to 0x%02x ]\n", (int)regnr);
+					// printf("[ sio: cmd=0x%02x, then setting regno for next operation to 0x%02x ]\n", cmd, regnr);
 
 					/*  High bits are command.  */
+					switch (cmd) {
+					case SCC_RESET_TX_IP:
+						d->sio_tx_pending[sio_devnr] = 0;
+						break;
+					}
+
+					d->obio_sio_regno[sio_devnr] = regnr;
 				} else {
 					int regnr = d->obio_sio_regno[sio_devnr] & 7;
 					d->obio_sio_wr[sio_devnr][regnr] = idata;
@@ -592,9 +653,12 @@ DEVICE_ACCESS(luna88k)
 					// printf("[ sio: setting reg 0x%02x = 0x%02x ]\n", d->obio_sio_regno[sio_devnr], (int)idata);
 
 					d->obio_sio_regno[sio_devnr] = 0;
-
-					reassert_serial_interrupt(d);
 				}
+
+				if (d->obio_sio_wr[sio_devnr][SCC_WR1] & SCC_WR1_TX_IE && !old_tx_enable)
+					d->sio_tx_pending[sio_devnr] = 1;
+
+				reassert_serial_interrupt(d);
 			} else {
 				d->obio_sio_rr[sio_devnr][SCC_RR0] = SCC_RR0_TX_EMPTY | SCC_RR0_DCD | SCC_RR0_CTS;
 
@@ -611,11 +675,37 @@ DEVICE_ACCESS(luna88k)
 		} else {
 			/*  data  */
 			if (writeflag == MEM_WRITE) {
+				// printf("[ sio: writing data 0x%02x to port %i ]\n", (int)idata, sio_devnr);
 				if (sio_devnr == 0) {
 					console_putchar(d->console_handle, idata);
-					d->sio_tx_interrupt_countdown = 0;
-				} else
-					fatal("[ luna88k sio write data to dev 1 (keyboard/mouse): TODO ]\n");
+				} else {
+					/*  Mouse and Keyboard.  */
+					/*  These are according to OpenBSD/luna88k's lunaws.c  */
+					switch (idata) {
+					case 0x00:
+						/*  "kana LED off".  TODO  */
+						break;
+					case 0x01:
+						/*  "caps LED off".  TODO  */
+						break;
+					case 0x10:
+						/*  "kana LED on".  TODO  */
+						break;
+					case 0x11:
+						/*  "caps LED on".  TODO  */
+						break;
+					case 0x20:
+						d->mouse_enable = 0;
+						break;
+					case 0x60:
+						d->mouse_enable = 1;
+						break;
+					default:
+						fatal("[ luna88k: sio write to dev 1 (keyboard/mouse): 0x%02x ]\n", (int)idata);
+					}
+				}
+
+				d->sio_tx_pending[sio_devnr] = 1;
 			} else {
 				if (anything_in_sio_queue(d, sio_devnr)) {
 					odata = get_from_sio_queue(d, sio_devnr);
@@ -629,8 +719,12 @@ DEVICE_ACCESS(luna88k)
 
 		break;
 
-	/*  TODO: One clock per CPU.  */
 	case OBIO_CLOCK0:	/*  0x63000000: Clock ack?  */
+	case OBIO_CLOCK1:	/*  0x63000004: Clock ack?  */
+	case OBIO_CLOCK2:	/*  0x63000008: Clock ack?  */
+	case OBIO_CLOCK3:	/*  0x6300000c: Clock ack?  */
+		cpunr = (addr - OBIO_CLOCK0) / 4;
+		// TODO: Pending counter per cpu?
 		if (d->pending_timer_interrupts > 0)
 			d->pending_timer_interrupts --;
 
@@ -659,12 +753,13 @@ DEVICE_ACCESS(luna88k)
 			reassert_interrupts(d);
 		} else {
 			uint32_t currentMask = d->interrupt_enable[cpunr];
+			uint32_t status = d->interrupt_status & currentMask;
 			int highestCurrentStatus = 0;
 			odata = currentMask >> 8;
 			
 			for (int i = 1; i <= 6; ++i) {
 				int m = 1 << (25 + i);
-				if (d->interrupt_status[cpunr] & m)
+				if (status & m)
 					highestCurrentStatus = i;
 			}
 
@@ -679,15 +774,16 @@ DEVICE_ACCESS(luna88k)
 	case SOFT_INT2:		/*  0x69000008: Software Interrupt status CPU 2.  */
 	case SOFT_INT3:		/*  0x6900000c: Software Interrupt status CPU 3.  */
 		cpunr = (addr - SOFT_INT0) / 4;
-		odata = d->software_interrupt_status[cpunr];
-
-		// Reading status clears it.
-		d->software_interrupt_status[cpunr] = 0;
 
 		if (writeflag == MEM_WRITE) {
-			fatal("TODO: luna88k write to software interrupts\n");
-			exit(1);
+			d->software_interrupt_status[cpunr] = idata;
+		} else {
+			// Reading status clears it.
+			odata = d->software_interrupt_status[cpunr];
+			d->software_interrupt_status[cpunr] = 0;
 		}
+
+		reassert_interrupts(d);
 		break;
 
 	case RESET_CPU_ALL:	/*  0x6d000010: Reset all CPUs  */
@@ -772,30 +868,31 @@ void add_cmmu_for_cpu(struct devinit* devinit, int cpunr, uint32_t iaddr, uint32
 	char tmpstr[300];
 	struct m8820x_cmmu *cmmu;
 
+	if (cpunr >= devinit->machine->ncpus)
+		return;
+
 	/*  Instruction CMMU:  */
 	CHECK_ALLOCATION(cmmu = (struct m8820x_cmmu *) malloc(sizeof(struct m8820x_cmmu)));
 	memset(cmmu, 0, sizeof(struct m8820x_cmmu));
 
-	if (cpunr < devinit->machine->ncpus)
-		devinit->machine->cpus[cpunr]->cd.m88k.cmmu[0] = cmmu;
+	devinit->machine->cpus[cpunr]->cd.m88k.cmmu[0] = cmmu;
 
 	/*  This is a 88200, revision 9:  */
 	cmmu->reg[CMMU_IDR] = (M88200_ID << 21) | (9 << 16);
-	snprintf(tmpstr, sizeof(tmpstr), "m8820x addr=0x%x addr2=0", iaddr);
+	snprintf(tmpstr, sizeof(tmpstr), "m8820x addr=0x%x addr2=%i", iaddr, 2 * cpunr);
 	device_add(devinit->machine, tmpstr);
 
 	/*  ... and data CMMU:  */
 	CHECK_ALLOCATION(cmmu = (struct m8820x_cmmu *) malloc(sizeof(struct m8820x_cmmu)));
 	memset(cmmu, 0, sizeof(struct m8820x_cmmu));
 
-	if (cpunr < devinit->machine->ncpus)
-		devinit->machine->cpus[cpunr]->cd.m88k.cmmu[1] = cmmu;
+	devinit->machine->cpus[cpunr]->cd.m88k.cmmu[1] = cmmu;
 
 	/*  This is also a 88200, revision 9:  */
 	cmmu->reg[CMMU_IDR] = (M88200_ID << 21) | (9 << 16);
 	cmmu->batc[8] = BATC8;
 	cmmu->batc[9] = BATC9;
-	snprintf(tmpstr, sizeof(tmpstr), "m8820x addr=0x%x addr2=1", daddr);
+	snprintf(tmpstr, sizeof(tmpstr), "m8820x addr=0x%x addr2=%i", daddr, 1 + 2 * cpunr);
 	device_add(devinit->machine, tmpstr);
 }
 
@@ -817,7 +914,16 @@ DEVINIT(luna88k)
 	 *  Connect to the CPU's interrupt pin, and register
 	 *  6 hardware interrupts:
 	 */
-	INTERRUPT_CONNECT(devinit->interrupt_path, d->cpu_irq);
+	INTERRUPT_CONNECT(devinit->interrupt_path, d->cpu_irq[0]);
+
+	// HACK for trying out CPUs 1, 2 and 3. TODO: Base on devinit->interrupt_path instead.
+	if (devinit->machine->ncpus >= 2)
+		INTERRUPT_CONNECT("machine[0].cpu[1]", d->cpu_irq[1]);
+	if (devinit->machine->ncpus >= 3)
+		INTERRUPT_CONNECT("machine[0].cpu[2]", d->cpu_irq[2]);
+	if (devinit->machine->ncpus >= 4)
+		INTERRUPT_CONNECT("machine[0].cpu[3]", d->cpu_irq[3]);
+
         for (int i = 1; i <= 6; i++) {
                 struct interrupt templ;
                 snprintf(n, sizeof(n), "%s.luna88k.%i", devinit->interrupt_path, i);
@@ -854,15 +960,13 @@ DEVINIT(luna88k)
 	d->console_handle = console_start_slave(devinit->machine, "SIO", 1);
 	devinit->machine->main_console_handle = d->console_handle;
 
-	if (devinit->machine->x11_md.in_use)
-	{
+	if (devinit->machine->x11_md.in_use) {
 		d->fb = dev_fb_init(devinit->machine, devinit->machine->memory,
 			0x100000000ULL + BMAP_BMAP0, VFB_GENERIC,
 			1280, 1024, 2048, 1024, 1, "LUNA 88K");
 	}
 
-	if (devinit->machine->ncpus > 4)
-	{
+	if (devinit->machine->ncpus > 4) {
 		printf("LUNA 88K can't have more than 4 CPUs.\n");
 		exit(1);
 	}

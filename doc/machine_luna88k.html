@@ -51,10 +51,10 @@ were based on <a href="https://en.wikipedia.org/wiki/Motorola_88000">Motorola
 
 <p>Emulated hardware:
 <ul>
-	<li>88100 CPU  (Only a single CPU works. Real LUNA machines could have up to 4.)
+	<li>88100 CPU  (Only a single CPU works well, up to 4 can be experimented with.)
 	<li>Interrupt controller and parts of the system board
 	<li>Serial console
-	<li>Keyboard
+	<li>Keyboard and mouse
 	<li>Graphical monochrome framebuffer, 1280 x 1024
 	<li>Lance Ethernet
 </ul>
@@ -62,13 +62,11 @@ were based on <a href="https://en.wikipedia.org/wiki/Motorola_88000">Motorola
 <p><b>NOT</b> emulated yet:
 <ul>
 	<li>SCSI
-	<li>Mouse
 	<li><i>Color</i> framebuffers
 </ul>
 
-<p>OpenBSD/luna88k running as a guest OS can reach userland and be
-interacted with, using either serial console or a graphical framebuffer,
-when using root-on-nfs.
+<p>OpenBSD/luna88k works as a guest OS, with either serial console or
+graphical framebuffer, when using root-on-nfs.
 
 
 
@@ -91,6 +89,7 @@ step of the root-on-nfs installation.
 
 <p><a href="openbsd-luna88k-20210130.png"><img src="openbsd-luna88k-20210130-small.png"></a>
 <a href="openbsd-luna88k-20210209.png"><img src="openbsd-luna88k-20210209-small.png"></a>
+<a href="openbsd-luna88k-20210220.png"><img src="openbsd-luna88k-20210220-small.png"></a>
 
 <p>Let's get started.
 
@@ -120,7 +119,7 @@ extract the OpenBSD distribution:
 echo ifconfig_le0=\"inet 10.0.0.2\" &gt;&gt; /etc/rc.conf
 echo nameserver 10.0.0.254 &gt;&gt; /etc/resolv.conf
 echo 10.0.0.254 &gt; /etc/mygate
-echo /tftpboot -maproot=root 10.0.0.3 &gt; /etc/exports
+echo /tftpboot -maproot=root -alldirs 10.0.0.3 &gt; /etc/exports
 echo rpcbind=YES &gt;&gt; /etc/rc.conf
 echo nfs_server=YES &gt;&gt; /etc/rc.conf
 echo mountd=YES &gt;&gt; /etc/rc.conf
@@ -140,19 +139,24 @@ tar xzf /dev/sd6c
 tar zxfv var/sysmerge/etc.tgz
 tar zxfv var/sysmerge/xetc.tgz
 
+chmod 1777 tmp
+
 dd if=/dev/zero of=swap bs=1024 count=262144
 
 echo inet 10.0.0.3 > /tftpboot/etc/hostname.le0
+chmod 640 /tftpboot/etc/hostname.le0
 echo 10.0.0.254 > /tftpboot/etc/mygate
 echo nameserver 10.0.0.254 > /tftpboot/etc/resolv.conf
 echo 127.0.0.1 client localhost > /tftpboot/etc/hosts
+
 echo 10.0.0.2:/tftpboot / nfs rw 0 0 > /tftpboot/etc/fstab
 echo 10.0.0.2:/tftpboot/swap none swap sw,nfsmntpt=/swap >> /tftpboot/etc/fstab
 
 halt</b>
 </pre></td></tr></table>
-  <li>Download the OpenBSD/luna88k GENERIC and RAMDISK kernels:<pre>
+  <li>Download the OpenBSD/luna88k GENERIC, MULTIPROCESSOR, and RAMDISK kernels:<pre>
 	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd</a>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.mp">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.mp</a>
 	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd</a>
 
 </pre>
@@ -175,6 +179,10 @@ machine(
         type("luna88k")
         subtype("luna-88k")
 	! use_x11(1)
+
+	! For multiprocessor experiments:
+	! ncpus(4)
+        ! load("bsd.mp")
 
         ! load("bsd.rd")
         load("bsd")
@@ -262,15 +270,30 @@ halt -p</b>
 If you want to run with the graphical framebuffer, uncomment the
 <tt>use_x11(1)</tt> line in <tt>config_client</tt> first.
 Unfortunately, Xorg lacks a driver for <tt>wsfb</tt> in OpenBSD/luna88k
-6.8, which is needed. A naive attempt at simply copying the driver from
-OpenBSD/luna88k 6.7 randomly resulted in Xorg's gray default background being
-visible for a second or so, when running <tt>startx</tt>.
+6.8, which is needed.
 
-<p>(I also attempted to do the entire install using 6.7, but then logging in
-as root on the console was not possible.)
+<p>You can extract the files
+<pre>./usr/X11R6/lib/modules/drivers/wsfb_drv.la
+./usr/X11R6/lib/modules/drivers/wsfb_drv.so
+</pre>
+<p>from the <a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.7/luna88k/xserv67.tgz">OpenBSD
+6.7 xserver</a> distribution file, and use them even if the
+rest of the OS is version 6.8. If you have extracted the files above,
+then start X by running <tt>startx</tt>.
+
+<p>You can experiment with the multiprocessor kernel (bsd.mp), with up to
+4 emulated CPUs. It is not as stable as running single-processor, though.
+Also, the emulator itself is not multithreaded, so all CPUs are emulated
+using a single host processor, so a higher number of emulated CPUs means
+a slower total emulation speed.
+
+<p><a href="20210222-openbsd-luna88k-mp-1.png"><img src="20210222-openbsd-luna88k-mp-1-small.png"></a>
+<a href="20210222-openbsd-luna88k-mp-2.png"><img src="20210222-openbsd-luna88k-mp-2-small.png"></a>
+
+<p>Uncomment the bsd.mp file in the configuration file, and set ncpus to the
+number of cpus (1 through 4).
 
 
-<p><br>
 <p>
 One can also experiment with the RAMDISK kernel (much easier than following
 the rather involved process above):
@@ -289,109 +312,6 @@ Start the emulator like this:
 </pre>
 
 <p>Add <tt>-X</tt> if you want to use the graphical framebuffer.
-
-<p>This is what can be expected of the RAMDISK kernel:
-<pre>
-CPU0 is associated to 2 MC88200 CMMUs
-CPU1 is associated to 2 MC88200 CMMUs
-CPU2 is associated to 2 MC88200 CMMUs
-CPU3 is associated to 2 MC88200 CMMUs
-Copyright (c) 1982, 1986, 1989, 1991, 1993
-	The Regents of the University of California.  All rights reserved.
-Copyright (c) 1995-2020 OpenBSD. All rights reserved.  https://www.OpenBSD.org
-
-OpenBSD 6.8 (RAMDISK) #0: Tue Oct 13 00:19:54 JST 2020
-    aoyama@aurora.in.nk-home.net:/w1/o/6.8/src/sys/arch/luna88k/compile/RAMDISK
-real mem = 117440512 (112MB)
-avail mem = 110452736 (105MB)
-random: boothowto does not indicate good seed
-mainbus0 at root: OMRON LUNA-88K, 25MHz
-cpu0: M88100 rev 0x3, 2 CMMU
-cpu0: M88200 (16K) rev 0x9, full Icache
-cpu0: M88200 (16K) rev 0x9, full Dcache
-clock0 at mainbus0: MK48T02
-le0 at mainbus0: address 00:00:0a:10:20:30
-le0: 32 receive buffers, 8 transmit buffers
-sio0 at mainbus0: 7201a
-siotty0 at sio0 channel 0 (console)
-ws0 at sio0 channel 1[ luna88k sio dev1 write data: TODO ]
-
-wskbd0 at ws0
-fb at mainbus0 not configured
-spc0 at mainbus0
-scsibus0 at spc0: 8 targets, initiator 7
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-spc0: SCSI bus reset
-boot device: <unknown>
-root on rd0a swap on rd0b dump on rd0b
-WARNING: bad clock chip time
-WARNING: CHECK AND RESET THE DATE!
-erase ^?, werase ^W, kill ^U, intr ^C, status ^T
-
-Welcome to the OpenBSD/luna88k 6.8 installation program.
-(I)nstall, (U)pgrade, (A)utoinstall or (S)hell? <b>s</b>
-# <b>set</b>
-ARCH=luna88k
-DONEPROFILE=YES
-HOME
-IFS=' 	
-'
-MAILCHECK=600
-OBSD='OpenBSD/luna88k 6.8'
-OLDPWD
-OPTIND=1
-PATH=/sbin:/bin:/usr/bin:/usr/sbin:/
-PPID=1
-PS1='\h\$ '
-PS2='> '
-PS3='#? '
-PS4='+ '
-PWD=/
-RANDOM
-REPLY=s
-SECONDS=213
-SHELL
-SH_VERSION='@(#)PD KSH v5.2.14 99/07/13.2'
-TMOUT=0
-VERSION=68
-VNAME=6.8
-rootdisk=rd0a
-timeout=false
-timer_pid=
-# <b>ls -l</b>
-total 156
--rw-r--r--  1 root  wheel   1480 Oct 12 16:50 .profile
-lrwxr-xr-x  1 root  wheel     11 Oct 12 16:50 autoinstall -> install.sub
-drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 bin
-drwxr-xr-x  2 root  wheel   8192 Oct 12 16:46 dev
-drwxr-xr-x  5 root  wheel    512 Oct 12 16:50 etc
-lrwxr-xr-x  1 root  wheel     11 Oct 12 16:50 install -> install.sub
--rw-r--r--  1 root  wheel    335 Oct 12 16:50 install.md
--rwxr-xr-x  1 root  wheel  59228 Oct 12 16:50 install.sub
-drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 mnt
-drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 mnt2
-drwxr-xr-x  2 root  wheel    512 Oct 12 16:45 sbin
-drwxrwxrwt  4 root  wheel    512 Oct 12 16:50 tmp
-lrwxr-xr-x  1 root  wheel     11 Oct 12 16:50 upgrade -> install.sub
-drwxr-xr-x  6 root  wheel    512 Oct 12 16:45 usr
-drwxr-xr-x  6 root  wheel    512 Oct 12 16:50 var
-# <b>halt</b>
-syncing disks... done
-halted
-
-</pre>
 
 
 
