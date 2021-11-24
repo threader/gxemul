@@ -4,7 +4,7 @@ Upstream-Contact: Anders Gavare <gavare@gmail.com>
 Source: http://gavare.se/gxemul/
 
 Files: *
-Copyright: 2003-2019 Anders Gavare <gavare@gmail.com>
+Copyright: 2003-2021, Anders Gavare <gavare@gmail.com>
 License: BSD-3-clause
 
 Files: demos/*
@@ -17,22 +17,25 @@ License: public-domain
  you can reuse the code even in projects which have licenses that are
  incompatible with the BSD-style licenses used for GXemul itself.
 
-Files: doc/Doxyfile
-       doc/doxygen.css
-Copyright: 1997-2015, Dimitri van Heesch
-Comment: License extracted from the doxygen package
-License: GPL with doxygen exception
- Permission to use, copy, modify, and distribute this software and its
- documentation under the terms of the GNU General Public License is hereby
- granted. No representations are made about the suitability of this software
- for any purpose. It is provided "as is" without express or implied warranty.
- See the GNU General Public License for more details.
- .
- Documents produced by Doxygen are derivative works derived from the
- input used in their production; they are not affected by this license.
- .
- On Debian systems, the complete text of the GNU General Public
- License can be found in '/usr/share/common-licenses/GPL-2'.
+Files: src/net/net_tap.c
+Copyright: 2020, Jason R. Thorpe
+License: BSD-3-clause
+
+Files: src/net/net_ether.c
+Copyright: 2020, Jason R. Thorpe
+           1982-1993, The Regents of the University of California
+License: BSD-3-clause
+
+Files: src/include/thirdparty/bootblock.h
+Copyright: 2002-2004, The NetBSD Foundation, Inc.
+           1993, Allen K. Briggs
+           1993, Chris P. Caputo,
+           1993, Michael L. Finch
+           1993, Bradley A. Grantham
+           1993, Lawrence A. Kesteloot
+           1994-1999, Christopher G. Demetriou
+           1994, Rolf Grossmann
+License: BSD-2-clause and BSD-4-clause
 
 Files: src/include/thirdparty/crmfbreg.h
        src/include/thirdparty/impactsr-bsd.h
@@ -42,7 +45,7 @@ Files: src/include/thirdparty/crmfbreg.h
        src/include/thirdparty/mvme_memcreg.h
        src/include/thirdparty/sh4_pcicreg.h
 Copyright: 2007, Jared D. McNeill <jmcneill@invisible.ca>
-           1997, 1998, 2001, The NetBSD Foundation, Inc.
+           1997-2001, The NetBSD Foundation, Inc.
            1997, Manuel Bouyer
            2008, Michael Lorenz <macallan@netbsd.org>
            2005, NONAKA Kimihiro
@@ -82,6 +85,13 @@ Copyright: 1996, M. Warner Losh
            2002, Valeriy E. Ushakov
            1990, William Jolitz
 License: BSD-3-clause
+
+Files: src/include/thirdparty/mb89352reg.h
+Copyright: 1990-1993, The Regents of the University of California
+           1996-1999, The NetBSD Foundation, Inc.
+           1996-1998, NetBSD/pc98 porting staff
+           1996-1998, Kouichi Matsuda
+License: BSD-3-clause and BSD-2-clause
 
 Files: src/include/thirdparty/adb_viareg.h
        src/include/thirdparty/algor_p5064reg.h
@@ -358,13 +368,6 @@ Copyright: 1993-1992, Carnegie Mellon University
            2004, Miodrag Vallat.
 License: BSD-2-clause and cmu
 
-Files: src/include/thirdparty/debug_new.h
-       src/include/thirdparty/fast_mutex.h
-       src/include/thirdparty/static_assert.h
-       src/main/debug_new.cc
-Copyright: 2004-2005, Wu Yongwei <adah@users.sourceforge.net>
-License: Zlib
-
 Files: src/include/thirdparty/dc7085.h
        src/include/thirdparty/dec_prom.h
        src/include/thirdparty/lk201.h
@@ -392,7 +395,7 @@ Files: src/devices/fonts/Xconv_raw_to_c.c
 Copyright: 2003-2009, Anders Gavare
 License: BSD-2-clause
 
-Files: src/promemul/dreamcast_scramble.cc
+Files: src/promemul/dreamcast_scramble.c
 Copyright: Marcus Comstedt
 License: public-domain
  The sofware in this section is in the Public Domain. This means that
@@ -423,7 +426,7 @@ Comment:
  | Yes, scramble.c is also in the public domain.
 
 Files: debian/*
-Copyright: 2004-2019, Göran Weinholt <weinholt@debian.org>
+Copyright: 2004-2021, Göran Weinholt <weinholt@debian.org>
            2008-2010 Jonathan Wiltshire <debian@jwiltshire.org.uk>
 License: BSD-3-clause
 Comment: No explicit license historically; assuming 'LICENSE' applies
