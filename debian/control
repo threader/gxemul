@@ -19,28 +19,31 @@ Description: machine emulator for multiple architectures
  system:
  .
  ARM-based machines:
-  * CATS (NetBSD/cats, OpenBSD/cats)
+  * CATS (NetBSD/cats, OpenBSD/cats, Debian GNU/Linux)
   * IQ80321 (NetBSD/evbarm)
   * NetWinder (NetBSD/netwinder)
+  * Raspberry Pi (NetBSD/raspberrypi, FreeBSD, HelenOS/rpi)
  MIPS-based machines:
-  * DECstation 5000/200 (NetBSD/pmax, OpenBSD/pmax, Ultrix,
-    Linux/DECstation, Sprite)
-  * Acer Pica-61 (NetBSD/arc)
-  * NEC MobilePro 770, 780, 800, 880 (NetBSD/hpcmips)
-  * Cobalt (NetBSD/cobalt)
-  * Malta (NetBSD/evbmips, Linux/Malta)
+  * Acer Pica-61 (NetBSD/arc, Windows NT)
   * Algorithmics P5064 (NetBSD/algor)
-  * SGI O2 (aka IP32) (NetBSD/sgi)
+  * Cobalt (NetBSD/cobalt)
+  * DECstation 5000/200 (NetBSD/pmax, OpenBSD/pmax, Ultrix,
+    Linux/DECstation, Sprite), DECstation 5000/1xx (raw PROM)
+  * Malta (NetBSD/evbmips, Linux/Malta)
+  * NEC MobilePro 770, 780, 800, 880 (NetBSD/hpcmips)
+  * PlayStation 2 (NetBSD/playstation2)
+  * SGI O2 (NetBSD/sgimips, OpenBSD/sgi, Linux, IRIX, raw PROM)
+  * VoCore (FreeBSD/vocore, Linux/vocore)
  Motorola 88K-based machines:
-  * Motorola MVME187 (OpenBSD/mvme88k)
   * Luna 88K (OpenBSD/luna88k)
+  * Motorola MVME187 (OpenBSD/mvme88k)
  PowerPC-based machines:
-  * IBM 6050/6070 (PReP, PowerPC Reference Platform) (NetBSD/prep)
-  * MacPPC (generic "G4" Macintosh) (NetBSD/macppc)
   * Artesyn PM/PPC (NetBSD/pmppc)
+  * IBM 6050/6070 (PReP, PowerPC Reference Platform) (NetBSD/prep)
+  * MacPPC (NetBSD/macppc, HelenOS/ppc)
  SuperH-based machines:
+  * Landisk I-O DATA USL-5P (NetBSD/landisk, OpenBSD/landisk)
   * Sega Dreamcast (NetBSD/dreamcast, Linux/dreamcast)
-  * Landisk I-O DATA USL-5P (OpenBSD/landisk)
  .
  Other machine types and architectures are emulated less completely.
  See the documentation in the gxemul-doc package for the exact details
