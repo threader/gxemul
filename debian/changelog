@@ -1,4 +1,4 @@
-gxemul (0.7.0-1) UNRELEASED; urgency=medium
+gxemul (0.7.0+dfsg-1) UNRELEASED; urgency=medium
 
   * New upstream version
   * debian/gbp.conf: Fix upstream-tag template
@@ -9,6 +9,7 @@ gxemul (0.7.0-1) UNRELEASED; urgency=medium
   * debian/rules: Sprinkle reproducible dust on the config
   * debian/patches/remove_defines: Upstream patch for a build failure
   * debian/rules: Remove -rpath flag after configuration
+  * debian/copyright: Exclude test/FileLoader*; trivial but missing source
 
  -- Göran Weinholt <weinholt@debian.org>  Wed, 24 Nov 2021 21:19:53 +0100
 
