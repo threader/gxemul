@@ -2,6 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: GXemul
 Upstream-Contact: Anders Gavare <gavare@gmail.com>
 Source: http://gavare.se/gxemul/
+Files-Excluded: test/FileLoader*
 
 Files: *
 Copyright: 2003-2021, Anders Gavare <gavare@gmail.com>
