@@ -12,8 +12,10 @@ gxemul (0.7.0+dfsg-1) UNRELEASED; urgency=medium
   * debian/copyright: Exclude test/FileLoader*; trivial but missing source
   * debian/watch: Add +dfsg on the repacked source
   * debian/rules: Remove useless fiddling with CFLAGS
+  * debian/control: Remove unused doxygen build-dep
+  * debian/rules: Support cross-compilation
 
- -- Göran Weinholt <weinholt@debian.org>  Sat, 27 Nov 2021 11:20:09 +0100
+ -- Göran Weinholt <weinholt@debian.org>  Sat, 27 Nov 2021 13:16:25 +0100
 
 gxemul (0.6.2-2) unstable; urgency=medium
 
