@@ -1,4 +1,4 @@
-gxemul (0.7.0+dfsg-1) UNRELEASED; urgency=medium
+gxemul (0.7.0+dfsg-1) unstable; urgency=medium
 
   * New upstream version
   * debian/gbp.conf: Fix upstream-tag template
@@ -15,7 +15,7 @@ gxemul (0.7.0+dfsg-1) UNRELEASED; urgency=medium
   * debian/control: Remove unused doxygen build-dep
   * debian/rules: Support cross-compilation
 
- -- Göran Weinholt <weinholt@debian.org>  Sat, 27 Nov 2021 13:16:25 +0100
+ -- Göran Weinholt <weinholt@debian.org>  Sat, 27 Nov 2021 13:34:13 +0100
 
 gxemul (0.6.2-2) unstable; urgency=medium
 
