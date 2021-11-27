@@ -1,6 +1,11 @@
 #!/usr/bin/make -f
 # debian/rules for gxemul.
+include /usr/share/dpkg/architecture.mk
 include /usr/share/dpkg/pkg-info.mk
+
+ifeq ($(origin CC),default)
+CC := $(DEB_HOST_GNU_TYPE)-gcc
+endif
 
 override_dh_auto_configure:
 	CFLAGS="${CFLAGS}" PREFIX="/usr" DESTDIR=$(shell pwd)/debian/tmp ./configure
@@ -9,6 +14,12 @@ override_dh_auto_configure:
 	    -i config.h
 	sed -e 's/-Wl,-rpath,[^\w]*//g' -i Makefile
 	touch configure-stamp
+
+override_dh_auto_build:
+	make -C src/include
+	make -C src/devices/fonts Xconv_raw_to_c
+	make -C src/cpus generate_head generate_tail $(shell awk '/^CPU_TOOLS/{$$1="";print}' src/cpus/Makefile)
+	dh_auto_build -- CC="${CC}"
 
 override_dh_install:
 	dh_install
