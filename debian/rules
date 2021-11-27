@@ -2,14 +2,6 @@
 # debian/rules for gxemul.
 include /usr/share/dpkg/pkg-info.mk
 
-#export DH_VERBOSE=1
-
-CFLAGS = -g
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-  CFLAGS += -O0
-endif
-
 override_dh_auto_configure:
 	CFLAGS="${CFLAGS}" PREFIX="/usr" DESTDIR=$(shell pwd)/debian/tmp ./configure
 	sed -e 's/#define VERSION.*/#define VERSION \"$(DEB_VERSION_UPSTREAM)\"/g' \
