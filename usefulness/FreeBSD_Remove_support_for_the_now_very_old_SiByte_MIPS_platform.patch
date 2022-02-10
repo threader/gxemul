@@ -1,0 +1,5213 @@
+Index: head/UPDATING
+===================================================================
+--- head/UPDATING	(revision 342254)
++++ head/UPDATING	(revision 342255)
+@@ -1,1927 +1,1931 @@
+  Updating Information for FreeBSD current users.
+ 
+ This file is maintained and copyrighted by M. Warner Losh <imp@freebsd.org>.
+ See end of file for further details.  For commonly done items, please see the
+ COMMON ITEMS: section later in the file.  These instructions assume that you
+ basically know what you are doing.  If not, then please consult the FreeBSD
+ handbook:
+ 
+     https://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/makeworld.html
+ 
+ Items affecting the ports and packages system can be found in
+ /usr/ports/UPDATING.  Please read that file before running portupgrade.
+ 
+ NOTE: FreeBSD has switched from gcc to clang. If you have trouble bootstrapping
+ from older versions of FreeBSD, try WITHOUT_CLANG and WITH_GCC to bootstrap to
+ the tip of head, and then rebuild without this option. The bootstrap process
+ from older version of current across the gcc/clang cutover is a bit fragile.
+ 
+ NOTE TO PEOPLE WHO THINK THAT FreeBSD 13.x IS SLOW:
+ 	FreeBSD 13.x has many debugging features turned on, in both the kernel
+ 	and userland.  These features attempt to detect incorrect use of
+ 	system primitives, and encourage loud failure through extra sanity
+ 	checking and fail stop semantics.  They also substantially impact
+ 	system performance.  If you want to do performance measurement,
+ 	benchmarking, and optimization, you'll want to turn them off.  This
+ 	includes various WITNESS- related kernel options, INVARIANTS, malloc
+ 	debugging flags in userland, and various verbose features in the
+ 	kernel.  Many developers choose to disable these features on build
+ 	machines to maximize performance.  (To completely disable malloc
+ 	debugging, define MALLOC_PRODUCTION in /etc/make.conf, or to merely
+ 	disable the most expensive debugging functionality run
+ 	"ln -s 'abort:false,junk:false' /etc/malloc.conf".)
+ 
++20181215:
++	The old sibyte / swarm / Broadcom BCM1250 support has been
++	removed from the mips port.
++
+ 20181211:
+ 	Clang, llvm, lld, lldb, compiler-rt and libc++ have been upgraded to
+ 	7.0.1.  Please see the 20141231 entry below for information about
+ 	prerequisites and upgrading, if you are not already using clang 3.5.0
+ 	or higher.
+ 
+ 20181211:
+ 	Remove the timed and netdate programs from the base tree.  Setting
+ 	the time with these deamons has been obsolete for over a decade.
+ 
+ 20181126:
+ 	On amd64, arm64 and armv7 (architectures that install LLVM's ld.lld
+ 	linker as /usr/bin/ld) GNU ld is no longer installed as ld.bfd, as
+ 	it produces broken binaries when ifuncs are in use.  Users needing
+ 	GNU ld should install the binutils port or package.
+ 
+ 20181123:
+ 	The BSD crtbegin and crtend code has been enabled by default. It has
+ 	had extensive testing on amd64, arm64, and i386. It can be disabled
+ 	by building a world with -DWITHOUT_BSD_CRTBEGIN.
+ 
+ 20181115:
+ 	The set of CTM commands (ctm, ctm_smail, ctm_rmail, ctm_dequeue)
+ 	has been converted to a port (misc/ctm) and will be removed from
+ 	FreeBSD-13.  It is available as a package (ctm) for all supported
+ 	FreeBSD versions.
+ 
+ 20181110:
+ 	The default newsyslog.conf(5) file has been changed to only include
+ 	files in /etc/newsyslog.conf.d/ and /usr/local/etc/newsyslog.conf.d/ if
+ 	the filenames end in '.conf' and do not begin with a '.'.
+ 
+ 	You should check the configuration files in these two directories match
+ 	this naming convention. You can verify which configuration files are
+ 	being included using the command:
+ 		$ newsyslog -Nrv
+ 
+ 20181015:
+ 	Ports for the DRM modules have been simplified. Now, amd64 users should
+ 	just install the drm-kmod port. All others should install
+ 	drm-legacy-kmod.
+ 
+ 	Graphics hardware that's newer than about 2010 usually works with
+ 	drm-kmod.  For hardware older than 2013, however, some users will need
+ 	to use drm-legacy-kmod if drm-kmod doesn't work for them. Hardware older
+ 	than 2008 usually only works in drm-legacy-kmod. The graphics team can
+ 	only commit to hardware made since 2013 due to the complexity of the
+ 	market and difficulty to test all the older cards effectively. If you
+ 	have hardware supported by drm-kmod, you are strongly encouraged to use
+ 	that as you will get better support.
+ 
+ 	Other than KPI chasing, drm-legacy-kmod will not be updated. As outlined
+ 	elsewhere, the drm and drm2 modules will be eliminated from the src base
+ 	soon (with a limited exception for arm). Please update to the package asap
+ 	and report any issues to x11@freebsd.org.
+ 
+ 	Generally, anybody using the drm*-kmod packages should add
+ 	WITHOUT_DRM_MODULE=t and WITHOUT_DRM2_MODULE=t to avoid nasty
+ 	cross-threading surprises, especially with automatic driver
+ 	loading from X11 startup. These will become the defaults in 13-current
+ 	shortly.
+ 
+ 20181012:
+ 	The ixlv(4) driver has been renamed to iavf(4).  As a consequence,
+ 	custom kernel and module loading configuration files must be updated
+ 	accordingly.  Moreover, interfaces previous presented as ixlvN to the
+ 	system are now exposed as iavfN and network configuration files must
+ 	be adjusted as necessary.
+ 
+ 20181009:
+ 	OpenSSL has been updated to version 1.1.1.  This update included
+ 	additional various API changes througout the base system.  It is
+ 	important to rebuild third-party software after upgrading.  The value
+ 	of __FreeBSD_version has been bumped accordingly.
+ 
+ 20181006:
+ 	The legacy DRM modules and drivers have now been added to the loader's
+ 	module blacklist, in favor of loading them with kld_list in rc.conf(5).
+ 	The module blacklist may be overridden with the loader.conf(5)
+ 	'module_blacklist' variable, but loading them via rc.conf(5) is strongly
+ 	encouraged.
+ 
+ 20181002:
+ 	The cam(4) based nda(4) driver will be used over nvd(4) by default on
+ 	powerpc64. You may set 'options NVME_USE_NVD=1' in your kernel conf or
+ 	loader tunable 'hw.nvme.use_nvd=1' if you wish to use the existing
+ 	driver.  Make sure to edit /boot/etc/kboot.conf and fstab to use the
+ 	nda device name.
+ 
+ 20180913:
+ 	Reproducible build mode is now on by default, in preparation for
+ 	FreeBSD 12.0.  This eliminates build metadata such as the user,
+ 	host, and time from the kernel (and uname), unless the working tree
+ 	corresponds to a modified checkout from a version control system.
+ 	The previous behavior can be obtained by setting the /etc/src.conf
+ 	knob WITHOUT_REPRODUCIBLE_BUILD.
+ 
+ 20180826:
+ 	The Yarrow CSPRNG has been removed from the kernel as it has not been
+ 	supported by its designers since at least 2003. Fortuna has been the
+ 	default since FreeBSD-11.
+ 
+ 20180822:
+ 	devctl freeze/thaw have gone into the tree, the rc scripts have been
+ 	updated to use them and devmatch has been changed.  You should update
+ 	kernel, userland and rc scripts all at the same time.
+ 
+ 20180818:
+ 	The default interpreter has been switched from 4th to Lua.
+ 	LOADER_DEFAULT_INTERP, documented in build(7), will override the default
+ 	interpreter.  If you have custom FORTH code you will need to set
+ 	LOADER_DEFAULT_INTERP=4th (valid values are 4th, lua or simp) in
+ 	src.conf for the build.  This will create default hard links between
+ 	loader and loader_4th instead of loader and loader_lua, the new default.
+ 	If you are using UEFI it will create the proper hard link to loader.efi.
+ 
+ 	bhyve uses userboot.so. It remains 4th-only until some issues are solved
+ 	regarding coexisting with multiple versions of FreeBSD are resolved.
+ 
+ 20180815:
+ 	ls(1) now respects the COLORTERM environment variable used in other
+ 	systems and software to indicate that a colored terminal is both
+ 	supported and desired.  If ls(1) is suddenly emitting colors, they may
+ 	be disabled again by either removing the unwanted COLORTERM from your
+ 	environment, or using `ls --color=never`.  The ls(1) specific CLICOLOR
+ 	may not be observed in a future release.
+ 
+ 20180808:
+ 	The default pager for most commands has been changed to "less".  To
+ 	restore the old behavior, set PAGER="more" and MANPAGER="more -s" in
+ 	your environment.
+ 
+ 20180731:
+ 	The jedec_ts(4) driver has been removed. A superset of its functionality
+ 	is available in the jedec_dimm(4) driver, and the manpage for that
+ 	driver includes migration instructions. If you have "device jedec_ts"
+ 	in your kernel configuration file, it must be removed.
+ 
+ 20180730:
+ 	amd64/GENERIC now has EFI runtime services, EFIRT, enabled by default.
+ 	This should have no effect if the kernel is booted via BIOS/legacy boot.
+ 	EFIRT may be disabled via a loader tunable, efi.rt.disabled, if a system
+ 	has a buggy firmware that prevents a successful boot due to use of
+ 	runtime services.
+ 
+ 20180727:
+ 	Atmel AT91RM9200 and AT91SAM9, Cavium CNS 11xx and XScale
+ 	support has been removed from the tree. These ports were
+ 	obsolete and/or known to be broken for many years.
+ 
+ 20180723:
+ 	loader.efi has been augmented to participate more fully in the
+ 	UEFI boot manager protocol. loader.efi will now look at the
+ 	BootXXXX environment variable to determine if a specific kernel
+ 	or root partition was specified. XXXX is derived from BootCurrent.
+ 	efibootmgr(8) manages these standard UEFI variables.
+ 
+ 20180720:
+ 	zfsloader's functionality has now been folded into loader.
+ 	zfsloader is no longer necessary once you've updated your
+ 	boot blocks. For a transition period, we will install a
+ 	hardlink for zfsloader to loader to allow a smooth transition
+ 	until the boot blocks can be updated (hard link because old
+ 	zfs boot blocks don't understand symlinks).
+ 
+ 20180719:
+ 	ARM64 now have efifb support, if you want to have serial console
+ 	on your arm64 board when an screen is connected and the bootloader
+ 	setup a frambuffer for us to use, just add :
+ 	boot_serial=YES
+ 	boot_multicons=YES
+ 	in /boot/loader.conf
+ 	For Raspberry Pi 3 (RPI) users, this is needed even if you don't have
+ 	an screen connected as the firmware will setup a framebuffer are that
+ 	u-boot will expose as an EFI framebuffer.
+ 
+ 20180719:
+ 	New uid:gid added, ntpd:ntpd (123:123).  Be sure to run mergemaster
+ 	or take steps to update /etc/passwd before doing installworld on
+ 	existing systems.  Do not skip the "mergemaster -Fp" step before
+ 	installworld, as described in the update procedures near the bottom
+ 	of this document.  Also, rc.d/ntpd now starts ntpd(8) as user ntpd
+ 	if the new mac_ntpd(4) policy is available, unless ntpd_flags or
+ 	the ntp config file contain options that change file/dir locations.
+ 	When such options (e.g., "statsdir" or "crypto") are used, ntpd can
+ 	still be run as non-root by setting ntpd_user=ntpd in rc.conf, after
+ 	taking steps to ensure that all required files/dirs are accessible
+ 	by the ntpd user.
+ 
+ 20180717:
+ 	Big endian arm support has been removed.
+ 
+ 20180711:
+ 	The static environment setup in kernel configs is no longer mutually
+ 	exclusive with the loader(8) environment by default.  In order to
+ 	restore the previous default behavior of disabling the loader(8)
+ 	environment if a static environment is present, you must specify
+ 	loader_env.disabled=1 in the static environment.
+ 
+ 20180705:
+ 	The ABI of syscalls used by management tools like sockstat and
+ 	netstat has been broken to allow 32-bit binaries to work on
+ 	64-bit kernels without modification.  These programs will need
+ 	to match the kernel in order to function.  External programs may
+ 	require minor modifications to accommodate a change of type in
+ 	structures from pointers to 64-bit virtual addresses.
+ 
+ 20180702:
+ 	On i386 and amd64 atomics are now inlined. Out of tree modules using
+ 	atomics will need to be rebuilt.
+ 
+ 20180701:
+ 	The '%I' format in the kern.corefile sysctl limits the number of
+ 	core files that a process can generate to the number stored in the
+ 	debug.ncores sysctl. The '%I' format is replaced by the single digit
+ 	index. Previously, if all indexes were taken the kernel would overwrite
+ 	only a core file with the highest index in a filename.
+ 	Currently the system will create a new core file if there is a free
+ 	index or if all slots are taken it will overwrite the oldest one.
+ 
+ 20180630:
+ 	Clang, llvm, lld, lldb, compiler-rt and libc++ have been upgraded to
+ 	6.0.1.  Please see the 20141231 entry below for information about
+ 	prerequisites and upgrading, if you are not already using clang 3.5.0
+ 	or higher.
+ 
+ 20180628:
+ 	r335753 introduced a new quoting method. However, etc/devd/devmatch.conf
+ 	needed to be changed to work with it. This change was made with r335763
+ 	and requires a mergemaster / etcupdate / etc to update the installed file.
+ 
+ 20180612:
+ 	r334930 changed the interface between the NFS modules, so they all
+ 	need to be rebuilt.  r335018 did a __FreeBSD_version bump for this.
+ 
+ 20180530:
+ 	As of r334391 lld is the default amd64 system linker; it is installed
+ 	as /usr/bin/ld.  Kernel build workarounds (see 20180510 entry) are no
+ 	longer necessary.
+ 
+ 20180530:
+ 	The kernel / userland interface for devinfo changed, so you'll
+ 	need a new kernel and userland as a pair for it to work (rebuilding
+ 	lib/libdevinfo is all that's required). devinfo and devmatch will
+ 	not work, but everything else will when there's a mismatch.
+ 
+ 20180523:
+ 	The on-disk format for hwpmc callchain records has changed to include
+ 	threadid corresponding to a given record. This changes the field offsets
+ 	and thus requires that libpmcstat be rebuilt before using a kernel
+ 	later than r334108.
+ 
+ 20180517:
+ 	The vxge(4) driver has been removed.  This driver was introduced into
+ 	HEAD one week before the Exar left the Ethernet market and is not
+ 	known to be used.  If you have device vxge in your kernel config file
+ 	it must be removed.
+ 
+ 20180510:
+ 	The amd64 kernel now requires a ld that supports ifunc to produce a
+ 	working kernel, either lld or a newer binutils. lld is built by default
+ 	on amd64, and the 'buildkernel' target uses it automatically. However,
+ 	it is not the default linker, so building the kernel the traditional
+ 	way requires LD=ld.lld on the command line (or LD=/usr/local/bin/ld for
+ 	binutils port/package). lld will soon be default, and this requirement
+ 	will go away.
+ 
+ 	NOTE: As of r334391 lld is the default system linker on amd64, and no
+ 	workaround is necessary.
+ 
+ 20180508:
+ 	The nxge(4) driver has been removed.  This driver was for PCI-X 10g
+ 	cards made by s2io/Neterion.  The company was aquired by Exar and
+ 	no longer sells or supports Ethernet products.  If you have device
+ 	nxge in your kernel config file it must be removed.
+ 
+ 20180504:
+ 	The tz database (tzdb) has been updated to 2018e.  This version more
+ 	correctly models time stamps in time zones with negative DST such as
+ 	Europe/Dublin (from 1971 on), Europe/Prague (1946/7), and
+ 	Africa/Windhoek (1994/2017).  This does not affect the UT offsets, only
+ 	time zone abbreviations and the tm_isdst flag.
+ 
+ 20180502:
+ 	The ixgb(4) driver has been removed.  This driver was for an early and
+ 	uncommon legacy PCI 10GbE for a single ASIC, Intel 82597EX. Intel
+ 	quickly shifted to the long lived ixgbe family.  If you have device
+ 	ixgb in your kernel config file it must be removed.
+ 
+ 20180501:
+ 	The lmc(4) driver has been removed.  This was a WAN interface
+ 	card that was already reportedly rare in 2003, and had an ambiguous
+ 	license.  If you have device lmc in your kernel config file it must
+ 	be removed.
+ 
+ 20180413:
+ 	Support for Arcnet networks has been removed.  If you have device
+ 	arcnet or device cm in your kernel config file they must be
+ 	removed.
+ 
+ 20180411:
+ 	Support for FDDI networks has been removed.  If you have device
+ 	fddi or device fpa in your kernel config file they must be
+ 	removed.
+ 
+ 20180406:
+ 	In addition to supporting RFC 3164 formatted messages, the
+ 	syslogd(8) service is now capable of parsing RFC 5424 formatted
+ 	log messages. The main benefit of using RFC 5424 is that clients
+ 	may now send log messages with timestamps containing year numbers,
+ 	microseconds and time zone offsets.
+ 
+ 	Similarly, the syslog(3) C library function has been altered to
+ 	send RFC 5424 formatted messages to the local system logging
+ 	daemon. On systems using syslogd(8), this change should have no
+ 	negative impact, as long as syslogd(8) and the C library are
+ 	updated at the same time. On systems using a different system
+ 	logging daemon, it may be necessary to make configuration
+ 	adjustments, depending on the software used.
+ 
+ 	When using syslog-ng, add the 'syslog-protocol' flag to local
+ 	input sources to enable parsing of RFC 5424 formatted messages:
+ 
+ 		source src {
+ 			unix-dgram("/var/run/log" flags(syslog-protocol));
+ 		}
+ 
+ 	When using rsyslog, disable the 'SysSock.UseSpecialParser' option
+ 	of the 'imuxsock' module to let messages be processed by the
+ 	regular RFC 3164/5424 parsing pipeline:
+ 
+ 		module(load="imuxsock" SysSock.UseSpecialParser="off")
+ 
+ 	Do note that these changes only affect communication between local
+ 	applications and syslogd(8). The format that syslogd(8) uses to
+ 	store messages on disk or forward messages to other systems
+ 	remains unchanged. syslogd(8) still uses RFC 3164 for these
+ 	purposes. Options to customize this behaviour will be added in the
+ 	future. Utilities that process log files stored in /var/log are
+ 	thus expected to continue to function as before.
+ 
+ 	__FreeBSD_version has been incremented to 1200061 to denote this
+ 	change.
+ 
+ 20180328:
+ 	Support for token ring networks has been removed. If you
+ 	have "device token" in your kernel config you should remove
+ 	it. No device drivers supported token ring.
+ 
+ 20180323:
+ 	makefs was modified to be able to tag ISO9660 El Torito boot catalog
+ 	entries as EFI instead of overloading the i386 tag as done previously.
+ 	The amd64 mkisoimages.sh script used to build amd64 ISO images for
+ 	release was updated to use this. This may mean that makefs must be
+ 	updated before "make cdrom" can be run in the release directory. This
+ 	should be as simple as:
+ 
+ 		$ cd $SRCDIR/usr.sbin/makefs
+ 		$ make depend all install
+ 
+ 20180212:
+ 	FreeBSD boot loader enhanced with Lua scripting. It's purely opt-in for
+ 	now by building WITH_LOADER_LUA and WITHOUT_FORTH in /etc/src.conf.
+ 	Co-existance for the transition period will come shortly. Booting is a
+ 	complex environment and test coverage for Lua-enabled loaders has been
+ 	thin, so it would be prudent to assume it might not work and make
+ 	provisions for backup boot methods.
+ 
+ 20180211:
+ 	devmatch functionality has been turned on in devd. It will automatically
+ 	load drivers for unattached devices. This may cause unexpected drivers to
+ 	be loaded. Please report any problems to current@ and imp@freebsd.org.
+ 
+ 20180114:
+ 	Clang, llvm, lld, lldb, compiler-rt and libc++ have been upgraded to
+ 	6.0.0.  Please see the 20141231 entry below for information about
+ 	prerequisites and upgrading, if you are not already using clang 3.5.0
+ 	or higher.
+ 
+ 20180110:
+ 	LLVM's lld linker is now used as the FreeBSD/amd64 bootstrap linker.
+ 	This means it is used to link the kernel and userland libraries and
+ 	executables, but is not yet installed as /usr/bin/ld by default.
+ 
+ 	To revert to ld.bfd as the bootstrap linker, in /etc/src.conf set
+         WITHOUT_LLD_BOOTSTRAP=yes
+ 
+ 20180110:
+ 	On i386, pmtimer has been removed. Its functionality has been folded
+ 	into apm. It was a no-op on ACPI in current for a while now (but was still
+ 	needed on i386 in FreeBSD 11 and earlier). Users may need to remove it
+ 	from kernel config files.
+ 
+ 20180104:
+ 	The use of RSS hash from the network card aka flowid has been
+ 	disabled by default for lagg(4) as it's currently incompatible with
+ 	the lacp and loadbalance protocols.
+ 
+ 	This can be re-enabled by setting the following in loader.conf:
+ 	net.link.lagg.default_use_flowid="1"
+ 
+ 20180102:
+ 	The SW_WATCHDOG option is no longer necessary to enable the
+ 	hardclock-based software watchdog if no hardware watchdog is
+ 	configured. As before, SW_WATCHDOG will cause the software
+ 	watchdog to be enabled even if a hardware watchdog is configured.
+ 
+ 20171215:
+ 	r326887 fixes the issue described in the 20171214 UPDATING entry.
+ 	r326888 flips the switch back to building GELI support always.
+ 
+ 20171214:
+ 	r362593 broke ZFS + GELI support for reasons unknown. However,
+ 	it also broke ZFS support generally, so GELI has been turned off
+ 	by default as the lesser evil in r326857. If you boot off ZFS and/or
+ 	GELI, it might not be a good time to update.
+ 
+ 20171125:
+ 	PowerPC users must update loader(8) by rebuilding world before
+ 	installing a new kernel, as the protocol connecting them has
+ 	changed. Without the update, loader metadata will not be passed
+ 	successfully to the kernel and users will have to enter their
+ 	root partition at the kernel mountroot prompt to continue booting.
+ 	Newer versions of loader can boot old kernels without issue.
+ 
+ 20171110:
+ 	The LOADER_FIREWIRE_SUPPORT build variable as been renamed to
+ 	WITH/OUT_LOADER_FIREWIRE. LOADER_{NO_,}GELI_SUPPORT has been renamed
+ 	to WITH/OUT_LOADER_GELI.
+ 
+ 20171106:
+ 	The naive and non-compliant support of posix_fallocate(2) in ZFS
+ 	has been removed as of r325320.  The system call now returns EINVAL
+ 	when used on a ZFS file.  Although the new behavior complies with the
+ 	standard, some consumers are not prepared to cope with it.
+ 	One known victim is lld prior to r325420.
+ 
+ 20171102:
+ 	Building in a FreeBSD src checkout will automatically create object
+ 	directories now rather than store files in the current directory if
+ 	'make obj' was not ran.  Calling 'make obj' is no longer necessary.
+ 	This feature can be disabled by setting WITHOUT_AUTO_OBJ=yes in
+ 	/etc/src-env.conf (not /etc/src.conf), or passing the option in the
+ 	environment.
+ 
+ 20171101:
+ 	The default MAKEOBJDIR has changed from /usr/obj/<srcdir> for native
+ 	builds, and /usr/obj/<arch>/<srcdir> for cross-builds, to a unified
+ 	/usr/obj/<srcdir>/<arch>.  This behavior can be changed to the old
+ 	format by setting WITHOUT_UNIFIED_OBJDIR=yes in /etc/src-env.conf,
+ 	the environment, or with -DWITHOUT_UNIFIED_OBJDIR when building.
+ 	The UNIFIED_OBJDIR option is a transitional feature that will be
+ 	removed for 12.0 release; please migrate to the new format for any
+ 	tools by looking up the OBJDIR used by 'make -V .OBJDIR' means rather
+ 	than hardcoding paths.
+ 
+ 20171028:
+ 	The native-xtools target no longer installs the files by default to the
+ 	OBJDIR.  Use the native-xtools-install target with a DESTDIR to install
+ 	to ${DESTDIR}/${NXTP} where NXTP defaults to /nxb-bin.
+ 
+ 20171021:
+ 	As part of the boot loader infrastructure cleanup, LOADER_*_SUPPORT
+ 	options are changing from controlling the build if defined / undefined
+ 	to controlling the build with explicit 'yes' or 'no' values. They will
+ 	shift to WITH/WITHOUT options to match other options in the system.
+ 
+ 20171010:
+ 	libstand has turned into a private library for sys/boot use only.
+ 	It is no longer supported as a public interface outside of sys/boot.
+ 
+ 20171005:
+ 	The arm port has split armv6 into armv6 and armv7. armv7 is now
+ 	a valid TARGET_ARCH/MACHINE_ARCH setting. If you have an armv7 system
+ 	and are running a kernel from before r324363, you will need to add
+ 	MACHINE_ARCH=armv7 to 'make buildworld' to do a native build.
+ 
+ 20171003:
+ 	When building multiple kernels using KERNCONF, non-existent KERNCONF
+ 	files will produce an error and buildkernel will fail. Previously
+ 	missing KERNCONF files silently failed giving no indication as to
+ 	why, only to subsequently discover during installkernel that the
+ 	desired kernel was never built in the first place.
+ 
+ 20170912:
+ 	The default serial number format for CTL LUNs has changed.  This will
+ 	affect users who use /dev/diskid/* device nodes, or whose FibreChannel
+ 	or iSCSI clients care about their LUNs' serial numbers.  Users who
+ 	require serial number stability should hardcode serial numbers in
+ 	/etc/ctl.conf .
+ 
+ 20170912:
+ 	For 32-bit arm compiled for hard-float support, soft-floating point
+ 	binaries now always get their shared libraries from
+ 	LD_SOFT_LIBRARY_PATH (in the past, this was only used if
+ 	/usr/libsoft also existed). Only users with a hard-float ld.so, but
+ 	soft-float everything else should be affected.
+ 
+ 20170826:
+ 	The geli password typed at boot is now hidden.  To restore the previous
+ 	behavior, see geli(8) for configuration options.
+ 
+ 20170825:
+ 	Move PMTUD blackhole counters to TCPSTATS and remove them from bare
+ 	sysctl values.  Minor nit, but requires a rebuild of both world/kernel
+ 	to complete.
+ 
+ 20170814:
+ 	"make check" behavior (made in ^/head@r295380) has been changed to
+ 	execute from a limited sandbox, as opposed to executing from
+ 	${TESTSDIR}.
+ 
+ 	Behavioral changes:
+ 	- The "beforecheck" and "aftercheck" targets are now specified.
+ 	- ${CHECKDIR} (added in commit noted above) has been removed.
+ 	- Legacy behavior can be enabled by setting
+ 	  WITHOUT_MAKE_CHECK_USE_SANDBOX in src.conf(5) or the environment.
+ 
+ 	If the limited sandbox mode is enabled, "make check" will execute
+ 	"make distribution", then install, execute the tests, and clean up the
+ 	sandbox if successful.
+ 
+ 	The "make distribution" and "make install" targets are typically run as
+ 	root to set appropriate permissions and ownership at installation time.
+ 	The end-user should set "WITH_INSTALL_AS_USER" in src.conf(5) or the
+ 	environment if executing "make check" with limited sandbox mode using
+ 	an unprivileged user.
+ 
+ 20170808:
+ 	Since the switch to GPT disk labels, fsck for UFS/FFS has been
+ 	unable to automatically find alternate superblocks. As of r322297,
+ 	the information needed to find alternate superblocks has been
+ 	moved to the end of the area reserved for the boot block.
+ 	Filesystems created with a newfs of this vintage or later
+ 	will create the recovery information. If you have a filesystem
+ 	created prior to this change and wish to have a recovery block
+ 	created for your filesystem, you can do so by running fsck in
+ 	foreground mode (i.e., do not use the -p or -y options). As it
+ 	starts, fsck will ask ``SAVE DATA TO FIND ALTERNATE SUPERBLOCKS''
+ 	to which you should answer yes.
+ 
+ 20170728:
+ 	As of r321665, an NFSv4 server configuration that services
+ 	Kerberos mounts or clients that do not support the uid/gid in
+ 	owner/owner_group string capability, must explicitly enable
+ 	the nfsuserd daemon by adding nfsuserd_enable="YES" to the
+ 	machine's /etc/rc.conf file.
+ 
+ 20170722:
+ 	Clang, llvm, lldb, compiler-rt and libc++ have been upgraded to 5.0.0.
+ 	Please see the 20141231 entry below for information about prerequisites
+ 	and upgrading, if you are not already using clang 3.5.0 or higher.
+ 
+ 20170701:
+ 	WITHOUT_RCMDS is now the default. Set WITH_RCMDS if you need the
+ 	r-commands (rlogin, rsh, etc.) to be built with the base system.
+ 
+ 20170625:
+ 	The FreeBSD/powerpc platform now uses a 64-bit type for time_t.  This is
+ 	a very major ABI incompatible change, so users of FreeBSD/powerpc must
+ 	be careful when performing source upgrades.  It is best to run
+ 	'make installworld' from an alternate root system, either a live
+ 	CD/memory stick, or a temporary root partition.  Additionally, all ports
+ 	must be recompiled.  powerpc64 is largely unaffected, except in the case
+ 	of 32-bit compatibility.  All 32-bit binaries will be affected.
+ 
+ 20170623:
+ 	Forward compatibility for the "ino64" project have been committed. This
+ 	will allow most new binaries to run on older kernels in a limited
+ 	fashion.  This prevents many of the common foot-shooting actions in the
+ 	upgrade as well as the limited ability to roll back the kernel across
+ 	the ino64 upgrade. Complicated use cases may not work properly, though
+ 	enough simpler ones work to allow recovery in most situations.
+ 
+ 20170620:
+ 	Switch back to the BSDL dtc (Device Tree Compiler). Set WITH_GPL_DTC
+ 	if you require the GPL compiler.
+ 
+ 20170618:
+ 	The internal ABI used for communication between the NFS kernel modules
+ 	was changed by r320085, so __FreeBSD_version was bumped to
+ 	ensure all the NFS related modules are updated together.
+ 
+ 20170617:
+ 	The ABI of struct event was changed by extending the data
+ 	member to 64bit and adding ext fields.  For upgrade, same
+ 	precautions as for the entry 20170523 "ino64" must be
+ 	followed.
+ 
+ 20170531:
+ 	The GNU roff toolchain has been removed from base. To render manpages
+ 	which are not supported by mandoc(1), man(1) can fallback on GNU roff
+ 	from ports (and recommends to install it).
+ 	To render roff(7) documents, consider using GNU roff from ports or the
+ 	heirloom doctools roff toolchain from ports via pkg install groff or
+ 	via pkg install heirloom-doctools.
+ 
+ 20170524:
+ 	The ath(4) and ath_hal(4) modules now build piecemeal to allow for
+ 	smaller runtime footprint builds.  This is useful for embedded systems
+ 	which only require one chipset support.
+ 
+ 	If you load it as a module, make sure this is in /boot/loader.conf:
+ 
+ 	if_ath_load="YES"
+ 
+ 	This will load the HAL, all chip/RF backends and if_ath_pci.
+ 	If you have if_ath_pci in /boot/loader.conf, ensure it is after
+ 	if_ath or it will not load any HAL chipset support.
+ 
+ 	If you want to selectively load things (eg on ye cheape ARM/MIPS
+ 	platforms where RAM is at a premium) you should:
+ 
+ 	* load ath_hal
+ 	* load the chip modules in question
+ 	* load ath_rate, ath_dfs
+ 	* load ath_main
+ 	* load if_ath_pci and/or if_ath_ahb depending upon your particular
+ 	  bus bind type - this is where probe/attach is done.
+ 
+ 	For further comments/feedback, poke adrian@ .
+ 
+ 20170523:
+ 	The "ino64" 64-bit inode project has been committed, which extends
+ 	a number of types to 64 bits.  Upgrading in place requires care and
+ 	adherence to the documented upgrade procedure.
+ 
+ 	If using a custom kernel configuration ensure that the
+ 	COMPAT_FREEBSD11 option is included (as during the upgrade the
+ 	system will be running the ino64 kernel with the existing world).
+ 
+ 	For the safest in-place upgrade begin by removing previous build
+ 	artifacts via "rm -rf /usr/obj/*".   Then, carefully follow the
+ 	full procedure documented below under the heading "To rebuild
+ 	everything and install it on the current system."  Specifically,
+ 	a reboot is required after installing the new kernel before
+ 	installing world.
+ 
+ 20170424:
+ 	The NATM framework including the en(4), fatm(4), hatm(4), and
+ 	patm(4) devices has been removed.  Consumers should plan a
+ 	migration before the end-of-life date for FreeBSD 11.
+ 
+ 20170420:
+ 	GNU diff has been replaced by a BSD licensed diff. Some features of GNU
+ 	diff has not been implemented, if those are needed a newer version of
+ 	GNU diff is available via the diffutils package under the gdiff name.
+ 
+ 20170413:
+ 	As of r316810 for ipfilter, keep frags is no longer assumed when
+ 	keep state is specified in a rule. r316810 aligns ipfilter with
+ 	documentation in man pages separating keep frags from keep state.
+ 	This allows keep state to be specified without forcing keep frags
+ 	and allows keep frags to be specified independently of keep state.
+ 	To maintain previous behaviour, also specify keep frags with
+ 	keep state (as documented in ipf.conf.5).
+ 
+ 20170407:
+ 	arm64 builds now use the base system LLD 4.0.0 linker by default,
+ 	instead of requiring that the aarch64-binutils port or package be
+ 	installed. To continue using aarch64-binutils, set
+ 	CROSS_BINUTILS_PREFIX=/usr/local/aarch64-freebsd/bin .
+ 
+ 20170405:
+ 	The UDP optimization in entry 20160818 that added the sysctl
+ 	net.inet.udp.require_l2_bcast has been reverted.  L2 broadcast
+ 	packets will no longer be treated as L3 broadcast packets.
+ 
+ 20170331:
+ 	Binds and sends to the loopback addresses, IPv6 and IPv4, will now
+ 	use any explicitly assigned loopback address available in the jail
+ 	instead of using the first assigned address of the jail.
+ 
+ 20170329:
+ 	The ctl.ko module no longer implements the iSCSI target frontend:
+ 	cfiscsi.ko does instead.
+ 
+ 	If building cfiscsi.ko as a kernel module, the module can be loaded
+ 	via one of the following methods:
+ 	- `cfiscsi_load="YES"` in loader.conf(5).
+ 	- Add `cfiscsi` to `$kld_list` in rc.conf(5).
+ 	- ctladm(8)/ctld(8), when compiled with iSCSI support
+ 	  (`WITH_ISCSI=yes` in src.conf(5))
+ 
+ 	Please see cfiscsi(4) for more details.
+ 
+ 20170316:
+ 	The mmcsd.ko module now additionally depends on geom_flashmap.ko.
+ 	Also, mmc.ko and mmcsd.ko need to be a matching pair built from the
+ 	same source (previously, the dependency of mmcsd.ko on mmc.ko was
+ 	missing, but mmcsd.ko now will refuse to load if it is incompatible
+ 	with mmc.ko).
+ 
+ 20170315:
+ 	The syntax of ipfw(8) named states was changed to avoid ambiguity.
+ 	If you have used named states in the firewall rules, you need to modify
+ 	them after installworld and before rebooting. Now named states must
+ 	be prefixed with colon.
+ 
+ 20170311:
+ 	The old drm (sys/dev/drm/) drivers for i915 and radeon have been
+ 	removed as the userland we provide cannot use them. The KMS version
+ 	(sys/dev/drm2) supports the same hardware.
+ 
+ 20170302:
+ 	Clang, llvm, lldb, compiler-rt and libc++ have been upgraded to 4.0.0.
+ 	Please see the 20141231 entry below for information about prerequisites
+ 	and upgrading, if you are not already using clang 3.5.0 or higher.
+ 
+ 20170221:
+ 	The code that provides support for ZFS .zfs/ directory functionality
+ 	has been reimplemented.  It's not possible now to create a snapshot
+ 	by mkdir under .zfs/snapshot/.  That should be the only user visible
+ 	change.
+ 
+ 20170216:
+ 	EISA bus support has been removed. The WITH_EISA option is no longer
+ 	valid.
+ 
+ 20170215:
+ 	MCA bus support has been removed.
+ 
+ 20170127:
+ 	The WITH_LLD_AS_LD / WITHOUT_LLD_AS_LD build knobs have been renamed
+ 	WITH_LLD_IS_LD / WITHOUT_LLD_IS_LD, for consistency with CLANG_IS_CC.
+ 
+ 20170112:
+ 	The EM_MULTIQUEUE kernel configuration option is deprecated now that
+ 	the em(4) driver conforms to iflib specifications.
+ 
+ 20170109:
+ 	The igb(4), em(4) and lem(4) ethernet drivers are now implemented via
+ 	IFLIB.  If you have a custom kernel configuration that excludes em(4)
+ 	but you use igb(4), you need to re-add em(4) to your custom configuration.
+ 
+ 20161217:
+ 	Clang, llvm, lldb, compiler-rt and libc++ have been upgraded to 3.9.1.
+ 	Please see the 20141231 entry below for information about prerequisites
+ 	and upgrading, if you are not already using clang 3.5.0 or higher.
+ 
+ 20161124:
+ 	Clang, llvm, lldb, compiler-rt and libc++ have been upgraded to 3.9.0.
+ 	Please see the 20141231 entry below for information about prerequisites
+ 	and upgrading, if you are not already using clang 3.5.0 or higher.
+ 
+ 20161119:
+ 	The layout of the pmap structure has changed for powerpc to put the pmap
+ 	statistics at the front for all CPU variations.  libkvm(3) and all tools
+ 	that link against it need to be recompiled.
+ 
+ 20161030:
+ 	isl(4) and cyapa(4) drivers now require a new driver,
+ 	chromebook_platform(4), to work properly on Chromebook-class hardware.
+ 	On other types of hardware the drivers may need to be configured using
+ 	device hints.  Please see the corresponding manual pages for details.
+ 
+ 20161017:
+ 	The urtwn(4) driver was merged into rtwn(4) and now consists of
+ 	rtwn(4) main module + rtwn_usb(4) and rtwn_pci(4) bus-specific
+ 	parts.
+ 	Also, firmware for RTL8188CE was renamed due to possible name
+ 	conflict (rtwnrtl8192cU(B) -> rtwnrtl8192cE(B))
+ 
+ 20161015:
+ 	GNU rcs has been removed from base.  It is available as packages:
+ 	- rcs: Latest GPLv3 GNU rcs version.
+ 	- rcs57: Copy of the latest version of GNU rcs (GPLv2) before it was
+ 	removed from base.
+ 
+ 20161008:
+ 	Use of the cc_cdg, cc_chd, cc_hd, or cc_vegas congestion control
+ 	modules now requires that the kernel configuration contain the
+ 	TCP_HHOOK option. (This option is included in the GENERIC kernel.)
+ 
+ 20161003:
+ 	The WITHOUT_ELFCOPY_AS_OBJCOPY src.conf(5) knob has been retired.
+ 	ELF Tool Chain's elfcopy is always installed as /usr/bin/objcopy.
+ 
+ 20160924:
+ 	Relocatable object files with the extension of .So have been renamed
+ 	to use an extension of .pico instead.  The purpose of this change is
+ 	to avoid a name clash with shared libraries on case-insensitive file
+ 	systems.  On those file systems, foo.So is the same file as foo.so.
+ 
+ 20160918:
+ 	GNU rcs has been turned off by default.  It can (temporarily) be built
+ 	again by adding WITH_RCS knob in src.conf.
+ 	Otherwise, GNU rcs is available from packages:
+ 	- rcs: Latest GPLv3 GNU rcs version.
+ 	- rcs57: Copy of the latest version of GNU rcs (GPLv2) from base.
+ 
+ 20160918:
+ 	The backup_uses_rcs functionality has been removed from rc.subr.
+ 
+ 20160908:
+ 	The queue(3) debugging macro, QUEUE_MACRO_DEBUG, has been split into
+ 	two separate components, QUEUE_MACRO_DEBUG_TRACE and
+ 	QUEUE_MACRO_DEBUG_TRASH.  Define both for the original
+ 	QUEUE_MACRO_DEBUG behavior.
+ 
+ 20160824:
+ 	r304787 changed some ioctl interfaces between the iSCSI userspace
+ 	programs and the kernel.  ctladm, ctld, iscsictl, and iscsid must be
+ 	rebuilt to work with new kernels.  __FreeBSD_version has been bumped
+ 	to 1200005.
+ 
+ 20160818:
+ 	The UDP receive code has been updated to only treat incoming UDP
+ 	packets that were addressed to an L2 broadcast address as L3
+ 	broadcast packets.  It is not expected that this will affect any
+ 	standards-conforming UDP application.  The new behaviour can be
+ 	disabled by setting the sysctl net.inet.udp.require_l2_bcast to
+ 	0.
+ 
+ 20160818:
+ 	Remove the openbsd_poll system call.
+ 	__FreeBSD_version has been bumped because of this.
+ 
+ 20160708:
+ 	The stable/11 branch has been created from head@r302406.
+ 
+ 20160622:
+ 	The libc stub for the pipe(2) system call has been replaced with
+ 	a wrapper that calls the pipe2(2) system call and the pipe(2)
+ 	system call is now only implemented by the kernels that include
+ 	"options COMPAT_FREEBSD10" in their config file (this is the
+ 	default).  Users should ensure that this option is enabled in
+ 	their kernel or upgrade userspace to r302092 before upgrading their
+ 	kernel.
+ 
+ 20160527:
+ 	CAM will now strip leading spaces from SCSI disks' serial numbers.
+ 	This will affect users who create UFS filesystems on SCSI disks using
+ 	those disk's diskid device nodes.  For example, if /etc/fstab
+ 	previously contained a line like
+ 	"/dev/diskid/DISK-%20%20%20%20%20%20%20ABCDEFG0123456", you should
+ 	change it to "/dev/diskid/DISK-ABCDEFG0123456".  Users of geom
+ 	transforms like gmirror may also be affected.  ZFS users should
+ 	generally be fine.
+ 
+ 20160523:
+ 	The bitstring(3) API has been updated with new functionality and
+ 	improved performance.  But it is binary-incompatible with the old API.
+ 	Objects built with the new headers may not be linked against objects
+ 	built with the old headers.
+ 
+ 20160520:
+ 	The brk and sbrk functions have been removed from libc on arm64.
+ 	Binutils from ports has been updated to not link to these
+ 	functions and should be updated to the latest version before
+ 	installing a new libc.
+ 
+ 20160517:
+ 	The armv6 port now defaults to hard float ABI. Limited support
+ 	for running both hardfloat and soft float on the same system
+ 	is available using the libraries installed with -DWITH_LIBSOFT.
+ 	This has only been tested as an upgrade path for installworld
+ 	and packages may fail or need manual intervention to run. New
+ 	packages will be needed.
+ 
+ 	To update an existing self-hosted armv6hf system, you must add
+ 	TARGET_ARCH=armv6 on the make command line for both the build
+ 	and the install steps.
+ 
+ 20160510:
+ 	Kernel modules compiled outside of a kernel build now default to
+ 	installing to /boot/modules instead of /boot/kernel.  Many kernel
+ 	modules built this way (such as those in ports) already overrode
+ 	KMODDIR explicitly to install into /boot/modules.  However,
+ 	manually building and installing a module from /sys/modules will
+ 	now install to /boot/modules instead of /boot/kernel.
+ 
+ 20160414:
+ 	The CAM I/O scheduler has been committed to the kernel. There should be
+ 	no user visible impact. This does enable NCQ Trim on ada SSDs. While the
+ 	list of known rogues that claim support for this but actually corrupt
+ 	data is believed to be complete, be on the lookout for data
+ 	corruption. The known rogue list is believed to be complete:
+ 
+ 		o Crucial MX100, M550 drives with MU01 firmware.
+ 		o Micron M510 and M550 drives with MU01 firmware.
+ 		o Micron M500 prior to MU07 firmware
+ 		o Samsung 830, 840, and 850 all firmwares
+ 		o FCCT M500 all firmwares
+ 
+ 	Crucial has firmware http://www.crucial.com/usa/en/support-ssd-firmware
+ 	with working NCQ TRIM. For Micron branded drives, see your sales rep for
+ 	updated firmware. Black listed drives will work correctly because these
+ 	drives work correctly so long as no NCQ TRIMs are sent to them. Given
+ 	this list is the same as found in Linux, it's believed there are no
+ 	other rogues in the market place. All other models from the above
+ 	vendors work.
+ 
+ 	To be safe, if you are at all concerned, you can quirk each of your
+ 	drives to prevent NCQ from being sent by setting:
+ 		kern.cam.ada.X.quirks="0x2"
+ 	in loader.conf. If the drive requires the 4k sector quirk, set the
+ 	quirks entry to 0x3.
+ 
+ 20160330:
+ 	The FAST_DEPEND build option has been removed and its functionality is
+ 	now the one true way.  The old mkdep(1) style of 'make depend' has
+ 	been removed.  See 20160311 for further details.
+ 
+ 20160317:
+ 	Resource range types have grown from unsigned long to uintmax_t.  All
+ 	drivers, and anything using libdevinfo, need to be recompiled.
+ 
+ 20160311:
+ 	WITH_FAST_DEPEND is now enabled by default for in-tree and out-of-tree
+ 	builds.  It no longer runs mkdep(1) during 'make depend', and the
+ 	'make depend' stage can safely be skipped now as it is auto ran
+ 	when building 'make all' and will generate all SRCS and DPSRCS before
+ 	building anything else.  Dependencies are gathered at compile time with
+ 	-MF flags kept in separate .depend files per object file.  Users should
+ 	run 'make cleandepend' once if using -DNO_CLEAN to clean out older
+ 	stale .depend files.
+ 
+ 20160306:
+ 	On amd64, clang 3.8.0 can now insert sections of type AMD64_UNWIND into
+ 	kernel modules.  Therefore, if you load any kernel modules at boot time,
+ 	please install the boot loaders after you install the kernel, but before
+ 	rebooting, e.g.:
+ 
+ 	make buildworld
+ 	make buildkernel KERNCONF=YOUR_KERNEL_HERE
+ 	make installkernel KERNCONF=YOUR_KERNEL_HERE
+ 	make -C sys/boot install
+ 	<reboot in single user>
+ 
+ 	Then follow the usual steps, described in the General Notes section,
+ 	below.
+ 
+ 20160305:
+ 	Clang, llvm, lldb and compiler-rt have been upgraded to 3.8.0.  Please
+ 	see the 20141231 entry below for information about prerequisites and
+ 	upgrading, if you are not already using clang 3.5.0 or higher.
+ 
+ 20160301:
+ 	The AIO subsystem is now a standard part of the kernel.  The
+ 	VFS_AIO kernel option and aio.ko kernel module have been removed.
+ 	Due to stability concerns, asynchronous I/O requests are only
+ 	permitted on sockets and raw disks by default.  To enable
+ 	asynchronous I/O requests on all file types, set the
+ 	vfs.aio.enable_unsafe sysctl to a non-zero value.
+ 
+ 20160226:
+ 	The ELF object manipulation tool objcopy is now provided by the
+ 	ELF Tool Chain project rather than by GNU binutils. It should be a
+ 	drop-in replacement, with the addition of arm64 support. The
+ 	(temporary) src.conf knob WITHOUT_ELFCOPY_AS_OBJCOPY knob may be set
+ 	to obtain the GNU version if necessary.
+ 
+ 20160129:
+ 	Building ZFS pools on top of zvols is prohibited by default.  That
+ 	feature has never worked safely; it's always been prone to deadlocks.
+ 	Using a zvol as the backing store for a VM guest's virtual disk will
+ 	still work, even if the guest is using ZFS.  Legacy behavior can be
+ 	restored by setting vfs.zfs.vol.recursive=1.
+ 
+ 20160119:
+ 	The NONE and HPN patches has been removed from OpenSSH.  They are
+ 	still available in the security/openssh-portable port.
+ 
+ 20160113:
+ 	With the addition of ypldap(8), a new _ypldap user is now required
+ 	during installworld. "mergemaster -p" can be used to add the user
+ 	prior to installworld, as documented in the handbook.
+ 
+ 20151216:
+ 	The tftp loader (pxeboot) now uses the option root-path directive. As a
+ 	consequence it no longer looks for a pxeboot.4th file on the tftp
+ 	server. Instead it uses the regular /boot infrastructure as with the
+ 	other loaders.
+ 
+ 20151211:
+ 	The code to start recording plug and play data into the modules has
+ 	been committed. While the old tools will properly build a new kernel,
+ 	a number of warnings about "unknown metadata record 4" will be produced
+ 	for an older kldxref. To avoid such warnings, make sure to rebuild
+ 	the kernel toolchain (or world). Make sure that you have r292078 or
+ 	later when trying to build 292077 or later before rebuilding.
+ 
+ 20151207:
+ 	Debug data files are now built by default with 'make buildworld' and
+ 	installed with 'make installworld'. This facilitates debugging but
+ 	requires more disk space both during the build and for the installed
+ 	world. Debug files may be disabled by setting WITHOUT_DEBUG_FILES=yes
+ 	in src.conf(5).
+ 
+ 20151130:
+ 	r291527 changed the internal interface between the nfsd.ko and
+ 	nfscommon.ko modules. As such, they must both be upgraded to-gether.
+ 	__FreeBSD_version has been bumped because of this.
+ 
+ 20151108:
+ 	Add support for unicode collation strings leads to a change of
+ 	order of files listed by ls(1) for example. To get back to the old
+ 	behaviour, set LC_COLLATE environment variable to "C".
+ 
+ 	Databases administrators will need to reindex their databases given
+ 	collation results will be different.
+ 
+ 	Due to a bug in install(1) it is recommended to remove the ancient
+ 	locales before running make installworld.
+ 
+ 	rm -rf /usr/share/locale/*
+ 
+ 20151030:
+ 	The OpenSSL has been upgraded to 1.0.2d.  Any binaries requiring
+ 	libcrypto.so.7 or libssl.so.7 must be recompiled.
+ 
+ 20151020:
+ 	Qlogic 24xx/25xx firmware images were updated from 5.5.0 to 7.3.0.
+ 	Kernel modules isp_2400_multi and isp_2500_multi were removed and
+ 	should be replaced with isp_2400 and isp_2500 modules respectively.
+ 
+ 20151017:
+ 	The build previously allowed using 'make -n' to not recurse into
+ 	sub-directories while showing what commands would be executed, and
+ 	'make -n -n' to recursively show commands.  Now 'make -n' will recurse
+ 	and 'make -N' will not.
+ 
+ 20151012:
+ 	If you specify SENDMAIL_MC or SENDMAIL_CF in make.conf, mergemaster
+ 	and etcupdate will now use this file. A custom sendmail.cf is now
+ 	updated via this mechanism rather than via installworld.  If you had
+ 	excluded sendmail.cf in mergemaster.rc or etcupdate.conf, you may
+ 	want to remove the exclusion or change it to "always install".
+ 	/etc/mail/sendmail.cf is now managed the same way regardless of
+ 	whether SENDMAIL_MC/SENDMAIL_CF is used.  If you are not using
+ 	SENDMAIL_MC/SENDMAIL_CF there should be no change in behavior.
+ 
+ 20151011:
+ 	Compatibility shims for legacy ATA device names have been removed.
+ 	It includes ATA_STATIC_ID kernel option, kern.cam.ada.legacy_aliases
+ 	and kern.geom.raid.legacy_aliases loader tunables, kern.devalias.*
+ 	environment variables, /dev/ad* and /dev/ar* symbolic links.
+ 
+ 20151006:
+ 	Clang, llvm, lldb, compiler-rt and libc++ have been upgraded to 3.7.0.
+ 	Please see the 20141231 entry below for information about prerequisites
+ 	and upgrading, if you are not already using clang 3.5.0 or higher.
+ 
+ 20150924:
+ 	Kernel debug files have been moved to /usr/lib/debug/boot/kernel/,
+ 	and renamed from .symbols to .debug. This reduces the size requirements
+ 	on the boot partition or file system and provides consistency with
+ 	userland debug files.
+ 
+ 	When using the supported kernel installation method the
+ 	/usr/lib/debug/boot/kernel directory will be renamed (to kernel.old)
+ 	as is done with /boot/kernel.
+ 
+ 	Developers wishing to maintain the historical behavior of installing
+ 	debug files in /boot/kernel/ can set KERN_DEBUGDIR="" in src.conf(5).
+ 
+ 20150827:
+ 	The wireless drivers had undergone changes that remove the 'parent
+ 	interface' from the ifconfig -l output. The rc.d network scripts
+ 	used to check presence of a parent interface in the list, so old
+ 	scripts would fail to start wireless networking. Thus, etcupdate(3)
+ 	or mergemaster(8) run is required after kernel update, to update your
+ 	rc.d scripts in /etc.
+ 
+ 20150827:
+ 	pf no longer supports 'scrub fragment crop' or 'scrub fragment drop-ovl'
+ 	These configurations are now automatically interpreted as
+ 	'scrub fragment reassemble'.
+ 
+ 20150817:
+ 	Kernel-loadable modules for the random(4) device are back. To use
+ 	them, the kernel must have
+ 
+ 	device	random
+ 	options	RANDOM_LOADABLE
+ 
+ 	kldload(8) can then be used to load random_fortuna.ko
+ 	or random_yarrow.ko. Please note that due to the indirect
+ 	function calls that the loadable modules need to provide,
+ 	the build-in variants will be slightly more efficient.
+ 
+ 	The random(4) kernel option RANDOM_DUMMY has been retired due to
+ 	unpopularity. It was not all that useful anyway.
+ 
+ 20150813:
+ 	The WITHOUT_ELFTOOLCHAIN_TOOLS src.conf(5) knob has been retired.
+ 	Control over building the ELF Tool Chain tools is now provided by
+ 	the WITHOUT_TOOLCHAIN knob.
+ 
+ 20150810:
+ 	The polarity of Pulse Per Second (PPS) capture events with the
+ 	uart(4) driver has been corrected.  Prior to this change the PPS
+ 	"assert" event corresponded to the trailing edge of a positive PPS
+ 	pulse and the "clear" event was the leading edge of the next pulse.
+ 
+ 	As the width of a PPS pulse in a typical GPS receiver is on the
+ 	order of 1 millisecond, most users will not notice any significant
+ 	difference with this change.
+ 
+ 	Anyone who has compensated for the historical polarity reversal by
+ 	configuring a negative offset equal to the pulse width will need to
+ 	remove that workaround.
+ 
+ 20150809:
+ 	The default group assigned to /dev/dri entries has been changed
+ 	from 'wheel' to 'video' with the id of '44'. If you want to have
+ 	access to the dri devices please add yourself to the video group
+ 	with:
+ 
+ 	# pw groupmod video -m $USER
+ 
+ 20150806:
+ 	The menu.rc and loader.rc files will now be replaced during
+ 	upgrades. Please migrate local changes to menu.rc.local and
+ 	loader.rc.local instead.
+ 
+ 20150805:
+ 	GNU Binutils versions of addr2line, c++filt, nm, readelf, size,
+ 	strings and strip have been removed. The src.conf(5) knob
+ 	WITHOUT_ELFTOOLCHAIN_TOOLS no longer provides the binutils tools.
+ 
+ 20150728:
+ 	As ZFS requires more kernel stack pages than is the default on some
+ 	architectures e.g. i386, it now warns if KSTACK_PAGES is less than
+ 	ZFS_MIN_KSTACK_PAGES (which is 4 at the time of writing).
+ 
+ 	Please consider using 'options KSTACK_PAGES=X' where X is greater
+ 	than or equal to ZFS_MIN_KSTACK_PAGES i.e. 4 in such configurations.
+ 
+ 20150706:
+ 	sendmail has been updated to 8.15.2.  Starting with FreeBSD 11.0
+ 	and sendmail 8.15, sendmail uses uncompressed IPv6 addresses by
+ 	default, i.e., they will not contain "::".  For example, instead
+ 	of ::1, it will be 0:0:0:0:0:0:0:1.  This permits a zero subnet
+ 	to have a more specific match, such as different map entries for
+ 	IPv6:0:0 vs IPv6:0.  This change requires that configuration
+ 	data (including maps, files, classes, custom ruleset, etc.) must
+ 	use the same format, so make certain such configuration data is
+ 	upgrading.  As a very simple check search for patterns like
+ 	'IPv6:[0-9a-fA-F:]*::' and 'IPv6::'.  To return to the old
+ 	behavior, set the m4 option confUSE_COMPRESSED_IPV6_ADDRESSES or
+ 	the cf option UseCompressedIPv6Addresses.
+ 
+ 20150630:
+ 	The default kernel entropy-processing algorithm is now
+ 	Fortuna, replacing Yarrow.
+ 
+ 	Assuming you have 'device random' in your kernel config
+ 	file, the configurations allow a kernel option to override
+ 	this default. You may choose *ONE* of:
+ 
+ 	options	RANDOM_YARROW	# Legacy /dev/random algorithm.
+ 	options	RANDOM_DUMMY	# Blocking-only driver.
+ 
+ 	If you have neither, you get Fortuna.  For most people,
+ 	read no further, Fortuna will give a /dev/random that works
+ 	like it always used to, and the difference will be irrelevant.
+ 
+ 	If you remove 'device random', you get *NO* kernel-processed
+ 	entropy at all. This may be acceptable to folks building
+ 	embedded systems, but has complications. Carry on reading,
+ 	and it is assumed you know what you need.
+ 
+ 	*PLEASE* read random(4) and random(9) if you are in the
+ 	habit of tweaking kernel configs, and/or if you are a member
+ 	of the embedded community, wanting specific and not-usual
+ 	behaviour from your security subsystems.
+ 
+ 	NOTE!! If you use RANDOM_DUMMY and/or have no 'device
+ 	random', you will NOT have a functioning /dev/random, and
+ 	many cryptographic features will not work, including SSH.
+ 	You may also find strange behaviour from the random(3) set
+ 	of library functions, in particular sranddev(3), srandomdev(3)
+ 	and arc4random(3). The reason for this is that the KERN_ARND
+ 	sysctl only returns entropy if it thinks it has some to
+ 	share, and with RANDOM_DUMMY or no 'device random' this
+ 	will never happen.
+ 
+ 20150623:
+ 	An additional fix for the issue described in the 20150614 sendmail
+ 	entry below has been committed in revision 284717.
+ 
+ 20150616:
+ 	FreeBSD's old make (fmake) has been removed from the system. It is
+ 	available as the devel/fmake port or via pkg install fmake.
+ 
+ 20150615:
+ 	The fix for the issue described in the 20150614 sendmail entry
+ 	below has been committed in revision 284436.  The work
+ 	around described in that entry is no longer needed unless the
+ 	default setting is overridden by a confDH_PARAMETERS configuration
+ 	setting of '5' or pointing to a 512 bit DH parameter file.
+ 
+ 20150614:
+ 	ALLOW_DEPRECATED_ATF_TOOLS/ATFFILE support has been removed from
+ 	atf.test.mk (included from bsd.test.mk). Please upgrade devel/atf
+ 	and devel/kyua to version 0.20+ and adjust any calling code to work
+ 	with Kyuafile and kyua.
+ 
+ 20150614:
+ 	The import of openssl to address the FreeBSD-SA-15:10.openssl
+ 	security advisory includes a change which rejects handshakes
+ 	with DH parameters below 768 bits.  sendmail releases prior
+ 	to 8.15.2 (not yet released), defaulted to a 512 bit
+ 	DH parameter setting for client connections.  To work around
+ 	this interoperability, sendmail can be configured to use a
+ 	2048 bit DH parameter by:
+ 
+ 	1. Edit /etc/mail/`hostname`.mc
+ 	2. If a setting for confDH_PARAMETERS does not exist or
+ 	   exists and is set to a string beginning with '5',
+ 	   replace it with '2'.
+ 	3. If a setting for confDH_PARAMETERS exists and is set to
+ 	   a file path, create a new file with:
+ 		openssl dhparam -out /path/to/file 2048
+ 	4. Rebuild the .cf file:
+ 		cd /etc/mail/; make; make install
+ 	5. Restart sendmail:
+ 		cd /etc/mail/; make restart
+ 
+ 	A sendmail patch is coming, at which time this file will be
+ 	updated.
+ 
+ 20150604:
+ 	Generation of legacy formatted entries have been disabled by default
+ 	in pwd_mkdb(8), as all base system consumers of the legacy formatted
+ 	entries were converted to use the new format by default when the new,
+ 	machine independent format have been added and supported since FreeBSD
+ 	5.x.
+ 
+ 	Please see the pwd_mkdb(8) manual page for further details.
+ 
+ 20150525:
+ 	Clang and llvm have been upgraded to 3.6.1 release.  Please see the
+ 	20141231 entry below for information about prerequisites and upgrading,
+ 	if you are not already using 3.5.0 or higher.
+ 
+ 20150521:
+ 	TI platform code switched to using vendor DTS files and this update
+ 	may break existing systems running on Beaglebone, Beaglebone Black,
+ 	and Pandaboard:
+ 
+ 	- dtb files should be regenerated/reinstalled. Filenames are the
+ 	  same but content is different now
+ 	- GPIO addressing was changed, now each GPIO bank (32 pins per bank)
+ 	  has its own /dev/gpiocX device, e.g. pin 121 on /dev/gpioc0 in old
+ 	  addressing scheme is now pin 25 on /dev/gpioc3.
+ 	- Pandaboard: /etc/ttys should be updated, serial console device is
+ 	  now /dev/ttyu2, not /dev/ttyu0
+ 
+ 20150501:
+ 	soelim(1) from gnu/usr.bin/groff has been replaced by usr.bin/soelim.
+ 	If you need the GNU extension from groff soelim(1), install groff
+ 	from package: pkg install groff, or via ports: textproc/groff.
+ 
+ 20150423:
+ 	chmod, chflags, chown and chgrp now affect symlinks in -R mode as
+ 	defined in symlink(7); previously symlinks were silently ignored.
+ 
+ 20150415:
+ 	The const qualifier has been removed from iconv(3) to comply with
+ 	POSIX.  The ports tree is aware of this from r384038 onwards.
+ 
+ 20150416:
+ 	Libraries specified by LIBADD in Makefiles must have a corresponding
+ 	DPADD_<lib> variable to ensure correct dependencies.  This is now
+ 	enforced in src.libnames.mk.
+ 
+ 20150324:
+ 	From legacy ata(4) driver was removed support for SATA controllers
+ 	supported by more functional drivers ahci(4), siis(4) and mvs(4).
+ 	Kernel modules ataahci and ataadaptec were removed completely,
+ 	replaced by ahci and mvs modules respectively.
+ 
+ 20150315:
+ 	Clang, llvm and lldb have been upgraded to 3.6.0 release.  Please see
+ 	the 20141231 entry below for information about prerequisites and
+ 	upgrading, if you are not already using 3.5.0 or higher.
+ 
+ 20150307:
+ 	The 32-bit PowerPC kernel has been changed to a position-independent
+ 	executable. This can only be booted with a version of loader(8)
+ 	newer than January 31, 2015, so make sure to update both world and
+ 	kernel before rebooting.
+ 
+ 20150217:
+ 	If you are running a -CURRENT kernel since r273872 (Oct 30th, 2014),
+ 	but before r278950, the RNG was not seeded properly.  Immediately
+ 	upgrade the kernel to r278950 or later and regenerate any keys (e.g.
+ 	ssh keys or openssl keys) that were generated w/ a kernel from that
+ 	range.  This does not affect programs that directly used /dev/random
+ 	or /dev/urandom.  All userland uses of arc4random(3) are affected.
+ 
+ 20150210:
+ 	The autofs(4) ABI was changed in order to restore binary compatibility
+ 	with 10.1-RELEASE.  The automountd(8) daemon needs to be rebuilt to work
+ 	with the new kernel.
+ 
+ 20150131:
+ 	The powerpc64 kernel has been changed to a position-independent
+ 	executable. This can only be booted with a new version of loader(8),
+ 	so make sure to update both world and kernel before rebooting.
+ 
+ 20150118:
+ 	Clang and llvm have been upgraded to 3.5.1 release.  This is a bugfix
+ 	only release, no new features have been added.  Please see the 20141231
+ 	entry below for information about prerequisites and upgrading, if you
+ 	are not already using 3.5.0.
+ 
+ 20150107:
+ 	ELF tools addr2line, elfcopy (strip), nm, size, and strings are now
+ 	taken from the ELF Tool Chain project rather than GNU binutils. They
+ 	should be drop-in replacements, with the addition of arm64 support.
+ 	The WITHOUT_ELFTOOLCHAIN_TOOLS= knob may be used to obtain the
+ 	binutils tools, if necessary. See 20150805 for updated information.
+ 
+ 20150105:
+ 	The default Unbound configuration now enables remote control
+ 	using a local socket.  Users who have already enabled the
+ 	local_unbound service should regenerate their configuration
+ 	by running "service local_unbound setup" as root.
+ 
+ 20150102:
+ 	The GNU texinfo and GNU info pages have been removed.
+ 	To be able to view GNU info pages please install texinfo from ports.
+ 
+ 20141231:
+ 	Clang, llvm and lldb have been upgraded to 3.5.0 release.
+ 
+ 	As of this release, a prerequisite for building clang, llvm and lldb is
+ 	a C++11 capable compiler and C++11 standard library.  This means that to
+ 	be able to successfully build the cross-tools stage of buildworld, with
+ 	clang as the bootstrap compiler, your system compiler or cross compiler
+ 	should either be clang 3.3 or later, or gcc 4.8 or later, and your
+ 	system C++ library should be libc++, or libdstdc++ from gcc 4.8 or
+ 	later.
+ 
+ 	On any standard FreeBSD 10.x or 11.x installation, where clang and
+ 	libc++ are on by default (that is, on x86 or arm), this should work out
+ 	of the box.
+ 
+ 	On 9.x installations where clang is enabled by default, e.g. on x86 and
+ 	powerpc, libc++ will not be enabled by default, so libc++ should be
+ 	built (with clang) and installed first.  If both clang and libc++ are
+ 	missing, build clang first, then use it to build libc++.
+ 
+ 	On 8.x and earlier installations, upgrade to 9.x first, and then follow
+ 	the instructions for 9.x above.
+ 
+ 	Sparc64 and mips users are unaffected, as they still use gcc 4.2.1 by
+ 	default, and do not build clang.
+ 
+ 	Many embedded systems are resource constrained, and will not be able to
+ 	build clang in a reasonable time, or in some cases at all.  In those
+ 	cases, cross building bootable systems on amd64 is a workaround.
+ 
+ 	This new version of clang introduces a number of new warnings, of which
+ 	the following are most likely to appear:
+ 
+ 	-Wabsolute-value
+ 
+ 	This warns in two cases, for both C and C++:
+ 	* When the code is trying to take the absolute value of an unsigned
+ 	  quantity, which is effectively a no-op, and almost never what was
+ 	  intended.  The code should be fixed, if at all possible.  If you are
+ 	  sure that the unsigned quantity can be safely cast to signed, without
+ 	  loss of information or undefined behavior, you can add an explicit
+ 	  cast, or disable the warning.
+ 
+ 	* When the code is trying to take an absolute value, but the called
+ 	  abs() variant is for the wrong type, which can lead to truncation.
+ 	  If you want to disable the warning instead of fixing the code, please
+ 	  make sure that truncation will not occur, or it might lead to unwanted
+ 	  side-effects.
+ 
+ 	-Wtautological-undefined-compare and
+ 	-Wundefined-bool-conversion
+ 
+ 	These warn when C++ code is trying to compare 'this' against NULL, while
+ 	'this' should never be NULL in well-defined C++ code.  However, there is
+ 	some legacy (pre C++11) code out there, which actively abuses this
+ 	feature, which was less strictly defined in previous C++ versions.
+ 
+ 	Squid and openjdk do this, for example.  The warning can be turned off
+ 	for C++98 and earlier, but compiling the code in C++11 mode might result
+ 	in unexpected behavior; for example, the parts of the program that are
+ 	unreachable could be optimized away.
+ 
+ 20141222:
+ 	The old NFS client and server (kernel options NFSCLIENT, NFSSERVER)
+ 	kernel sources have been removed. The .h files remain, since some
+ 	utilities include them. This will need to be fixed later.
+ 	If "mount -t oldnfs ..." is attempted, it will fail.
+ 	If the "-o" option on mountd(8), nfsd(8) or nfsstat(1) is used,
+ 	the utilities will report errors.
+ 
+ 20141121:
+ 	The handling of LOCAL_LIB_DIRS has been altered to skip addition of
+ 	directories to top level SUBDIR variable when their parent
+ 	directory is included in LOCAL_DIRS.  Users with build systems with
+ 	such hierarchies and without SUBDIR entries in the parent
+ 	directory Makefiles should add them or add the directories to
+ 	LOCAL_DIRS.
+ 
+ 20141109:
+ 	faith(4) and faithd(8) have been removed from the base system. Faith
+ 	has been obsolete for a very long time.
+ 
+ 20141104:
+ 	vt(4), the new console driver, is enabled by default. It brings
+ 	support for Unicode and double-width characters, as well as
+ 	support for UEFI and integration with the KMS kernel video
+ 	drivers.
+ 
+ 	You may need to update your console settings in /etc/rc.conf,
+ 	most probably the keymap. During boot, /etc/rc.d/syscons will
+ 	indicate what you need to do.
+ 
+ 	vt(4) still has issues and lacks some features compared to
+ 	syscons(4). See the wiki for up-to-date information:
+ 	  https://wiki.freebsd.org/Newcons
+ 
+ 	If you want to keep using syscons(4), you can do so by adding
+ 	the following line to /boot/loader.conf:
+ 	  kern.vty=sc
+ 
+ 20141102:
+ 	pjdfstest has been integrated into kyua as an opt-in test suite.
+ 	Please see share/doc/pjdfstest/README for more details on how to
+ 	execute it.
+ 
+ 20141009:
+ 	gperf has been removed from the base system for architectures
+ 	that use clang. Ports that require gperf will obtain it from the
+ 	devel/gperf port.
+ 
+ 20140923:
+ 	pjdfstest has been moved from tools/regression/pjdfstest to
+ 	contrib/pjdfstest .
+ 
+ 20140922:
+ 	At svn r271982, The default linux compat kernel ABI has been adjusted
+ 	to 2.6.18 in support of the linux-c6 compat ports infrastructure
+ 	update.  If you wish to continue using the linux-f10 compat ports,
+ 	add compat.linux.osrelease=2.6.16 to your local sysctl.conf.  Users are
+ 	encouraged to update their linux-compat packages to linux-c6 during
+ 	their next update cycle.
+ 
+ 20140729:
+ 	The ofwfb driver, used to provide a graphics console on PowerPC when
+ 	using vt(4), no longer allows mmap() of all physical memory. This
+ 	will prevent Xorg on PowerPC with some ATI graphics cards from
+ 	initializing properly unless x11-servers/xorg-server is updated to
+ 	1.12.4_8 or newer.
+ 
+ 20140723:
+ 	The xdev targets have been converted to using TARGET and
+ 	TARGET_ARCH instead of XDEV and XDEV_ARCH.
+ 
+ 20140719:
+ 	The default unbound configuration has been modified to address
+ 	issues with reverse lookups on networks that use private
+ 	address ranges.  If you use the local_unbound service, run
+ 	"service local_unbound setup" as root to regenerate your
+ 	configuration, then "service local_unbound reload" to load the
+ 	new configuration.
+ 
+ 20140709:
+ 	The GNU texinfo and GNU info pages are not built and installed
+ 	anymore, WITH_INFO knob has been added to allow to built and install
+ 	them again.
+ 	UPDATE: see 20150102 entry on texinfo's removal
+ 
+ 20140708:
+ 	The GNU readline library is now an INTERNALLIB - that is, it is
+ 	statically linked into consumers (GDB and variants) in the base
+ 	system, and the shared library is no longer installed.  The
+ 	devel/readline port is available for third party software that
+ 	requires readline.
+ 
+ 20140702:
+ 	The Itanium architecture (ia64) has been removed from the list of
+ 	known architectures. This is the first step in the removal of the
+ 	architecture.
+ 
+ 20140701:
+ 	Commit r268115 has added NFSv4.1 server support, merged from
+ 	projects/nfsv4.1-server.  Since this includes changes to the
+ 	internal interfaces between the NFS related modules, a full
+ 	build of the kernel and modules will be necessary.
+ 	__FreeBSD_version has been bumped.
+ 
+ 20140629:
+ 	The WITHOUT_VT_SUPPORT kernel config knob has been renamed
+ 	WITHOUT_VT.  (The other _SUPPORT knobs have a consistent meaning
+ 	which differs from the behaviour controlled by this knob.)
+ 
+ 20140619:
+ 	Maximal length of the serial number in CTL was increased from 16 to
+ 	64 chars, that breaks ABI.  All CTL-related tools, such as ctladm
+ 	and ctld, need to be rebuilt to work with a new kernel.
+ 
+ 20140606:
+ 	The libatf-c and libatf-c++ major versions were downgraded to 0 and
+ 	1 respectively to match the upstream numbers.  They were out of
+ 	sync because, when they were originally added to FreeBSD, the
+ 	upstream versions were not respected.  These libraries are private
+ 	and not yet built by default, so renumbering them should be a
+ 	non-issue.  However, unclean source trees will yield broken test
+ 	programs once the operator executes "make delete-old-libs" after a
+ 	"make installworld".
+ 
+ 	Additionally, the atf-sh binary was made private by moving it into
+ 	/usr/libexec/.  Already-built shell test programs will keep the
+ 	path to the old binary so they will break after "make delete-old"
+ 	is run.
+ 
+ 	If you are using WITH_TESTS=yes (not the default), wipe the object
+ 	tree and rebuild from scratch to prevent spurious test failures.
+ 	This is only needed once: the misnumbered libraries and misplaced
+ 	binaries have been added to OptionalObsoleteFiles.inc so they will
+ 	be removed during a clean upgrade.
+ 
+ 20140512:
+ 	Clang and llvm have been upgraded to 3.4.1 release.
+ 
+ 20140508:
+ 	We bogusly installed src.opts.mk in /usr/share/mk. This file should
+ 	be removed to avoid issues in the future (and has been added to
+ 	ObsoleteFiles.inc).
+ 
+ 20140505:
+ 	/etc/src.conf now affects only builds of the FreeBSD src tree. In the
+ 	past, it affected all builds that used the bsd.*.mk files. The old
+ 	behavior was a bug, but people may have relied upon it. To get this
+ 	behavior back, you can .include /etc/src.conf from /etc/make.conf
+ 	(which is still global and isn't changed). This also changes the
+ 	behavior of incremental builds inside the tree of individual
+ 	directories. Set MAKESYSPATH to ".../share/mk" to do that.
+ 	Although this has survived make universe and some upgrade scenarios,
+ 	other upgrade scenarios may have broken. At least one form of
+ 	temporary breakage was fixed with MAKESYSPATH settings for buildworld
+ 	as well... In cases where MAKESYSPATH isn't working with this
+ 	setting, you'll need to set it to the full path to your tree.
+ 
+ 	One side effect of all this cleaning up is that bsd.compiler.mk
+ 	is no longer implicitly included by bsd.own.mk. If you wish to
+ 	use COMPILER_TYPE, you must now explicitly include bsd.compiler.mk
+ 	as well.
+ 
+ 20140430:
+ 	The lindev device has been removed since /dev/full has been made a
+ 	standard device.  __FreeBSD_version has been bumped.
+ 
+ 20140424:
+ 	The knob WITHOUT_VI was added to the base system, which controls
+ 	building ex(1), vi(1), etc. Older releases of FreeBSD required ex(1)
+ 	in order to reorder files share/termcap and didn't build ex(1) as a
+ 	build tool, so building/installing with WITH_VI is highly advised for
+ 	build hosts for older releases.
+ 
+ 	This issue has been fixed in stable/9 and stable/10 in r277022 and
+ 	r276991, respectively.
+ 
+ 20140418:
+ 	The YES_HESIOD knob has been removed. It has been obsolete for
+ 	a decade. Please move to using WITH_HESIOD instead or your builds
+ 	will silently lack HESIOD.
+ 
+ 20140405:
+ 	The uart(4) driver has been changed with respect to its handling
+ 	of the low-level console. Previously the uart(4) driver prevented
+ 	any process from changing the baudrate or the CLOCAL and HUPCL
+ 	control flags. By removing the restrictions, operators can make
+ 	changes to the serial console port without having to reboot.
+ 	However, when getty(8) is started on the serial device that is
+ 	associated with the low-level console, a misconfigured terminal
+ 	line in /etc/ttys will now have a real impact.
+ 	Before upgrading the kernel, make sure that /etc/ttys has the
+ 	serial console device configured as 3wire without baudrate to
+ 	preserve the previous behaviour. E.g:
+ 	    ttyu0  "/usr/libexec/getty 3wire"  vt100  on  secure
+ 
+ 20140306:
+ 	Support for libwrap (TCP wrappers) in rpcbind was disabled by default
+ 	to improve performance.  To re-enable it, if needed, run rpcbind
+ 	with command line option -W.
+ 
+ 20140226:
+ 	Switched back to the GPL dtc compiler due to updates in the upstream
+ 	dts files not being supported by the BSDL dtc compiler. You will need
+ 	to rebuild your kernel toolchain to pick up the new compiler. Core dumps
+ 	may result while building dtb files during a kernel build if you fail
+ 	to do so. Set WITHOUT_GPL_DTC if you require the BSDL compiler.
+ 
+ 20140216:
+ 	Clang and llvm have been upgraded to 3.4 release.
+ 
+ 20140216:
+ 	The nve(4) driver has been removed.  Please use the nfe(4) driver
+ 	for NVIDIA nForce MCP Ethernet adapters instead.
+ 
+ 20140212:
+ 	An ABI incompatibility crept into the libc++ 3.4 import in r261283.
+ 	This could cause certain C++ applications using shared libraries built
+ 	against the previous version of libc++ to crash.  The incompatibility
+ 	has now been fixed, but any C++ applications or shared libraries built
+ 	between r261283 and r261801 should be recompiled.
+ 
+ 20140204:
+ 	OpenSSH will now ignore errors caused by kernel lacking of Capsicum
+ 	capability mode support.  Please note that enabling the feature in
+ 	kernel is still highly recommended.
+ 
+ 20140131:
+ 	OpenSSH is now built with sandbox support, and will use sandbox as
+ 	the default privilege separation method.  This requires Capsicum
+ 	capability mode support in kernel.
+ 
+ 20140128:
+ 	The libelf and libdwarf libraries have been updated to newer
+ 	versions from upstream. Shared library version numbers for
+ 	these two libraries were bumped. Any ports or binaries
+ 	requiring these two libraries should be recompiled.
+ 	__FreeBSD_version is bumped to 1100006.
+ 
+ 20140110:
+ 	If a Makefile in a tests/ directory was auto-generating a Kyuafile
+ 	instead of providing an explicit one, this would prevent such
+ 	Makefile from providing its own Kyuafile in the future during
+ 	NO_CLEAN builds.  This has been fixed in the Makefiles but manual
+ 	intervention is needed to clean an objdir if you use NO_CLEAN:
+ 	  # find /usr/obj -name Kyuafile | xargs rm -f
+ 
+ 20131213:
+ 	The behavior of gss_pseudo_random() for the krb5 mechanism
+ 	has changed, for applications requesting a longer random string
+ 	than produced by the underlying enctype's pseudo-random() function.
+ 	In particular, the random string produced from a session key of
+ 	enctype aes256-cts-hmac-sha1-96 or aes256-cts-hmac-sha1-96 will
+ 	be different at the 17th octet and later, after this change.
+ 	The counter used in the PRF+ construction is now encoded as a
+ 	big-endian integer in accordance with RFC 4402.
+ 	__FreeBSD_version is bumped to 1100004.
+ 
+ 20131108:
+ 	The WITHOUT_ATF build knob has been removed and its functionality
+ 	has been subsumed into the more generic WITHOUT_TESTS.  If you were
+ 	using the former to disable the build of the ATF libraries, you
+ 	should change your settings to use the latter.
+ 
+ 20131025:
+ 	The default version of mtree is nmtree which is obtained from
+ 	NetBSD.  The output is generally the same, but may vary
+ 	slightly.  If you found you need identical output adding
+ 	"-F freebsd9" to the command line should do the trick.  For the
+ 	time being, the old mtree is available as fmtree.
+ 
+ 20131014:
+ 	libbsdyml has been renamed to libyaml and moved to /usr/lib/private.
+ 	This will break ports-mgmt/pkg. Rebuild the port, or upgrade to pkg
+ 	1.1.4_8 and verify bsdyml not linked in, before running "make
+ 	delete-old-libs":
+ 	  # make -C /usr/ports/ports-mgmt/pkg build deinstall install clean
+ 	  or
+ 	  # pkg install pkg; ldd /usr/local/sbin/pkg | grep bsdyml
+ 
+ 20131010:
+ 	The stable/10 branch has been created in subversion from head
+ 	revision r256279.
+ 
+ COMMON ITEMS:
+ 
+ 	General Notes
+ 	-------------
+ 	Avoid using make -j when upgrading.  While generally safe, there are
+ 	sometimes problems using -j to upgrade.  If your upgrade fails with
+ 	-j, please try again without -j.  From time to time in the past there
+ 	have been problems using -j with buildworld and/or installworld.  This
+ 	is especially true when upgrading between "distant" versions (eg one
+ 	that cross a major release boundary or several minor releases, or when
+ 	several months have passed on the -current branch).
+ 
+ 	Sometimes, obscure build problems are the result of environment
+ 	poisoning.  This can happen because the make utility reads its
+ 	environment when searching for values for global variables.  To run
+ 	your build attempts in an "environmental clean room", prefix all make
+ 	commands with 'env -i '.  See the env(1) manual page for more details.
+ 
+ 	When upgrading from one major version to another it is generally best to
+ 	upgrade to the latest code in the currently installed branch first, then
+ 	do an upgrade to the new branch. This is the best-tested upgrade path,
+ 	and has the highest probability of being successful.  Please try this
+ 	approach if you encounter problems with a major version upgrade.  Since
+ 	the stable 4.x branch point, one has generally been able to upgrade from
+ 	anywhere in the most recent stable branch to head / current (or even the
+ 	last couple of stable branches). See the top of this file when there's
+ 	an exception.
+ 
+ 	When upgrading a live system, having a root shell around before
+ 	installing anything can help undo problems. Not having a root shell
+ 	around can lead to problems if pam has changed too much from your
+ 	starting point to allow continued authentication after the upgrade.
+ 
+ 	This file should be read as a log of events. When a later event changes
+ 	information of a prior event, the prior event should not be deleted.
+ 	Instead, a pointer to the entry with the new information should be
+ 	placed in the old entry. Readers of this file should also sanity check
+ 	older entries before relying on them blindly. Authors of new entries
+ 	should write them with this in mind.
+ 
+ 	ZFS notes
+ 	---------
+ 	When upgrading the boot ZFS pool to a new version, always follow
+ 	these two steps:
+ 
+ 	1.) recompile and reinstall the ZFS boot loader and boot block
+ 	(this is part of "make buildworld" and "make installworld")
+ 
+ 	2.) update the ZFS boot block on your boot drive
+ 
+ 	The following example updates the ZFS boot block on the first
+ 	partition (freebsd-boot) of a GPT partitioned drive ada0:
+ 	"gpart bootcode -p /boot/gptzfsboot -i 1 ada0"
+ 
+ 	Non-boot pools do not need these updates.
+ 
+ 	To build a kernel
+ 	-----------------
+ 	If you are updating from a prior version of FreeBSD (even one just
+ 	a few days old), you should follow this procedure.  It is the most
+ 	failsafe as it uses a /usr/obj tree with a fresh mini-buildworld,
+ 
+ 	make kernel-toolchain
+ 	make -DALWAYS_CHECK_MAKE buildkernel KERNCONF=YOUR_KERNEL_HERE
+ 	make -DALWAYS_CHECK_MAKE installkernel KERNCONF=YOUR_KERNEL_HERE
+ 
+ 	To test a kernel once
+ 	---------------------
+ 	If you just want to boot a kernel once (because you are not sure
+ 	if it works, or if you want to boot a known bad kernel to provide
+ 	debugging information) run
+ 	make installkernel KERNCONF=YOUR_KERNEL_HERE KODIR=/boot/testkernel
+ 	nextboot -k testkernel
+ 
+ 	To rebuild everything and install it on the current system.
+ 	-----------------------------------------------------------
+ 	# Note: sometimes if you are running current you gotta do more than
+ 	# is listed here if you are upgrading from a really old current.
+ 
+ 	<make sure you have good level 0 dumps>
+ 	make buildworld
+ 	make buildkernel KERNCONF=YOUR_KERNEL_HERE
+ 	make installkernel KERNCONF=YOUR_KERNEL_HERE
+ 							[1]
+ 	<reboot in single user>				[3]
+ 	mergemaster -Fp					[5]
+ 	make installworld
+ 	mergemaster -Fi					[4]
+ 	make delete-old					[6]
+ 	<reboot>
+ 
+ 	To cross-install current onto a separate partition
+ 	--------------------------------------------------
+ 	# In this approach we use a separate partition to hold
+ 	# current's root, 'usr', and 'var' directories.   A partition
+ 	# holding "/", "/usr" and "/var" should be about 2GB in
+ 	# size.
+ 
+ 	<make sure you have good level 0 dumps>
+ 	<boot into -stable>
+ 	make buildworld
+ 	make buildkernel KERNCONF=YOUR_KERNEL_HERE
+ 	<maybe newfs current's root partition>
+ 	<mount current's root partition on directory ${CURRENT_ROOT}>
+ 	make installworld DESTDIR=${CURRENT_ROOT} -DDB_FROM_SRC
+ 	make distribution DESTDIR=${CURRENT_ROOT} # if newfs'd
+ 	make installkernel KERNCONF=YOUR_KERNEL_HERE DESTDIR=${CURRENT_ROOT}
+ 	cp /etc/fstab ${CURRENT_ROOT}/etc/fstab 		   # if newfs'd
+ 	<edit ${CURRENT_ROOT}/etc/fstab to mount "/" from the correct partition>
+ 	<reboot into current>
+ 	<do a "native" rebuild/install as described in the previous section>
+ 	<maybe install compatibility libraries from ports/misc/compat*>
+ 	<reboot>
+ 
+ 
+ 	To upgrade in-place from stable to current
+ 	----------------------------------------------
+ 	<make sure you have good level 0 dumps>
+ 	make buildworld					[9]
+ 	make buildkernel KERNCONF=YOUR_KERNEL_HERE	[8]
+ 	make installkernel KERNCONF=YOUR_KERNEL_HERE
+ 							[1]
+ 	<reboot in single user>				[3]
+ 	mergemaster -Fp					[5]
+ 	make installworld
+ 	mergemaster -Fi					[4]
+ 	make delete-old					[6]
+ 	<reboot>
+ 
+ 	Make sure that you've read the UPDATING file to understand the
+ 	tweaks to various things you need.  At this point in the life
+ 	cycle of current, things change often and you are on your own
+ 	to cope.  The defaults can also change, so please read ALL of
+ 	the UPDATING entries.
+ 
+ 	Also, if you are tracking -current, you must be subscribed to
+ 	freebsd-current@freebsd.org.  Make sure that before you update
+ 	your sources that you have read and understood all the recent
+ 	messages there.  If in doubt, please track -stable which has
+ 	much fewer pitfalls.
+ 
+ 	[1] If you have third party modules, such as vmware, you
+ 	should disable them at this point so they don't crash your
+ 	system on reboot.
+ 
+ 	[3] From the bootblocks, boot -s, and then do
+ 		fsck -p
+ 		mount -u /
+ 		mount -a
+ 		cd src
+ 		adjkerntz -i		# if CMOS is wall time
+ 	Also, when doing a major release upgrade, it is required that
+ 	you boot into single user mode to do the installworld.
+ 
+ 	[4] Note: This step is non-optional.  Failure to do this step
+ 	can result in a significant reduction in the functionality of the
+ 	system.  Attempting to do it by hand is not recommended and those
+ 	that pursue this avenue should read this file carefully, as well
+ 	as the archives of freebsd-current and freebsd-hackers mailing lists
+ 	for potential gotchas.  The -U option is also useful to consider.
+ 	See mergemaster(8) for more information.
+ 
+ 	[5] Usually this step is a no-op.  However, from time to time
+ 	you may need to do this if you get unknown user in the following
+ 	step.  It never hurts to do it all the time.  You may need to
+ 	install a new mergemaster (cd src/usr.sbin/mergemaster && make
+ 	install) after the buildworld before this step if you last updated
+ 	from current before 20130425 or from -stable before 20130430.
+ 
+ 	[6] This only deletes old files and directories. Old libraries
+ 	can be deleted by "make delete-old-libs", but you have to make
+ 	sure that no program is using those libraries anymore.
+ 
+ 	[8] In order to have a kernel that can run the 4.x binaries needed to
+ 	do an installworld, you must include the COMPAT_FREEBSD4 option in
+ 	your kernel.  Failure to do so may leave you with a system that is
+ 	hard to boot to recover. A similar kernel option COMPAT_FREEBSD5 is
+ 	required to run the 5.x binaries on more recent kernels.  And so on
+ 	for COMPAT_FREEBSD6 and COMPAT_FREEBSD7.
+ 
+ 	Make sure that you merge any new devices from GENERIC since the
+ 	last time you updated your kernel config file.
+ 
+ 	[9] If CPUTYPE is defined in your /etc/make.conf, make sure to use the
+ 	"?=" instead of the "=" assignment operator, so that buildworld can
+ 	override the CPUTYPE if it needs to.
+ 
+ 	MAKEOBJDIRPREFIX must be defined in an environment variable, and
+ 	not on the command line, or in /etc/make.conf.  buildworld will
+ 	warn if it is improperly defined.
+ FORMAT:
+ 
+ This file contains a list, in reverse chronological order, of major
+ breakages in tracking -current.  It is not guaranteed to be a complete
+ list of such breakages, and only contains entries since September 23, 2011.
+ If you need to see UPDATING entries from before that date, you will need
+ to fetch an UPDATING file from an older FreeBSD release.
+ 
+ Copyright information:
+ 
+ Copyright 1998-2009 M. Warner Losh.  All Rights Reserved.
+ 
+ Redistribution, publication, translation and use, with or without
+ modification, in full or in part, in any form or format of this
+ document are permitted without further permission from the author.
+ 
+ THIS DOCUMENT IS PROVIDED BY WARNER LOSH ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED.  IN NO EVENT SHALL WARNER LOSH BE LIABLE FOR ANY DIRECT,
+ INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ POSSIBILITY OF SUCH DAMAGE.
+ 
+ Contact Warner Losh if you have any questions about your use of
+ this document.
+ 
+ $FreeBSD$
+Index: head/sys/mips/conf/SWARM
+===================================================================
+--- head/sys/mips/conf/SWARM	(revision 342254)
++++ head/sys/mips/conf/SWARM	(nonexistent)
+@@ -1,12 +0,0 @@
+-#
+-# $FreeBSD$
+-#
+-
+-include		"std.SWARM"
+-
+-ident		SWARM
+-
+-machine		mips mips
+-
+-makeoptions	ARCH_FLAGS="-mabi=32 -march=mips32"
+-makeoptions	LDSCRIPT_NAME=	ldscript.mips.cfe
+
+Property changes on: head/sys/mips/conf/SWARM
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/conf/SWARM64
+===================================================================
+--- head/sys/mips/conf/SWARM64	(revision 342254)
++++ head/sys/mips/conf/SWARM64	(nonexistent)
+@@ -1,12 +0,0 @@
+-#
+-# $FreeBSD$
+-#
+-
+-include		"std.SWARM"
+-
+-ident		SWARM64
+-
+-machine		mips mips64
+-makeoptions	ARCH_FLAGS="-mabi=64 -march=mips64"
+-makeoptions	LDSCRIPT_NAME=ldscript.mips.cfe
+-makeoptions	KERNLOADADDR=0xffffffff80001000
+
+Property changes on: head/sys/mips/conf/SWARM64
+___________________________________________________________________
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Index: head/sys/mips/conf/SWARM_SMP
+===================================================================
+--- head/sys/mips/conf/SWARM_SMP	(revision 342254)
++++ head/sys/mips/conf/SWARM_SMP	(nonexistent)
+@@ -1,15 +0,0 @@
+-#
+-# $FreeBSD$
+-#
+-
+-include		"std.SWARM"
+-
+-ident		SWARM_SMP
+-
+-options 	SMP
+-options 	PRINTF_BUFR_SIZE=128
+-
+-machine		mips mips
+-
+-makeoptions	ARCH_FLAGS="-mabi=32 -march=mips32"
+-makeoptions	LDSCRIPT_NAME=	ldscript.mips.cfe
+
+Property changes on: head/sys/mips/conf/SWARM_SMP
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/conf/SWARM.hints
+===================================================================
+--- head/sys/mips/conf/SWARM.hints	(revision 342254)
++++ head/sys/mips/conf/SWARM.hints	(nonexistent)
+@@ -1,17 +0,0 @@
+-# $FreeBSD$
+-hint.zbbus.0.at="nexus0"
+-hint.zbpci.0.at="zbbus0"
+-hint.scd.0.at="zbbus0"
+-
+-#
+-# SWARM IDE interface is on the generic bus at chip select 4.
+-# The CS4 region is 64KB in size and starts at 0x100B0000.
+-# The IDE interrupt is wired to GPIO4 (intsrc 36 to the interrupt mapper)
+-#
+-hint.ata.0.at="zbbus0"
+-hint.ata.0.maddr=0x100B0000
+-hint.ata.0.msize=0x10000
+-hint.ata.0.irq=36
+-#hint.ata.0.disabled=0
+-#hint.ata.0.regoffset=0x1F0
+-#hint.ata.0.regshift=5
+
+Property changes on: head/sys/mips/conf/SWARM.hints
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/conf/std.SWARM
+===================================================================
+--- head/sys/mips/conf/std.SWARM	(revision 342254)
++++ head/sys/mips/conf/std.SWARM	(nonexistent)
+@@ -1,60 +0,0 @@
+-#
+-# $FreeBSD$
+-#
+-
+-hints		"SWARM.hints"
+-include		"../sibyte/std.sibyte"
+-
+-options 	CFE
+-options 	CFE_CONSOLE
+-options 	CFE_ENV
+-options 	ALT_BREAK_TO_DEBUGGER
+-
+-cpu		CPU_SB1
+-
+-makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
+-makeoptions	MODULES_OVERRIDE=""
+-
+-options 	DDB
+-options 	KDB
+-
+-options 	SCHED_4BSD		#4BSD scheduler
+-options 	INET			#InterNETworking
+-options 	TCP_HHOOK		# hhook(9) framework for TCP
+-options 	NFSCL			#Network Filesystem Client
+-options 	NFS_ROOT		#NFS usable as /, requires NFSCL
+-options 	PSEUDOFS		#Pseudo-filesystem framework
+-options 	_KPOSIX_PRIORITY_SCHEDULING #Posix P1003_1B real-time extensions
+-
+-# Debugging for use in -current
+-#options 	DEADLKRES
+-options 	INVARIANTS
+-options 	INVARIANT_SUPPORT
+-options 	WITNESS
+-
+-options 	FFS			#Fast filesystem
+-
+-options 	KTRACE
+-
+-device		pci
+-device		miibus
+-device		bge
+-device		loop
+-device		ether
+-device		md
+-device		random
+-
+-options 	USB_DEBUG
+-device usb
+-device ohci
+-device uhci
+-device ehci
+-
+-device umass
+-
+-device scbus
+-device cd
+-device da
+-device pass
+-
+-device		ata
+
+Property changes on: head/sys/mips/conf/std.SWARM
+___________________________________________________________________
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Index: head/sys/mips/conf/SWARM64_SMP
+===================================================================
+--- head/sys/mips/conf/SWARM64_SMP	(revision 342254)
++++ head/sys/mips/conf/SWARM64_SMP	(nonexistent)
+@@ -1,15 +0,0 @@
+-#
+-# $FreeBSD$
+-#
+-
+-include		"std.SWARM"
+-
+-ident		SWARM64_SMP
+-
+-options 	SMP
+-options 	PRINTF_BUFR_SIZE=128
+-
+-machine		mips mips64
+-makeoptions	ARCH_FLAGS="-mabi=64 -march=mips64"
+-makeoptions	LDSCRIPT_NAME=ldscript.mips.cfe
+-makeoptions	KERNLOADADDR=0xffffffff80001000
+
+Property changes on: head/sys/mips/conf/SWARM64_SMP
+___________________________________________________________________
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Index: head/sys/mips/mips/bus_space_generic.c
+===================================================================
+--- head/sys/mips/mips/bus_space_generic.c	(revision 342254)
++++ head/sys/mips/mips/bus_space_generic.c	(revision 342255)
+@@ -1,752 +1,744 @@
+ /*      $NetBSD: bus.h,v 1.12 1997/10/01 08:25:15 fvdl Exp $    */
+ /*-
+  * $Id: bus.h,v 1.6 2007/08/09 11:23:32 katta Exp $
+  *
+  * SPDX-License-Identifier: BSD-2-Clause-NetBSD AND BSD-4-Clause
+  *
+  * Copyright (c) 1996, 1997 The NetBSD Foundation, Inc.
+  * All rights reserved.
+  *
+  * This code is derived from software contributed to The NetBSD Foundation
+  * by Jason R. Thorpe of the Numerical Aerospace Simulation Facility,
+  * NASA Ames Research Center.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions
+  * are met:
+  * 1. Redistributions of source code must retain the above copyright
+  *    notice, this list of conditions and the following disclaimer.
+  * 2. Redistributions in binary form must reproduce the above copyright
+  *    notice, this list of conditions and the following disclaimer in the
+  *    documentation and/or other materials provided with the distribution.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+  * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+  * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+  * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  * POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+ /*
+  * Copyright (c) 1996 Charles M. Hannum.  All rights reserved.
+  * Copyright (c) 1996 Christopher G. Demetriou.  All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions
+  * are met:
+  * 1. Redistributions of source code must retain the above copyright
+  *    notice, this list of conditions and the following disclaimer.
+  * 2. Redistributions in binary form must reproduce the above copyright
+  *    notice, this list of conditions and the following disclaimer in the
+  *    documentation and/or other materials provided with the distribution.
+  * 3. All advertising materials mentioning features or use of this software
+  *    must display the following acknowledgement:
+  *      This product includes software developed by Christopher G. Demetriou
+  *	for the NetBSD Project.
+  * 4. The name of the author may not be used to endorse or promote products
+  *    derived from this software without specific prior written permission
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+  * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  *
+  *	from: src/sys/alpha/include/bus.h,v 1.5 1999/08/28 00:38:40 peter
+  * $FreeBSD$
+  */
+ #include <sys/cdefs.h>
+ __FBSDID("$FreeBSD$");
+ 
+ #include <sys/param.h>
+ #include <sys/systm.h>
+ #include <sys/bus.h>
+ #include <sys/kernel.h>
+ #include <sys/malloc.h>
+ #include <sys/ktr.h>
+ 
+ #include <vm/vm.h>
+ #include <vm/pmap.h>
+ #include <vm/vm_kern.h>
+ #include <vm/vm_extern.h>
+ 
+ #include <machine/bus.h>
+ #include <machine/cache.h>
+ 
+ static struct bus_space generic_space = {
+ 	/* cookie */
+ 	.bs_cookie =	(void *) 0,
+ 
+ 	/* mapping/unmapping */
+ 	.bs_map =	generic_bs_map,
+ 	.bs_unmap =	generic_bs_unmap,
+ 	.bs_subregion =	generic_bs_subregion,
+ 
+ 	/* allocation/deallocation */
+ 	.bs_alloc =	generic_bs_alloc,
+ 	.bs_free =	generic_bs_free,
+ 
+ 	/* barrier */
+ 	.bs_barrier =	generic_bs_barrier,
+ 
+ 	/* read (single) */
+ 	.bs_r_1 =	generic_bs_r_1,
+ 	.bs_r_2 =	generic_bs_r_2,
+ 	.bs_r_4 =	generic_bs_r_4,
+ 	.bs_r_8 =	generic_bs_r_8,
+ 
+ 	/* read multiple */
+ 	.bs_rm_1 =	generic_bs_rm_1,
+ 	.bs_rm_2 =	generic_bs_rm_2,
+ 	.bs_rm_4 =	generic_bs_rm_4,
+ 	.bs_rm_8 =	generic_bs_rm_8,
+ 
+ 	/* read region */
+ 	.bs_rr_1 =	generic_bs_rr_1,
+ 	.bs_rr_2 =	generic_bs_rr_2,
+ 	.bs_rr_4 =	generic_bs_rr_4,
+ 	.bs_rr_8 =	generic_bs_rr_8,
+ 
+ 	/* write (single) */
+ 	.bs_w_1 =	generic_bs_w_1,
+ 	.bs_w_2 =	generic_bs_w_2,
+ 	.bs_w_4 =	generic_bs_w_4,
+ 	.bs_w_8 =	generic_bs_w_8,
+ 
+ 	/* write multiple */
+ 	.bs_wm_1 =	generic_bs_wm_1,
+ 	.bs_wm_2 =	generic_bs_wm_2,
+ 	.bs_wm_4 =	generic_bs_wm_4,
+ 	.bs_wm_8 =	generic_bs_wm_8,
+ 
+ 	/* write region */
+ 	.bs_wr_1 =	generic_bs_wr_1,
+ 	.bs_wr_2 =	generic_bs_wr_2,
+ 	.bs_wr_4 =	generic_bs_wr_4,
+ 	.bs_wr_8 =	generic_bs_wr_8,
+ 
+ 	/* set multiple */
+ 	.bs_sm_1 =	generic_bs_sm_1,
+ 	.bs_sm_2 =	generic_bs_sm_2,
+ 	.bs_sm_4 =	generic_bs_sm_4,
+ 	.bs_sm_8 =	generic_bs_sm_8,
+ 
+ 	/* set region */
+ 	.bs_sr_1 =	generic_bs_sr_1,
+ 	.bs_sr_2 =	generic_bs_sr_2,
+ 	.bs_sr_4 =	generic_bs_sr_4,
+ 	.bs_sr_8 =	generic_bs_sr_8,
+ 
+ 	/* copy */
+ 	.bs_c_1 =	generic_bs_c_1,
+ 	.bs_c_2 =	generic_bs_c_2,
+ 	.bs_c_4 =	generic_bs_c_4,
+ 	.bs_c_8 =	generic_bs_c_8,
+ 
+ 	/* read (single) stream */
+ 	.bs_r_1_s =	generic_bs_r_1,
+ 	.bs_r_2_s =	generic_bs_r_2,
+ 	.bs_r_4_s =	generic_bs_r_4,
+ 	.bs_r_8_s =	generic_bs_r_8,
+ 
+ 	/* read multiple stream */
+ 	.bs_rm_1_s =	generic_bs_rm_1,
+ 	.bs_rm_2_s =	generic_bs_rm_2,
+ 	.bs_rm_4_s =	generic_bs_rm_4,
+ 	.bs_rm_8_s =	generic_bs_rm_8,
+ 
+ 	/* read region stream */
+ 	.bs_rr_1_s =	generic_bs_rr_1,
+ 	.bs_rr_2_s =	generic_bs_rr_2,
+ 	.bs_rr_4_s =	generic_bs_rr_4,
+ 	.bs_rr_8_s =	generic_bs_rr_8,
+ 
+ 	/* write (single) stream */
+ 	.bs_w_1_s =	generic_bs_w_1,
+ 	.bs_w_2_s =	generic_bs_w_2,
+ 	.bs_w_4_s =	generic_bs_w_4,
+ 	.bs_w_8_s =	generic_bs_w_8,
+ 
+ 	/* write multiple stream */
+ 	.bs_wm_1_s =	generic_bs_wm_1,
+ 	.bs_wm_2_s =	generic_bs_wm_2,
+ 	.bs_wm_4_s =	generic_bs_wm_4,
+ 	.bs_wm_8_s =	generic_bs_wm_8,
+ 
+ 	/* write region stream */
+ 	.bs_wr_1_s =	generic_bs_wr_1,
+ 	.bs_wr_2_s =	generic_bs_wr_2,
+ 	.bs_wr_4_s =	generic_bs_wr_4,
+ 	.bs_wr_8_s =	generic_bs_wr_8,
+ };
+ 
+ /* Ultra-gross kludge */
+ #if defined(CPU_CNMIPS) && (defined(__mips_n32) || defined(__mips_o32))
+ #include <contrib/octeon-sdk/cvmx.h>
+ #define rd8(a) cvmx_read64_uint8(a)
+ #define rd16(a) cvmx_read64_uint16(a)
+ #define rd32(a) cvmx_read64_uint32(a)
+ #define rd64(a) cvmx_read64_uint64(a)
+ #define wr8(a, v) cvmx_write64_uint8(a, v)
+ #define wr16(a, v) cvmx_write64_uint16(a, v)
+ #define wr32(a, v) cvmx_write64_uint32(a, v)
+ #define wr64(a, v) cvmx_write64_uint64(a, v)
+-#elif defined(CPU_SB1) && _BYTE_ORDER == _BIG_ENDIAN
+-#include <mips/sibyte/sb_bus_space.h>
+-#define rd8(a) sb_big_endian_read8(a)
+-#define rd16(a) sb_big_endian_read16(a)
+-#define rd32(a) sb_big_endian_read32(a)
+-#define wr8(a, v) sb_big_endian_write8(a, v)
+-#define wr16(a, v) sb_big_endian_write16(a, v)
+-#define wr32(a, v) sb_big_endian_write32(a, v)
+ #else
+ #define rd8(a) readb(a)
+ #define rd16(a) readw(a)
+ #define rd32(a) readl(a)
+ #ifdef readq
+ #define rd64(a)	readq((a))
+ #endif
+ #define wr8(a, v) writeb(a, v)
+ #define wr16(a, v) writew(a, v)
+ #define wr32(a, v) writel(a, v)
+ #ifdef writeq
+ #define wr64(a, v) writeq(a, v)
+ #endif
+ #endif
+ 
+ /* generic bus_space tag */
+ bus_space_tag_t mips_bus_space_generic = &generic_space;
+ 
+ int
+ generic_bs_map(void *t __unused, bus_addr_t addr,
+ 	      bus_size_t size, int flags __unused,
+ 	      bus_space_handle_t *bshp)
+ {
+ 
+ 	*bshp = (bus_space_handle_t)pmap_mapdev((vm_paddr_t)addr,
+ 	    (vm_size_t)size);
+ 	return (0);
+ }
+ 
+ void
+ generic_bs_unmap(void *t __unused, bus_space_handle_t bh,
+ 	      bus_size_t size)
+ {
+ 
+ 	pmap_unmapdev((vm_offset_t)bh, (vm_size_t)size);
+ }
+ 
+ int
+ generic_bs_subregion(void *t __unused, bus_space_handle_t handle,
+ 	      bus_size_t offset, bus_size_t size __unused,
+ 	      bus_space_handle_t *bshp)
+ {
+ 
+ 	*bshp = handle + offset;
+ 	return (0);
+ }
+ 
+ int
+ generic_bs_alloc(void *t, bus_addr_t rstart, bus_addr_t rend,
+     bus_size_t size, bus_size_t alignment, bus_size_t boundary, int flags,
+     bus_addr_t *bpap, bus_space_handle_t *bshp)
+ {
+ 
+ 	panic("%s: not implemented", __func__);
+ }
+ 
+ void    
+ generic_bs_free(void *t, bus_space_handle_t bsh, bus_size_t size)
+ {
+ 
+ 	panic("%s: not implemented", __func__);
+ }
+ 
+ uint8_t
+ generic_bs_r_1(void *t, bus_space_handle_t handle,
+     bus_size_t offset)
+ {
+ 
+ 	return (rd8(handle + offset));
+ }
+ 
+ uint16_t
+ generic_bs_r_2(void *t, bus_space_handle_t handle,
+     bus_size_t offset)
+ {
+ 
+ 	return (rd16(handle + offset));
+ }
+ 
+ uint32_t
+ generic_bs_r_4(void *t, bus_space_handle_t handle,
+     bus_size_t offset)
+ {
+ 
+ 	return (rd32(handle + offset));
+ }
+ 
+ uint64_t
+ generic_bs_r_8(void *t, bus_space_handle_t handle, bus_size_t offset)
+ {
+ 
+ #ifdef rd64
+ 	return(rd64(handle + offset));
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ void
+ generic_bs_rm_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint8_t *addr, size_t count)
+ {
+ 
+ 	while (count--)
+ 		*addr++ = rd8(bsh + offset);
+ }
+ 
+ void
+ generic_bs_rm_2(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint16_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		*addr++ = rd16(baddr);
+ }
+ 
+ void
+ generic_bs_rm_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint32_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		*addr++ = rd32(baddr);
+ }
+ 
+ void
+ generic_bs_rm_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     uint64_t *addr, size_t count)
+ {
+ #ifdef rd64
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		*addr++ = rd64(baddr);
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Read `count' 1, 2, 4, or 8 byte quantities from bus space
+  * described by tag/handle and starting at `offset' and copy into
+  * buffer provided.
+  */
+ void
+ generic_bs_rr_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint8_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		*addr++ = rd8(baddr);
+ 		baddr += 1;
+ 	}
+ }
+ 
+ void
+ generic_bs_rr_2(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint16_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		*addr++ = rd16(baddr);
+ 		baddr += 2;
+ 	}
+ }
+ 
+ void
+ generic_bs_rr_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint32_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		*addr++ = rd32(baddr);
+ 		baddr += 4;
+ 	}
+ }
+ 
+ void
+ generic_bs_rr_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     uint64_t *addr, size_t count)
+ {
+ #ifdef rd64
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		*addr++ = rd64(baddr);
+ 		baddr += 8;
+ 	}
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Write the 1, 2, 4, or 8 byte value `value' to bus space
+  * described by tag/handle/offset.
+  */
+ void
+ generic_bs_w_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint8_t value)
+ {
+ 
+ 	wr8(bsh + offset, value);
+ }
+ 
+ void
+ generic_bs_w_2(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint16_t value)
+ {
+ 
+ 	wr16(bsh + offset, value);
+ }
+ 
+ void
+ generic_bs_w_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint32_t value)
+ {
+ 
+ 	wr32(bsh + offset, value);
+ }
+ 
+ void
+ generic_bs_w_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     uint64_t value)
+ {
+ 
+ #ifdef wr64
+ 	wr64(bsh + offset, value);
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Write `count' 1, 2, 4, or 8 byte quantities from the buffer
+  * provided to bus space described by tag/handle/offset.
+  */
+ void
+ generic_bs_wm_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, const uint8_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr8(baddr, *addr++);
+ }
+ 
+ void
+ generic_bs_wm_2(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, const uint16_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr16(baddr, *addr++);
+ }
+ 
+ void
+ generic_bs_wm_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, const uint32_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr32(baddr, *addr++);
+ }
+ 
+ void
+ generic_bs_wm_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     const uint64_t *addr, size_t count)
+ {
+ #ifdef wr64
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr64(baddr, *addr++);
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Write `count' 1, 2, 4, or 8 byte quantities from the buffer provided
+  * to bus space described by tag/handle starting at `offset'.
+  */
+ void
+ generic_bs_wr_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, const uint8_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		wr8(baddr, *addr++);
+ 		baddr += 1;
+ 	}
+ }
+ 
+ void
+ generic_bs_wr_2(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, const uint16_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		wr16(baddr, *addr++);
+ 		baddr += 2;
+ 	}
+ }
+ 
+ void
+ generic_bs_wr_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, const uint32_t *addr, size_t count)
+ {
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		wr32(baddr, *addr++);
+ 		baddr += 4;
+ 	}
+ }
+ 
+ void
+ generic_bs_wr_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     const uint64_t *addr, size_t count)
+ {
+ #ifdef wr64
+ 	bus_addr_t baddr = bsh + offset;
+ 
+ 	while (count--) {
+ 		wr64(baddr, *addr++);
+ 		baddr += 8;
+ 	}
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Write the 1, 2, 4, or 8 byte value `val' to bus space described
+  * by tag/handle/offset `count' times.
+  */
+ void
+ generic_bs_sm_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint8_t value, size_t count)
+ {
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr8(addr, value);
+ }
+ 
+ void
+ generic_bs_sm_2(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint16_t value, size_t count)
+ {
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr16(addr, value);
+ }
+ 
+ void
+ generic_bs_sm_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint32_t value, size_t count)
+ {
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr32(addr, value);
+ }
+ 
+ void
+ generic_bs_sm_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     uint64_t value, size_t count)
+ {
+ #ifdef wr64
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	while (count--)
+ 		wr64(addr, value);
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Write `count' 1, 2, 4, or 8 byte value `val' to bus space described
+  * by tag/handle starting at `offset'.
+  */
+ void
+ generic_bs_sr_1(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint8_t value, size_t count)
+ {
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	for (; count != 0; count--, addr++)
+ 		wr8(addr, value);
+ }
+ 
+ void
+ generic_bs_sr_2(void *t, bus_space_handle_t bsh,
+ 		       bus_size_t offset, uint16_t value, size_t count)
+ {
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	for (; count != 0; count--, addr += 2)
+ 		wr16(addr, value);
+ }
+ 
+ void
+ generic_bs_sr_4(void *t, bus_space_handle_t bsh,
+     bus_size_t offset, uint32_t value, size_t count)
+ {
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	for (; count != 0; count--, addr += 4)
+ 		wr32(addr, value);
+ }
+ 
+ void
+ generic_bs_sr_8(void *t, bus_space_handle_t bsh, bus_size_t offset,
+     uint64_t value, size_t count)
+ {
+ #ifdef wr64
+ 	bus_addr_t addr = bsh + offset;
+ 
+ 	for (; count != 0; count--, addr += 8)
+ 		wr64(addr, value);
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ /*
+  * Copy `count' 1, 2, 4, or 8 byte values from bus space starting
+  * at tag/bsh1/off1 to bus space starting at tag/bsh2/off2.
+  */
+ void
+ generic_bs_c_1(void *t, bus_space_handle_t bsh1,
+     bus_size_t off1, bus_space_handle_t bsh2,
+     bus_size_t off2, size_t count)
+ {
+ 	bus_addr_t addr1 = bsh1 + off1;
+ 	bus_addr_t addr2 = bsh2 + off2;
+ 
+ 	if (addr1 >= addr2) {
+ 		/* src after dest: copy forward */
+ 		for (; count != 0; count--, addr1++, addr2++)
+ 			wr8(addr2, rd8(addr1));
+ 	} else {
+ 		/* dest after src: copy backwards */
+ 		for (addr1 += (count - 1), addr2 += (count - 1);
+ 		    count != 0; count--, addr1--, addr2--)
+ 			wr8(addr2, rd8(addr1));
+ 	}
+ }
+ 
+ void
+ generic_bs_c_2(void *t, bus_space_handle_t bsh1,
+     bus_size_t off1, bus_space_handle_t bsh2,
+     bus_size_t off2, size_t count)
+ {
+ 	bus_addr_t addr1 = bsh1 + off1;
+ 	bus_addr_t addr2 = bsh2 + off2;
+ 
+ 	if (addr1 >= addr2) {
+ 		/* src after dest: copy forward */
+ 		for (; count != 0; count--, addr1 += 2, addr2 += 2)
+ 			wr16(addr2, rd16(addr1));
+ 	} else {
+ 		/* dest after src: copy backwards */
+ 		for (addr1 += 2 * (count - 1), addr2 += 2 * (count - 1);
+ 		    count != 0; count--, addr1 -= 2, addr2 -= 2)
+ 			wr16(addr2, rd16(addr1));
+ 	}
+ }
+ 
+ void
+ generic_bs_c_4(void *t, bus_space_handle_t bsh1,
+     bus_size_t off1, bus_space_handle_t bsh2,
+     bus_size_t off2, size_t count)
+ {
+ 	bus_addr_t addr1 = bsh1 + off1;
+ 	bus_addr_t addr2 = bsh2 + off2;
+ 
+ 	if (addr1 >= addr2) {
+ 		/* src after dest: copy forward */
+ 		for (; count != 0; count--, addr1 += 4, addr2 += 4)
+ 			wr32(addr2, rd32(addr1));
+ 	} else {
+ 		/* dest after src: copy backwards */
+ 		for (addr1 += 4 * (count - 1), addr2 += 4 * (count - 1);
+ 		    count != 0; count--, addr1 -= 4, addr2 -= 4)
+ 			wr32(addr2, rd32(addr1));
+ 	}
+ }
+ 
+ void
+ generic_bs_c_8(void *t, bus_space_handle_t bsh1, bus_size_t off1,
+     bus_space_handle_t bsh2, bus_size_t off2, size_t count)
+ {
+ #if defined(rd64) && defined(wr64)
+ 	bus_addr_t addr1 = bsh1 + off1;
+ 	bus_addr_t addr2 = bsh2 + off2;
+ 
+ 	if (addr1 >= addr2) {
+ 		/* src after dest: copy forward */
+ 		for (; count != 0; count--, addr1 += 8, addr2 += 8)
+ 			wr64(addr2, rd64(addr1));
+ 	} else {
+ 		/* dest after src: copy backwards */
+ 		for (addr1 += 8 * (count - 1), addr2 += 8 * (count - 1);
+ 		    count != 0; count--, addr1 -= 8, addr2 -= 8)
+ 			wr64(addr2, rd64(addr1));
+ 	}
+ #else
+ 	panic("%s: not implemented", __func__);
+ #endif
+ }
+ 
+ void
+ generic_bs_barrier(void *t __unused, 
+ 		bus_space_handle_t bsh __unused,
+ 		bus_size_t offset __unused, bus_size_t len __unused, 
+ 		int flags)
+ {
+ #if 0
+ 	if (flags & BUS_SPACE_BARRIER_WRITE)
+ 		mips_dcache_wbinv_all();
+ #endif
+ 	if (flags & BUS_SPACE_BARRIER_READ)
+ 		rmb();
+ 	if (flags & BUS_SPACE_BARRIER_WRITE)
+ 		wmb();
+ }
+Index: head/sys/mips/sibyte/ata_zbbus.c
+===================================================================
+--- head/sys/mips/sibyte/ata_zbbus.c	(revision 342254)
++++ head/sys/mips/sibyte/ata_zbbus.c	(nonexistent)
+@@ -1,172 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2009 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-#include <sys/param.h>
+-#include <sys/kernel.h>
+-#include <sys/systm.h>
+-#include <sys/module.h>
+-#include <sys/bus.h>
+-#include <sys/rman.h>
+-#include <sys/lock.h>
+-#include <sys/mutex.h>
+-#include <sys/sema.h>
+-#include <sys/taskqueue.h>
+-
+-#include <machine/bus.h>
+-
+-#include <vm/uma.h>
+-
+-#include <sys/ata.h>
+-#include <dev/ata/ata-all.h>
+-
+-#include <machine/resource.h>
+-
+-__FBSDID("$FreeBSD$");
+-
+-static int
+-ata_zbbus_probe(device_t dev)
+-{
+-
+-	return (ata_probe(dev));
+-}
+-
+-static int
+-ata_zbbus_attach(device_t dev)
+-{
+-	int i, rid, regshift, regoffset;
+-	struct ata_channel *ch;
+-	struct resource *io;
+-	
+-	ch = device_get_softc(dev);
+-
+-	if (ch->attached)
+-		return (0);
+-	ch->attached = 1;
+-
+-	rid = 0;
+-	io = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
+-	if (io == NULL)
+-		return (ENXIO);
+-
+-	/*
+-	 * SWARM needs an address shift of 5 when accessing ATA registers.
+-	 *
+-	 * For e.g. an access to register 4 actually needs an address
+-	 * of (4 << 5) to be output on the generic bus.
+-	 */
+-	regshift = 5;
+-	resource_int_value(device_get_name(dev), device_get_unit(dev),
+-			   "regshift", &regshift);
+-	if (regshift && bootverbose)
+-		device_printf(dev, "using a register shift of %d\n", regshift);
+-
+-	regoffset = 0x1F0;
+-	resource_int_value(device_get_name(dev), device_get_unit(dev),
+-			   "regoffset", &regoffset);
+-	if (regoffset && bootverbose) {
+-		device_printf(dev, "using a register offset of 0x%0x\n",
+-			      regoffset);
+-	}
+-
+-	/* setup the ata register addresses */
+-	for (i = ATA_DATA; i <= ATA_COMMAND; ++i) {
+-		ch->r_io[i].res = io;
+-		ch->r_io[i].offset = (regoffset + i) << regshift;
+-	}
+-
+-	ch->r_io[ATA_CONTROL].res = io;
+-	ch->r_io[ATA_CONTROL].offset = (regoffset + ATA_CTLOFFSET) << regshift;
+-	ch->r_io[ATA_IDX_ADDR].res = io;	/* XXX what is this used for */
+-	ata_default_registers(dev);
+-
+-	/* initialize softc for this channel */
+-	ch->unit = 0;
+-	ch->flags |= ATA_USE_16BIT;
+-	ata_generic_hw(dev);
+-
+-	return (ata_attach(dev));
+-}
+-
+-static int
+-ata_zbbus_detach(device_t dev)
+-{
+-	int error;
+-	struct ata_channel *ch = device_get_softc(dev);
+-
+-	if (!ch->attached)
+-		return (0);
+-	ch->attached = 0;
+-
+-	error = ata_detach(dev);
+-
+-	bus_release_resource(dev, SYS_RES_MEMORY, 0,
+-			     ch->r_io[ATA_IDX_ADDR].res);
+-
+-	return (error);
+-}
+-
+-static int
+-ata_zbbus_suspend(device_t dev)
+-{
+-	struct ata_channel *ch = device_get_softc(dev);
+-
+-	if (!ch->attached)
+-		return (0);
+-
+-	return (ata_suspend(dev));
+-}
+-
+-static int
+-ata_zbbus_resume(device_t dev)
+-{
+-	struct ata_channel *ch = device_get_softc(dev);
+-
+-	if (!ch->attached)
+-		return (0);
+-
+-	return (ata_resume(dev));
+-}
+-
+-static device_method_t ata_zbbus_methods[] = {
+-	/* device interface */
+-	DEVMETHOD(device_probe,		ata_zbbus_probe),
+-	DEVMETHOD(device_attach,	ata_zbbus_attach),
+-	DEVMETHOD(device_detach,	ata_zbbus_detach),
+-	DEVMETHOD(device_suspend,	ata_zbbus_suspend),
+-	DEVMETHOD(device_resume,	ata_zbbus_resume),
+-
+-	{ 0, 0 }
+-};
+-
+-static driver_t ata_zbbus_driver = {
+-	"ata",
+-	ata_zbbus_methods,
+-	sizeof(struct ata_channel)
+-};
+-
+-DRIVER_MODULE(ata, zbbus, ata_zbbus_driver, ata_devclass, 0, 0);
+
+Property changes on: head/sys/mips/sibyte/ata_zbbus.c
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/std.sibyte
+===================================================================
+--- head/sys/mips/sibyte/std.sibyte	(revision 342254)
++++ head/sys/mips/sibyte/std.sibyte	(nonexistent)
+@@ -1,3 +0,0 @@
+-# $FreeBSD$
+-
+-files		"../sibyte/files.sibyte"
+
+Property changes on: head/sys/mips/sibyte/std.sibyte
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_machdep.c
+===================================================================
+--- head/sys/mips/sibyte/sb_machdep.c	(revision 342254)
++++ head/sys/mips/sibyte/sb_machdep.c	(nonexistent)
+@@ -1,441 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2007 Bruce M. Simpson.
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-#include <sys/cdefs.h>
+-__FBSDID("$FreeBSD$");
+-
+-#include "opt_ddb.h"
+-#include "opt_kdb.h"
+-
+-#include <sys/param.h>
+-#include <sys/conf.h>
+-#include <sys/kernel.h>
+-#include <sys/systm.h>
+-#include <sys/imgact.h>
+-#include <sys/bio.h>
+-#include <sys/buf.h>
+-#include <sys/bus.h>
+-#include <sys/cpu.h>
+-#include <sys/cons.h>
+-#include <sys/exec.h>
+-#include <sys/ucontext.h>
+-#include <sys/proc.h>
+-#include <sys/kdb.h>
+-#include <sys/ptrace.h>
+-#include <sys/reboot.h>
+-#include <sys/signalvar.h>
+-#include <sys/sysent.h>
+-#include <sys/sysproto.h>
+-#include <sys/user.h>
+-#include <sys/timetc.h>
+-
+-#include <vm/vm.h>
+-#include <vm/vm_object.h>
+-#include <vm/vm_page.h>
+-
+-#include <machine/cache.h>
+-#include <machine/clock.h>
+-#include <machine/cpu.h>
+-#include <machine/cpuinfo.h>
+-#include <machine/cpufunc.h>
+-#include <machine/cpuregs.h>
+-#include <machine/hwfunc.h>
+-#include <machine/intr_machdep.h>
+-#include <machine/locore.h>
+-#include <machine/md_var.h>
+-#include <machine/pte.h>
+-#include <machine/sigframe.h>
+-#include <machine/trap.h>
+-#include <machine/vmparam.h>
+-
+-#ifdef SMP
+-#include <sys/smp.h>
+-#include <machine/smp.h>
+-#endif
+-
+-#ifdef CFE
+-#include <dev/cfe/cfe_api.h>
+-#endif
+-
+-#include "sb_scd.h"
+-
+-#ifdef DDB
+-#ifndef KDB
+-#error KDB must be enabled in order for DDB to work!
+-#endif
+-#endif
+-
+-#ifdef CFE_ENV
+-extern void cfe_env_init(void);
+-#endif
+-
+-extern int *edata;
+-extern int *end;
+-
+-extern char MipsTLBMiss[], MipsTLBMissEnd[];
+-
+-void
+-platform_cpu_init()
+-{
+-	/* Nothing special */
+-}
+-
+-static void
+-sb_intr_init(int cpuid)
+-{
+-	int intrnum, intsrc;
+-
+-	/*
+-	 * Disable all sources to the interrupt mapper and setup the mapping
+-	 * between an interrupt source and the mips hard interrupt number.
+-	 */
+-	for (intsrc = 0; intsrc < NUM_INTSRC; ++intsrc) {
+-		intrnum = sb_route_intsrc(intsrc);
+-		sb_disable_intsrc(cpuid, intsrc);
+-		sb_write_intmap(cpuid, intsrc, intrnum);
+-#ifdef SMP
+-		/*
+-		 * Set up the mailbox interrupt mapping.
+-		 *
+-		 * The mailbox interrupt is "special" in that it is not shared
+-		 * with any other interrupt source.
+-		 */
+-		if (intsrc == INTSRC_MAILBOX3) {
+-			intrnum = platform_ipi_hardintr_num();
+-			sb_write_intmap(cpuid, INTSRC_MAILBOX3, intrnum);
+-			sb_enable_intsrc(cpuid, INTSRC_MAILBOX3);
+-		}
+-#endif
+-	}
+-}
+-
+-static void
+-mips_init(void)
+-{
+-	int i, j, cfe_mem_idx, tmp;
+-	uint64_t maxmem;
+-
+-#ifdef CFE_ENV
+-	cfe_env_init();
+-#endif
+-
+-	TUNABLE_INT_FETCH("boothowto", &boothowto);
+-
+-	if (boothowto & RB_VERBOSE)
+-		bootverbose++;
+-
+-#ifdef MAXMEM
+-	tmp = MAXMEM;
+-#else
+-	tmp = 0;
+-#endif
+-	TUNABLE_INT_FETCH("hw.physmem", &tmp);
+-	maxmem = (uint64_t)tmp * 1024;
+-
+-	/*
+-	 * XXX
+-	 * If we used vm_paddr_t consistently in pmap, etc., we could
+-	 * use 64-bit page numbers on !n64 systems, too, like i386
+-	 * does with PAE.
+-	 */
+-#if !defined(__mips_n64)
+-	if (maxmem == 0 || maxmem > 0xffffffff)
+-		maxmem = 0xffffffff;
+-#endif
+-
+-#ifdef CFE
+-	/*
+-	 * Query DRAM memory map from CFE.
+-	 */
+-	physmem = 0;
+-	cfe_mem_idx = 0;
+-	for (i = 0; i < 10; i += 2) {
+-		int result;
+-		uint64_t addr, len, type;
+-
+-		result = cfe_enummem(cfe_mem_idx++, 0, &addr, &len, &type);
+-		if (result < 0) {
+-			phys_avail[i] = phys_avail[i + 1] = 0;
+-			break;
+-		}
+-
+-		KASSERT(type == CFE_MI_AVAILABLE,
+-			("CFE DRAM region is not available?"));
+-
+-		if (bootverbose)
+-			printf("cfe_enummem: 0x%016jx/%ju.\n", addr, len);
+-
+-		if (maxmem != 0) {
+-			if (addr >= maxmem) {
+-				printf("Ignoring %ju bytes of memory at 0x%jx "
+-				       "that is above maxmem %dMB\n",
+-				       len, addr,
+-				       (int)(maxmem / (1024 * 1024)));
+-				continue;
+-			}
+-
+-			if (addr + len > maxmem) {
+-				printf("Ignoring %ju bytes of memory "
+-				       "that is above maxmem %dMB\n",
+-				       (addr + len) - maxmem,
+-				       (int)(maxmem / (1024 * 1024)));
+-				len = maxmem - addr;
+-			}
+-		}
+-
+-		phys_avail[i] = addr;
+-		if (i == 0 && addr == 0) {
+-			/*
+-			 * If this is the first physical memory segment probed
+-			 * from CFE, omit the region at the start of physical
+-			 * memory where the kernel has been loaded.
+-			 */
+-			phys_avail[i] += MIPS_KSEG0_TO_PHYS(kernel_kseg0_end);
+-		}
+-		phys_avail[i + 1] = addr + len;
+-		physmem += len;
+-	}
+-
+-	realmem = btoc(physmem);
+-#endif
+-
+-	for (j = 0; j < i; j++)
+-		dump_avail[j] = phys_avail[j];
+-
+-	physmem = realmem;
+-
+-	init_param1();
+-	init_param2(physmem);
+-	mips_cpu_init();
+-
+-	/*
+-	 * Sibyte has a L1 data cache coherent with DMA. This includes
+-	 * on-chip network interfaces as well as PCI/HyperTransport bus
+-	 * masters.
+-	 */
+-	cpuinfo.cache_coherent_dma = TRUE;
+-
+-	/*
+-	 * XXX
+-	 * The kernel is running in 32-bit mode but the CFE is running in
+-	 * 64-bit mode. So the SR_KX bit in the status register is turned
+-	 * on by the CFE every time we call into it - for e.g. CFE_CONSOLE.
+-	 *
+-	 * This means that if get a TLB miss for any address above 0xc0000000
+-	 * and the SR_KX bit is set then we will end up in the XTLB exception
+-	 * vector.
+-	 *
+-	 * For now work around this by copying the TLB exception handling
+-	 * code to the XTLB exception vector.
+-	 */
+-	{
+-		bcopy(MipsTLBMiss, (void *)MIPS_XTLB_MISS_EXC_VEC,
+-		      MipsTLBMissEnd - MipsTLBMiss);
+-
+-		mips_icache_sync_all();
+-		mips_dcache_wbinv_all();
+-	}
+-
+-	pmap_bootstrap();
+-	mips_proc0_init();
+-	mutex_init();
+-
+-	kdb_init();
+-#ifdef KDB
+-	if (boothowto & RB_KDB)
+-		kdb_enter(KDB_WHY_BOOTFLAGS, "Boot flags requested debugger");
+-#endif
+-}
+-
+-void
+-platform_reset(void)
+-{
+-	
+-	/*
+-	 * XXX SMP
+-	 * XXX flush data caches
+-	 */
+-	sb_system_reset();
+-}
+-
+-static void
+-kseg0_map_coherent(void)
+-{
+-	uint32_t config;
+-	const int CFG_K0_COHERENT = 5;
+-
+-	config = mips_rd_config();
+-	config &= ~MIPS_CONFIG_K0_MASK;
+-	config |= CFG_K0_COHERENT;
+-	mips_wr_config(config);
+-}
+-
+-#ifdef SMP
+-void
+-platform_ipi_send(int cpuid)
+-{
+-	KASSERT(cpuid == 0 || cpuid == 1,
+-		("platform_ipi_send: invalid cpuid %d", cpuid));
+-
+-	sb_set_mailbox(cpuid, 1ULL);
+-}
+-
+-void
+-platform_ipi_clear(void)
+-{
+-	int cpuid;
+-
+-	cpuid = PCPU_GET(cpuid);
+-	sb_clear_mailbox(cpuid, 1ULL);
+-}
+-
+-int
+-platform_ipi_hardintr_num(void)
+-{
+-
+-	return (4);
+-}
+-
+-int
+-platform_ipi_softintr_num(void)
+-{
+-
+-	return (-1);
+-}
+-
+-struct cpu_group *
+-platform_smp_topo(void)
+-{
+-
+-	return (smp_topo_none());
+-}
+-
+-void
+-platform_init_ap(int cpuid)
+-{
+-	int ipi_int_mask, clock_int_mask;
+-
+-	KASSERT(cpuid == 1, ("AP has an invalid cpu id %d", cpuid));
+-
+-	/*
+-	 * Make sure that kseg0 is mapped cacheable-coherent
+-	 */
+-	kseg0_map_coherent();
+-
+-	sb_intr_init(cpuid);
+-
+-	/*
+-	 * Unmask the clock and ipi interrupts.
+-	 */
+-	clock_int_mask = hard_int_mask(5);
+-	ipi_int_mask = hard_int_mask(platform_ipi_hardintr_num());
+-	set_intr_mask(ipi_int_mask | clock_int_mask);
+-}
+-
+-int
+-platform_start_ap(int cpuid)
+-{
+-#ifdef CFE
+-	int error;
+-
+-	if ((error = cfe_cpu_start(cpuid, mpentry, 0, 0, 0))) {
+-		printf("cfe_cpu_start error: %d\n", error);
+-		return (-1);
+-	} else {
+-		return (0);
+-	}
+-#else
+-	return (-1);
+-#endif	/* CFE */
+-}
+-#endif	/* SMP */
+-
+-static u_int
+-sb_get_timecount(struct timecounter *tc)
+-{
+-
+-	return ((u_int)sb_zbbus_cycle_count());
+-}
+-
+-static void
+-sb_timecounter_init(void)
+-{
+-	static struct timecounter sb_timecounter = {
+-		sb_get_timecount,
+-		NULL,
+-		~0u,
+-		0,
+-		"sibyte_zbbus_counter",
+-		2000
+-	};
+-
+-	/*
+-	 * The ZBbus cycle counter runs at half the cpu frequency.
+-	 */
+-	sb_timecounter.tc_frequency = sb_cpu_speed() / 2;
+-	platform_timecounter = &sb_timecounter;
+-}
+-
+-void
+-platform_start(__register_t a0, __register_t a1, __register_t a2,
+-	       __register_t a3)
+-{
+-	/*
+-	 * Make sure that kseg0 is mapped cacheable-coherent
+-	 */
+-	kseg0_map_coherent();
+-
+-	/* clear the BSS and SBSS segments */
+-	memset(&edata, 0, (vm_offset_t)&end - (vm_offset_t)&edata);
+-	mips_postboot_fixup();
+-
+-	sb_intr_init(0);
+-	sb_timecounter_init();
+-
+-	/* Initialize pcpu stuff */
+-	mips_pcpu0_init();
+-
+-#ifdef CFE
+-	/*
+-	 * Initialize CFE firmware trampolines before
+-	 * we initialize the low-level console.
+-	 *
+-	 * CFE passes the following values in registers:
+-	 * a0: firmware handle
+-	 * a2: firmware entry point
+-	 * a3: entry point seal
+-	 */
+-	if (a3 == CFE_EPTSEAL)
+-		cfe_init(a0, a2);
+-#endif
+-	cninit();
+-
+-	mips_init();
+-
+-	mips_timer_init_params(sb_cpu_speed(), 0);
+-}
+
+Property changes on: head/sys/mips/sibyte/sb_machdep.c
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/files.sibyte
+===================================================================
+--- head/sys/mips/sibyte/files.sibyte	(revision 342254)
++++ head/sys/mips/sibyte/files.sibyte	(nonexistent)
+@@ -1,10 +0,0 @@
+-# $FreeBSD$
+-
+-mips/sibyte/sb_machdep.c			standard
+-mips/sibyte/sb_zbbus.c				standard
+-mips/sibyte/sb_zbpci.c				standard
+-mips/sibyte/sb_scd.c				standard
+-mips/sibyte/ata_zbbus.c				standard
+-mips/mips/intr_machdep.c			standard
+-mips/sibyte/sb_asm.S				standard
+-mips/mips/tick.c				standard
+
+Property changes on: head/sys/mips/sibyte/files.sibyte
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_zbpci.c
+===================================================================
+--- head/sys/mips/sibyte/sb_zbpci.c	(revision 342254)
++++ head/sys/mips/sibyte/sb_zbpci.c	(nonexistent)
+@@ -1,545 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2009 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-#include <sys/param.h>
+-#include <sys/types.h>
+-#include <sys/kernel.h>
+-#include <sys/systm.h>
+-#include <sys/module.h>
+-#include <sys/bus.h>
+-#include <sys/rman.h>
+-#include <sys/pcpu.h>
+-#include <sys/smp.h>
+-
+-#include <vm/vm.h>
+-#include <vm/vm_param.h>
+-#include <vm/vm_kern.h>
+-#include <vm/vm_extern.h>
+-#include <vm/pmap.h>
+-
+-#include <dev/pci/pcireg.h>
+-#include <dev/pci/pcivar.h>
+-#include <dev/pci/pcib_private.h>
+-
+-#include <machine/resource.h>
+-#include <machine/bus.h>
+-
+-#include "pcib_if.h"
+-
+-#include "sb_bus_space.h"
+-#include "sb_scd.h"
+-
+-__FBSDID("$FreeBSD$");
+-
+-static struct {
+-	vm_offset_t vaddr;
+-	vm_paddr_t  paddr;
+-} zbpci_config_space[MAXCPU];
+-
+-static const vm_paddr_t CFG_PADDR_BASE = 0xFE000000;
+-static const u_long PCI_IOSPACE_ADDR = 0xFC000000;
+-static const u_long PCI_IOSPACE_SIZE = 0x02000000;
+-
+-#define	PCI_MATCH_BYTE_LANES_START	0x40000000
+-#define	PCI_MATCH_BYTE_LANES_END	0x5FFFFFFF
+-#define	PCI_MATCH_BYTE_LANES_SIZE	0x20000000
+-
+-#define	PCI_MATCH_BIT_LANES_MASK	(1 << 29)
+-#define	PCI_MATCH_BIT_LANES_START	0x60000000
+-#define	PCI_MATCH_BIT_LANES_END		0x7FFFFFFF
+-#define	PCI_MATCH_BIT_LANES_SIZE	0x20000000
+-
+-static struct rman port_rman;
+-
+-static int
+-zbpci_probe(device_t dev)
+-{
+-	
+-	device_set_desc(dev, "Broadcom/Sibyte PCI I/O Bridge");
+-	return (0);
+-}
+-
+-static int
+-zbpci_attach(device_t dev)
+-{
+-	int n, rid, size;
+-	vm_offset_t va;
+-	struct resource *res;
+-	
+-	/*
+-	 * Reserve the physical memory window used to map PCI I/O space.
+-	 */
+-	rid = 0;
+-	res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
+-				 PCI_IOSPACE_ADDR,
+-				 PCI_IOSPACE_ADDR + PCI_IOSPACE_SIZE - 1,
+-				 PCI_IOSPACE_SIZE, 0);
+-	if (res == NULL)
+-		panic("Cannot allocate resource for PCI I/O space mapping.");
+-
+-	port_rman.rm_start = 0;
+-	port_rman.rm_end = PCI_IOSPACE_SIZE - 1;
+-	port_rman.rm_type = RMAN_ARRAY;
+-	port_rman.rm_descr = "PCI I/O ports";
+-	if (rman_init(&port_rman) != 0 ||
+-	    rman_manage_region(&port_rman, 0, PCI_IOSPACE_SIZE - 1) != 0)
+-		panic("%s: port_rman", __func__);
+-
+-	/*
+-	 * Reserve the physical memory that is used to read/write to the
+-	 * pci config space but don't activate it. We are using a page worth
+-	 * of KVA as a window over this region.
+-	 */
+-	rid = 1;
+-	size = (PCI_BUSMAX + 1) * (PCI_SLOTMAX + 1) * (PCI_FUNCMAX + 1) * 256;
+-	res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid, CFG_PADDR_BASE,
+-				 CFG_PADDR_BASE + size - 1, size, 0);
+-	if (res == NULL)
+-		panic("Cannot allocate resource for config space accesses.");
+-
+-	/*
+-	 * Allocate the entire "match bit lanes" address space.
+-	 */
+-#if _BYTE_ORDER == _BIG_ENDIAN
+-	rid = 2;
+-	res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid, 
+-				 PCI_MATCH_BIT_LANES_START,
+-				 PCI_MATCH_BIT_LANES_END,
+-				 PCI_MATCH_BIT_LANES_SIZE, 0);
+-	if (res == NULL)
+-		panic("Cannot allocate resource for pci match bit lanes.");
+-#endif	/* _BYTE_ORDER ==_BIG_ENDIAN */
+-
+-	/*
+-	 * Allocate KVA for accessing PCI config space.
+-	 */
+-	va = kva_alloc(PAGE_SIZE * mp_ncpus);
+-	if (va == 0) {
+-		device_printf(dev, "Cannot allocate virtual addresses for "
+-				   "config space access.\n");
+-		return (ENOMEM);
+-	}
+-
+-	for (n = 0; n < mp_ncpus; ++n)
+-		zbpci_config_space[n].vaddr = va + n * PAGE_SIZE;
+-
+-	/*
+-	 * Sibyte has the PCI bus hierarchy rooted at bus 0 and HT-PCI
+-	 * hierarchy rooted at bus 1.
+-	 */
+-	if (device_add_child(dev, "pci", 0) == NULL)
+-		panic("zbpci_attach: could not add pci bus 0.\n");
+-
+-	if (device_add_child(dev, "pci", 1) == NULL)
+-		panic("zbpci_attach: could not add pci bus 1.\n");
+-
+-	if (bootverbose)
+-		device_printf(dev, "attached.\n");
+-
+-	return (bus_generic_attach(dev));
+-}
+-
+-static struct resource *
+-zbpci_alloc_resource(device_t bus, device_t child, int type, int *rid,
+-		     rman_res_t start, rman_res_t end, rman_res_t count, u_int flags)
+-{
+-	struct resource *res;
+-
+-	/*
+-	 * Handle PCI I/O port resources here and pass everything else to nexus.
+-	 */
+-	if (type != SYS_RES_IOPORT) {
+-		res = bus_generic_alloc_resource(bus, child, type, rid,
+-						 start, end, count, flags);
+-		return (res);
+-	}
+-
+-	res = rman_reserve_resource(&port_rman, start, end, count,
+-				    flags, child);
+-	if (res == NULL)
+-		return (NULL);
+-
+-	rman_set_rid(res, *rid);
+-
+-	/* Activate the resource is requested */
+-	if (flags & RF_ACTIVE) {
+-		if (bus_activate_resource(child, type, *rid, res) != 0) {
+-			rman_release_resource(res);
+-			return (NULL);
+-		}
+-	}
+-
+-	return (res);
+-}
+-
+-static int
+-zbpci_activate_resource(device_t bus, device_t child, int type, int rid,
+-			struct resource *res)
+-{
+-	int error;
+-	void *vaddr;
+-	u_long orig_paddr, paddr, psize;
+-
+-	paddr = rman_get_start(res);
+-	psize = rman_get_size(res);
+-	orig_paddr = paddr;
+-
+-#if _BYTE_ORDER == _BIG_ENDIAN
+-	/*
+-	 * The CFE allocates PCI memory resources that map to the
+-	 * "match byte lanes" address space. This address space works
+-	 * best for DMA transfers because it does not do any automatic
+-	 * byte swaps when data crosses the pci-cpu interface.
+-	 *
+-	 * This also makes it sub-optimal for accesses to PCI device
+-	 * registers because it exposes the little-endian nature of
+-	 * the PCI bus to the big-endian CPU. The Sibyte has another
+-	 * address window called the "match bit lanes" window which
+-	 * automatically swaps bytes when data crosses the pci-cpu
+-	 * interface.
+-	 *
+-	 * We "assume" that any bus_space memory accesses done by the
+-	 * CPU to a PCI device are register/configuration accesses and
+-	 * are done through the "match bit lanes" window. Any DMA
+-	 * transfers will continue to be through the "match byte lanes"
+-	 * window because the PCI BAR registers will not be changed.
+-	 */
+-	if (type == SYS_RES_MEMORY) {
+-		if (paddr >= PCI_MATCH_BYTE_LANES_START &&
+-		    paddr + psize - 1 <= PCI_MATCH_BYTE_LANES_END) {
+-			paddr |= PCI_MATCH_BIT_LANES_MASK;
+-			rman_set_start(res, paddr);
+-			rman_set_end(res, paddr + psize - 1);
+-		}
+-	}
+-#endif
+-
+-	if (type != SYS_RES_IOPORT) {
+-		error = bus_generic_activate_resource(bus, child, type,
+-						      rid, res);
+-#if _BYTE_ORDER == _BIG_ENDIAN
+-		if (type == SYS_RES_MEMORY) {
+-			rman_set_start(res, orig_paddr);
+-			rman_set_end(res, orig_paddr + psize - 1);
+-		}
+-#endif
+-		return (error);
+-	}
+-
+-	/*
+-	 * Map the I/O space resource through the memory window starting
+-	 * at PCI_IOSPACE_ADDR.
+-	 */
+-	vaddr = pmap_mapdev(paddr + PCI_IOSPACE_ADDR, psize);
+-
+-	rman_set_virtual(res, vaddr);
+-	rman_set_bustag(res, mips_bus_space_generic);
+-	rman_set_bushandle(res, (bus_space_handle_t)vaddr);
+-
+-	return (rman_activate_resource(res));
+-}
+-
+-static int
+-zbpci_release_resource(device_t bus, device_t child, int type, int rid,
+-		       struct resource *r)
+-{
+-	int error;
+-
+-	if (type != SYS_RES_IOPORT)
+-		return (bus_generic_release_resource(bus, child, type, rid, r));
+-
+-	if (rman_get_flags(r) & RF_ACTIVE) {
+-		error = bus_deactivate_resource(child, type, rid, r);
+-		if (error)
+-			return (error);
+-	}
+-
+-	return (rman_release_resource(r));
+-}
+-
+-static int
+-zbpci_deactivate_resource(device_t bus, device_t child, int type, int rid,
+-			  struct resource *r)
+-{
+-	vm_offset_t va;
+-
+-	if (type != SYS_RES_IOPORT) {
+-		return (bus_generic_deactivate_resource(bus, child, type,
+-							rid, r));
+-	}
+-	
+-	va = (vm_offset_t)rman_get_virtual(r);
+-	pmap_unmapdev(va, rman_get_size(r));
+-
+-	return (rman_deactivate_resource(r));
+-}
+-
+-static int
+-zbpci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
+-{
+-	
+-	switch (which) {
+-	case PCIB_IVAR_DOMAIN:
+-		*result = 0;				/* single PCI domain */
+-		return (0);
+-	case PCIB_IVAR_BUS:
+-		*result = device_get_unit(child);	/* PCI bus 0 or 1 */
+-		return (0);
+-	default:
+-		return (ENOENT);
+-	}
+-}
+-
+-/*
+- * We rely on the CFE to have configured the intline correctly to point to
+- * one of PCI-A/PCI-B/PCI-C/PCI-D in the interupt mapper.
+- */
+-static int
+-zbpci_route_interrupt(device_t pcib, device_t dev, int pin)
+-{
+-
+-	return (PCI_INVALID_IRQ);
+-}
+-
+-/*
+- * This function is expected to be called in a critical section since it
+- * changes the per-cpu pci config space va-to-pa mappings.
+- */
+-static vm_offset_t
+-zbpci_config_space_va(int bus, int slot, int func, int reg, int bytes)
+-{
+-	int cpu;
+-	vm_offset_t va_page;
+-	vm_paddr_t pa, pa_page;
+-
+-	if (bus <= PCI_BUSMAX && slot <= PCI_SLOTMAX && func <= PCI_FUNCMAX &&
+-	    reg <= PCI_REGMAX && (bytes == 1 || bytes == 2 || bytes == 4) &&
+-	    ((reg & (bytes - 1)) == 0)) {
+-		cpu = PCPU_GET(cpuid);
+-		va_page = zbpci_config_space[cpu].vaddr;
+-		pa = CFG_PADDR_BASE |
+-		     (bus << 16) | (slot << 11) | (func << 8) | reg;
+-#if _BYTE_ORDER == _BIG_ENDIAN
+-		pa = pa ^ (4 - bytes);
+-#endif
+-		pa_page = rounddown2(pa, PAGE_SIZE);
+-		if (zbpci_config_space[cpu].paddr != pa_page) {
+-			pmap_kremove(va_page);
+-			pmap_kenter_attr(va_page, pa_page, PTE_C_UNCACHED);
+-			zbpci_config_space[cpu].paddr = pa_page;
+-		}
+-		return (va_page + (pa - pa_page));
+-	} else {
+-		return (0);
+-	}
+-}
+-
+-static uint32_t
+-zbpci_read_config(device_t dev, u_int b, u_int s, u_int f, u_int r, int w)
+-{
+-	uint32_t data;
+-	vm_offset_t va;
+-
+-	critical_enter();
+-
+-	va = zbpci_config_space_va(b, s, f, r, w);
+-	if (va == 0) {
+-		panic("zbpci_read_config: invalid %d/%d/%d[%d] %d\n",
+-		      b, s, f, r, w);
+-	}
+-
+-	switch (w) {
+-	case 4:
+-		data = *(uint32_t *)va;
+-		break;
+-	case 2:
+-		data = *(uint16_t *)va;
+-		break;
+-	case 1:
+-		data = *(uint8_t *)va;
+-		break;
+-	default:
+-		panic("zbpci_read_config: invalid width %d\n", w);
+-	}
+-
+-	critical_exit();
+-
+-	return (data);
+-}
+-
+-static void
+-zbpci_write_config(device_t d, u_int b, u_int s, u_int f, u_int r,
+-		   uint32_t data, int w)
+-{
+-	vm_offset_t va;
+-
+-	critical_enter();
+-
+-	va = zbpci_config_space_va(b, s, f, r, w);
+-	if (va == 0) {
+-		panic("zbpci_write_config: invalid %d/%d/%d[%d] %d/%d\n",
+-		      b, s, f, r, data, w);
+-	}
+-
+-	switch (w) {
+-	case 4:
+-		*(uint32_t *)va = data;
+-		break;
+-	case 2:
+-		*(uint16_t *)va = data;
+-		break;
+-	case 1:
+-		*(uint8_t *)va = data;
+-		break;
+-	default:
+-		panic("zbpci_write_config: invalid width %d\n", w);
+-	}
+-
+-	critical_exit();
+-}
+-
+-static device_method_t zbpci_methods[] ={
+-	/* Device interface */
+-	DEVMETHOD(device_probe,		zbpci_probe),
+-	DEVMETHOD(device_attach,	zbpci_attach),
+-	DEVMETHOD(device_detach,	bus_generic_detach),
+-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+-	DEVMETHOD(device_suspend,	bus_generic_suspend),
+-	DEVMETHOD(device_resume,	bus_generic_resume),
+-
+-	/* Bus interface */
+-	DEVMETHOD(bus_read_ivar,	zbpci_read_ivar),
+-	DEVMETHOD(bus_write_ivar,	bus_generic_write_ivar),
+-	DEVMETHOD(bus_alloc_resource,	zbpci_alloc_resource),
+-	DEVMETHOD(bus_activate_resource, zbpci_activate_resource),
+-	DEVMETHOD(bus_deactivate_resource, zbpci_deactivate_resource),
+-	DEVMETHOD(bus_release_resource,	zbpci_release_resource),
+-	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
+-	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+-	DEVMETHOD(bus_add_child,	bus_generic_add_child),
+-
+-	/* pcib interface */
+-	DEVMETHOD(pcib_maxslots,	pcib_maxslots),
+-	DEVMETHOD(pcib_read_config,	zbpci_read_config),
+-	DEVMETHOD(pcib_write_config,	zbpci_write_config),
+-	DEVMETHOD(pcib_route_interrupt,	zbpci_route_interrupt),
+-	DEVMETHOD(pcib_request_feature,	pcib_request_feature_allow),
+-	
+-	{ 0, 0 }
+-};
+-
+-/*
+- * The "zbpci" class inherits from the "pcib" base class. Therefore in
+- * addition to drivers that belong to the "zbpci" class we will also
+- * consider drivers belonging to the "pcib" when probing children of
+- * "zbpci".
+- */
+-DEFINE_CLASS_1(zbpci, zbpci_driver, zbpci_methods, 0, pcib_driver);
+-
+-static devclass_t zbpci_devclass;
+-
+-DRIVER_MODULE(zbpci, zbbus, zbpci_driver, zbpci_devclass, 0, 0);
+-
+-/*
+- * Big endian bus space routines
+- */
+-#if _BYTE_ORDER == _BIG_ENDIAN
+-
+-/*
+- * The CPU correctly deals with the big-endian to little-endian swap if
+- * we are accessing 4 bytes at a time. However if we want to read 1 or 2
+- * bytes then we need to fudge the address generated by the CPU such that
+- * it generates the right byte enables on the PCI bus.
+- */
+-static bus_addr_t
+-sb_match_bit_lane_addr(bus_addr_t addr, int bytes)
+-{
+-	vm_offset_t pa;
+-
+-	pa = vtophys(addr);
+-	
+-	if (pa >= PCI_MATCH_BIT_LANES_START && pa <= PCI_MATCH_BIT_LANES_END)
+-		return (addr ^ (4 - bytes));
+-	else
+-		return (addr);
+-}
+-
+-uint8_t
+-sb_big_endian_read8(bus_addr_t addr)
+-{
+-	bus_addr_t addr2;
+-
+-	addr2 = sb_match_bit_lane_addr(addr, 1);
+-	return (readb(addr2));
+-}
+-
+-uint16_t
+-sb_big_endian_read16(bus_addr_t addr)
+-{
+-	bus_addr_t addr2;
+-
+-	addr2 = sb_match_bit_lane_addr(addr, 2);
+-	return (readw(addr2));
+-}
+-
+-uint32_t
+-sb_big_endian_read32(bus_addr_t addr)
+-{
+-	bus_addr_t addr2;
+-
+-	addr2 = sb_match_bit_lane_addr(addr, 4);
+-	return (readl(addr2));
+-}
+-
+-void
+-sb_big_endian_write8(bus_addr_t addr, uint8_t val)
+-{
+-	bus_addr_t addr2;
+-
+-	addr2 = sb_match_bit_lane_addr(addr, 1);
+-	writeb(addr2, val);
+-}
+-
+-void
+-sb_big_endian_write16(bus_addr_t addr, uint16_t val)
+-{
+-	bus_addr_t addr2;
+-
+-	addr2 = sb_match_bit_lane_addr(addr, 2);
+-	writew(addr2, val);
+-}
+-
+-void
+-sb_big_endian_write32(bus_addr_t addr, uint32_t val)
+-{
+-	bus_addr_t addr2;
+-
+-	addr2 = sb_match_bit_lane_addr(addr, 4);
+-	writel(addr2, val);
+-}
+-#endif	/* _BIG_ENDIAN */
+
+Property changes on: head/sys/mips/sibyte/sb_zbpci.c
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_asm.S
+===================================================================
+--- head/sys/mips/sibyte/sb_asm.S	(revision 342254)
++++ head/sys/mips/sibyte/sb_asm.S	(nonexistent)
+@@ -1,51 +0,0 @@
+-/*-
+- * Copyright (c) 2009 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- *
+- * $FreeBSD$
+- */
+-
+-#include <machine/asm.h>
+-#include <machine/cpuregs.h>
+-
+-.set	mips64
+-.set	noat
+-.set	noreorder
+-
+-#ifdef SMP
+-/*
+- * This function must be implemented in assembly because it is called early
+- * in AP boot without a valid stack.
+- *
+- * This cpu number is available in bits 25 to 27 of the coprocessor 0 PRID
+- * register. This is not documented in the BCM1250 user manual but can be
+- * gleaned from the CFE source code - see sb1250_altcpu.S
+- */
+-LEAF(platform_processor_id)
+-	mfc0	v0, MIPS_COP_0_PRID
+-	srl	v0, v0, 25
+-	jr	ra
+-	and	v0, v0, 7
+-END(platform_processor_id)
+-#endif	/* SMP */
+
+Property changes on: head/sys/mips/sibyte/sb_asm.S
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_scd.c
+===================================================================
+--- head/sys/mips/sibyte/sb_scd.c	(revision 342254)
++++ head/sys/mips/sibyte/sb_scd.c	(nonexistent)
+@@ -1,308 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2009 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-#include <sys/cdefs.h>
+-__FBSDID("$FreeBSD$");
+-
+-#include <sys/param.h>
+-#include <sys/kernel.h>
+-#include <sys/systm.h>
+-#include <sys/module.h>
+-#include <sys/bus.h>
+-#include <sys/cpuset.h>
+-
+-#include <machine/resource.h>
+-#include <machine/hwfunc.h>
+-
+-#include "sb_scd.h"
+-
+-/*
+- * We compile a 32-bit kernel to run on the SB-1 processor which is a 64-bit
+- * processor. It has some registers that must be accessed using 64-bit load
+- * and store instructions.
+- *
+- * We use the mips_ld() and mips_sd() functions to do this for us.
+- */
+-#define	sb_store64(addr, val)	mips3_sd((uint64_t *)(uintptr_t)(addr), (val))
+-#define	sb_load64(addr)		mips3_ld((uint64_t *)(uintptr_t)(addr))
+-
+-/*
+- * System Control and Debug (SCD) unit on the Sibyte ZBbus.
+- */
+-
+-/*
+- * Extract the value starting at bit position 'b' for 'n' bits from 'x'.
+- */
+-#define	GET_VAL_64(x, b, n)	(((x) >> (b)) & ((1ULL << (n)) - 1))
+-
+-#define	SYSREV_ADDR		MIPS_PHYS_TO_KSEG1(0x10020000)
+-#define	SYSREV_NUM_PROCESSORS(x) GET_VAL_64((x), 24, 4)
+-
+-#define	SYSCFG_ADDR		MIPS_PHYS_TO_KSEG1(0x10020008)
+-#define SYSCFG_PLLDIV(x)	GET_VAL_64((x), 7, 5)
+-
+-#define	ZBBUS_CYCLE_COUNT_ADDR	MIPS_PHYS_TO_KSEG1(0x10030000)
+-
+-#define	INTSRC_MASK_ADDR(cpu)	\
+-	(MIPS_PHYS_TO_KSEG1(0x10020028) | ((cpu) << 13))
+-
+-#define	INTSRC_MAP_ADDR(cpu, intsrc)	\
+-	(MIPS_PHYS_TO_KSEG1(0x10020200) | ((cpu) << 13)) + (intsrc * 8)
+-
+-#define	MAILBOX_SET_ADDR(cpu)	\
+-	(MIPS_PHYS_TO_KSEG1(0x100200C8) | ((cpu) << 13))
+-
+-#define	MAILBOX_CLEAR_ADDR(cpu)	\
+-	(MIPS_PHYS_TO_KSEG1(0x100200D0) | ((cpu) << 13))
+-
+-static uint64_t
+-sb_read_syscfg(void)
+-{
+-
+-	return (sb_load64(SYSCFG_ADDR));
+-}
+-
+-static void
+-sb_write_syscfg(uint64_t val)
+-{
+-	
+-	sb_store64(SYSCFG_ADDR, val);
+-}
+-
+-uint64_t
+-sb_zbbus_cycle_count(void)
+-{
+-
+-	return (sb_load64(ZBBUS_CYCLE_COUNT_ADDR));
+-}
+-
+-uint64_t
+-sb_cpu_speed(void)
+-{
+-	int plldiv;
+-	const uint64_t MHZ = 1000000;
+-	
+-	plldiv = SYSCFG_PLLDIV(sb_read_syscfg());
+-	if (plldiv == 0) {
+-		printf("PLL_DIV is 0 - assuming 6 (300MHz).\n");
+-		plldiv = 6;
+-	}
+-
+-	return (plldiv * 50 * MHZ);
+-}
+-
+-void
+-sb_system_reset(void)
+-{
+-	uint64_t syscfg;
+-
+-	const uint64_t SYSTEM_RESET = 1ULL << 60;
+-	const uint64_t EXT_RESET = 1ULL << 59;
+-	const uint64_t SOFT_RESET = 1ULL << 58;
+-
+-	syscfg = sb_read_syscfg();
+-	syscfg &= ~SOFT_RESET;
+-	syscfg |= SYSTEM_RESET | EXT_RESET;
+-	sb_write_syscfg(syscfg);
+-}
+-
+-void
+-sb_disable_intsrc(int cpu, int src)
+-{
+-	int regaddr;
+-	uint64_t val;
+-
+-	regaddr = INTSRC_MASK_ADDR(cpu);
+-
+-	val = sb_load64(regaddr);
+-	val |= 1ULL << src;
+-	sb_store64(regaddr, val);
+-}
+-
+-void
+-sb_enable_intsrc(int cpu, int src)
+-{
+-	int regaddr;
+-	uint64_t val;
+-
+-	regaddr = INTSRC_MASK_ADDR(cpu);
+-
+-	val = sb_load64(regaddr);
+-	val &= ~(1ULL << src);
+-	sb_store64(regaddr, val);
+-}
+-
+-void
+-sb_write_intsrc_mask(int cpu, uint64_t val)
+-{
+-	int regaddr;
+-
+-	regaddr = INTSRC_MASK_ADDR(cpu);
+-	sb_store64(regaddr, val);
+-}
+-
+-uint64_t
+-sb_read_intsrc_mask(int cpu)
+-{
+-	int regaddr;
+-	uint64_t val;
+-
+-	regaddr = INTSRC_MASK_ADDR(cpu);
+-	val = sb_load64(regaddr);
+-
+-	return (val);
+-}
+-
+-void
+-sb_write_intmap(int cpu, int intsrc, int intrnum)
+-{
+-	int regaddr;
+-
+-	regaddr = INTSRC_MAP_ADDR(cpu, intsrc);
+-	sb_store64(regaddr, intrnum);
+-}
+-
+-int
+-sb_read_intmap(int cpu, int intsrc)
+-{
+-	int regaddr;
+-
+-	regaddr = INTSRC_MAP_ADDR(cpu, intsrc);
+-	return (sb_load64(regaddr) & 0x7);
+-}
+-
+-int
+-sb_route_intsrc(int intsrc)
+-{
+-	int intrnum;
+-
+-	KASSERT(intsrc >= 0 && intsrc < NUM_INTSRC,
+-		("Invalid interrupt source number (%d)", intsrc));
+-
+-	/*
+-	 * Interrupt 5 is used by sources internal to the CPU (e.g. timer).
+-	 * Use a deterministic mapping for the remaining sources.
+-	 */
+-#ifdef SMP
+-	KASSERT(platform_ipi_hardintr_num() == 4,
+-		("Unexpected interrupt number used for IPI"));
+-	intrnum = intsrc % 4;
+-#else
+-	intrnum = intsrc % 5;
+-#endif
+-
+-	return (intrnum);
+-}
+-
+-#ifdef SMP
+-static uint64_t
+-sb_read_sysrev(void)
+-{
+-
+-	return (sb_load64(SYSREV_ADDR));
+-}
+-
+-void
+-sb_set_mailbox(int cpu, uint64_t val)
+-{
+-	int regaddr;
+-
+-	regaddr = MAILBOX_SET_ADDR(cpu);
+-	sb_store64(regaddr, val);
+-}
+-
+-void
+-sb_clear_mailbox(int cpu, uint64_t val)
+-{
+-	int regaddr;
+-
+-	regaddr = MAILBOX_CLEAR_ADDR(cpu);
+-	sb_store64(regaddr, val);
+-}
+-
+-void
+-platform_cpu_mask(cpuset_t *mask)
+-{
+-	int i, s;
+-
+-	CPU_ZERO(mask);
+-	s = SYSREV_NUM_PROCESSORS(sb_read_sysrev());
+-	for (i = 0; i < s; i++)
+-		CPU_SET(i, mask);
+-}
+-#endif	/* SMP */
+-
+-#define	SCD_PHYSADDR	0x10000000
+-#define	SCD_SIZE	0x00060000
+-
+-static int
+-scd_probe(device_t dev)
+-{
+-
+-	device_set_desc(dev, "Broadcom/Sibyte System Control and Debug");
+-	return (0);
+-}
+-
+-static int
+-scd_attach(device_t dev)
+-{
+-	int rid;
+-	struct resource *res;
+-
+-	if (bootverbose)
+-		device_printf(dev, "attached.\n");
+-
+-	rid = 0;
+-	res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid, SCD_PHYSADDR,
+-				 SCD_PHYSADDR + SCD_SIZE - 1, SCD_SIZE, 0);
+-	if (res == NULL)
+-		panic("Cannot allocate resource for system control and debug.");
+-	
+-	return (0);
+-}
+-
+-static device_method_t scd_methods[] ={
+-	/* Device interface */
+-	DEVMETHOD(device_probe,		scd_probe),
+-	DEVMETHOD(device_attach,	scd_attach),
+-	DEVMETHOD(device_detach,	bus_generic_detach),
+-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+-	DEVMETHOD(device_suspend,	bus_generic_suspend),
+-	DEVMETHOD(device_resume,	bus_generic_resume),
+-
+-	{ 0, 0 }
+-};
+-
+-static driver_t scd_driver = {
+-	"scd",
+-	scd_methods
+-};
+-
+-static devclass_t scd_devclass;
+-
+-DRIVER_MODULE(scd, zbbus, scd_driver, scd_devclass, 0, 0);
+
+Property changes on: head/sys/mips/sibyte/sb_scd.c
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_scd.h
+===================================================================
+--- head/sys/mips/sibyte/sb_scd.h	(revision 342254)
++++ head/sys/mips/sibyte/sb_scd.h	(nonexistent)
+@@ -1,54 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2009 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- *
+- * $FreeBSD$
+- */
+-
+-#ifndef _SB_SCD_H_
+-#define	_SB_SCD_H_
+-
+-#define	NUM_INTSRC		64	/* total number of interrupt sources */
+-
+-uint64_t	sb_zbbus_cycle_count(void);
+-uint64_t	sb_cpu_speed(void);
+-void		sb_system_reset(void);
+-
+-int		sb_route_intsrc(int src);
+-void		sb_enable_intsrc(int cpu, int src);
+-void		sb_disable_intsrc(int cpu, int src);
+-uint64_t	sb_read_intsrc_mask(int cpu);
+-void		sb_write_intsrc_mask(int cpu, uint64_t mask);
+-void		sb_write_intmap(int cpu, int intsrc, int intrnum);
+-int		sb_read_intmap(int cpu, int intsrc);
+-
+-#ifdef SMP
+-#define	INTSRC_MAILBOX3		29
+-void		sb_set_mailbox(int cpuid, uint64_t val);
+-void		sb_clear_mailbox(int cpuid, uint64_t val);
+-#endif
+-
+-#endif	/* _SB_SCD_H_ */
+
+Property changes on: head/sys/mips/sibyte/sb_scd.h
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_bus_space.h
+===================================================================
+--- head/sys/mips/sibyte/sb_bus_space.h	(revision 342254)
++++ head/sys/mips/sibyte/sb_bus_space.h	(nonexistent)
+@@ -1,45 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2010 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- *
+- * $FreeBSD$
+- */
+-
+-#ifndef _SB_BUS_SPACE_H_
+-#define	_SB_BUS_SPACE_H_
+-
+-#include <machine/endian.h>
+-
+-#if _BYTE_ORDER == _BIG_ENDIAN
+-uint8_t sb_big_endian_read8(bus_addr_t addr);
+-uint16_t sb_big_endian_read16(bus_addr_t addr);
+-uint32_t sb_big_endian_read32(bus_addr_t addr);
+-void sb_big_endian_write8(bus_addr_t addr, uint8_t val);
+-void sb_big_endian_write16(bus_addr_t addr, uint16_t val);
+-void sb_big_endian_write32(bus_addr_t addr, uint32_t val);
+-#endif
+-
+-#endif
+
+Property changes on: head/sys/mips/sibyte/sb_bus_space.h
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
+Index: head/sys/mips/sibyte/sb_zbbus.c
+===================================================================
+--- head/sys/mips/sibyte/sb_zbbus.c	(revision 342254)
++++ head/sys/mips/sibyte/sb_zbbus.c	(nonexistent)
+@@ -1,464 +0,0 @@
+-/*-
+- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+- *
+- * Copyright (c) 2009 Neelkanth Natu
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-#include <sys/cdefs.h>
+-__FBSDID("$FreeBSD$");
+-
+-#include <sys/param.h>
+-#include <sys/kernel.h>
+-#include <sys/systm.h>
+-#include <sys/module.h>
+-#include <sys/bus.h>
+-#include <sys/malloc.h>
+-#include <sys/rman.h>
+-#include <sys/lock.h>
+-#include <sys/mutex.h>
+-
+-#include <machine/resource.h>
+-#include <machine/intr_machdep.h>
+-
+-#include "sb_scd.h"
+-
+-static MALLOC_DEFINE(M_INTMAP, "sb1250 intmap", "Sibyte 1250 Interrupt Mapper");
+-
+-static struct mtx zbbus_intr_mtx;
+-MTX_SYSINIT(zbbus_intr_mtx, &zbbus_intr_mtx, "zbbus_intr_mask/unmask lock",
+-	    MTX_SPIN);
+-
+-/*
+- * This array holds the mapping between a MIPS hard interrupt and the
+- * interrupt sources that feed into that it.
+- */
+-static uint64_t hardint_to_intsrc_mask[NHARD_IRQS];
+-
+-struct sb_intmap {
+-	int intsrc;		/* interrupt mapper register number (0 - 63) */
+-	int hardint;		/* cpu interrupt from 0 to NHARD_IRQS - 1 */
+-
+-	/*
+-	 * The device that the interrupt belongs to. Note that multiple
+-	 * devices may share an interrupt. For e.g. PCI_INT_x lines.
+-	 *
+-	 * The device 'dev' in combination with the 'rid' uniquely
+-	 * identify this interrupt source.
+-	 */
+-	device_t dev;
+-	int rid;
+-
+-	SLIST_ENTRY(sb_intmap) next;
+-};
+-
+-static SLIST_HEAD(, sb_intmap) sb_intmap_head;
+-
+-static struct sb_intmap *
+-sb_intmap_lookup(int intrnum, device_t dev, int rid)
+-{
+-	struct sb_intmap *map;
+-
+-	SLIST_FOREACH(map, &sb_intmap_head, next) {
+-		if (dev == map->dev && rid == map->rid &&
+-		    intrnum == map->hardint)
+-			break;
+-	}
+-	return (map);
+-}
+-
+-/*
+- * Keep track of which (dev,rid,hardint) tuple is using the interrupt source.
+- *
+- * We don't actually unmask the interrupt source until the device calls
+- * a bus_setup_intr() on the resource.
+- */
+-static void
+-sb_intmap_add(int intrnum, device_t dev, int rid, int intsrc)
+-{
+-	struct sb_intmap *map;
+-	
+-	KASSERT(intrnum >= 0 && intrnum < NHARD_IRQS,
+-		("intrnum is out of range: %d", intrnum));
+-
+-	map = sb_intmap_lookup(intrnum, dev, rid);
+-	if (map) {
+-		KASSERT(intsrc == map->intsrc,
+-			("%s%d allocating SYS_RES_IRQ resource with rid %d "
+-			 "with a different intsrc (%d versus %d)",
+-			device_get_name(dev), device_get_unit(dev), rid,
+-			intsrc, map->intsrc));
+-		return;
+-	}
+-
+-	map = malloc(sizeof(*map), M_INTMAP, M_WAITOK | M_ZERO);
+-	map->intsrc = intsrc;
+-	map->hardint = intrnum;
+-	map->dev = dev;
+-	map->rid = rid;
+-
+-	SLIST_INSERT_HEAD(&sb_intmap_head, map, next);
+-}
+-
+-static void
+-sb_intmap_activate(int intrnum, device_t dev, int rid)
+-{
+-	struct sb_intmap *map;
+-	
+-	KASSERT(intrnum >= 0 && intrnum < NHARD_IRQS,
+-		("intrnum is out of range: %d", intrnum));
+-
+-	map = sb_intmap_lookup(intrnum, dev, rid);
+-	if (map) {
+-		/*
+-		 * Deliver all interrupts to CPU0.
+-		 */
+-		mtx_lock_spin(&zbbus_intr_mtx);
+-		hardint_to_intsrc_mask[intrnum] |= 1ULL << map->intsrc;
+-		sb_enable_intsrc(0, map->intsrc);
+-		mtx_unlock_spin(&zbbus_intr_mtx);
+-	} else {
+-		/*
+-		 * In zbbus_setup_intr() we blindly call sb_intmap_activate()
+-		 * for every interrupt activation that comes our way.
+-		 *
+-		 * We might end up here if we did not "hijack" the SYS_RES_IRQ
+-		 * resource in zbbus_alloc_resource().
+-		 */
+-		printf("sb_intmap_activate: unable to activate interrupt %d "
+-		       "for device %s%d rid %d.\n", intrnum,
+-		       device_get_name(dev), device_get_unit(dev), rid);
+-	}
+-}
+-
+-/*
+- * Replace the default interrupt mask and unmask routines in intr_machdep.c
+- * with routines that are SMP-friendly. In contrast to the default mask/unmask
+- * routines in intr_machdep.c these routines do not change the SR.int_mask bits.
+- *
+- * Instead they use the interrupt mapper to either mask or unmask all
+- * interrupt sources feeding into a particular interrupt line of the processor.
+- *
+- * This means that these routines have an identical effect irrespective of
+- * which cpu is executing them. This is important because the ithread may
+- * be scheduled to run on either of the cpus.
+- */
+-static void
+-zbbus_intr_mask(void *arg)
+-{
+-	uint64_t mask;
+-	int irq;
+-	
+-	irq = (uintptr_t)arg;
+-
+-	mtx_lock_spin(&zbbus_intr_mtx);
+-
+-	mask = sb_read_intsrc_mask(0);
+-	mask |= hardint_to_intsrc_mask[irq];
+-	sb_write_intsrc_mask(0, mask);
+-
+-	mtx_unlock_spin(&zbbus_intr_mtx);
+-}
+-
+-static void
+-zbbus_intr_unmask(void *arg)
+-{
+-	uint64_t mask;
+-	int irq;
+-	
+-	irq = (uintptr_t)arg;
+-
+-	mtx_lock_spin(&zbbus_intr_mtx);
+-
+-	mask = sb_read_intsrc_mask(0);
+-	mask &= ~hardint_to_intsrc_mask[irq];
+-	sb_write_intsrc_mask(0, mask);
+-
+-	mtx_unlock_spin(&zbbus_intr_mtx);
+-}
+-
+-struct zbbus_devinfo {
+-	struct resource_list resources;
+-};
+-
+-static MALLOC_DEFINE(M_ZBBUSDEV, "zbbusdev", "zbbusdev");
+-
+-static int
+-zbbus_probe(device_t dev)
+-{
+-
+-	device_set_desc(dev, "Broadcom/Sibyte ZBbus");
+-	return (BUS_PROBE_NOWILDCARD);
+-}
+-
+-static int
+-zbbus_attach(device_t dev)
+-{
+-
+-	if (bootverbose) {
+-		device_printf(dev, "attached.\n");
+-	}
+-
+-	cpu_set_hardintr_mask_func(zbbus_intr_mask);
+-	cpu_set_hardintr_unmask_func(zbbus_intr_unmask);
+-
+-	bus_generic_probe(dev);
+-	bus_enumerate_hinted_children(dev);
+-	bus_generic_attach(dev);
+-
+-	return (0);
+-}
+-
+-static void
+-zbbus_hinted_child(device_t bus, const char *dname, int dunit)
+-{
+-	device_t child;
+-	long maddr, msize;
+-	int err, irq;
+-
+-	if (resource_disabled(dname, dunit))
+-		return;
+-
+-	child = BUS_ADD_CHILD(bus, 0, dname, dunit);
+-	if (child == NULL) {
+-		panic("zbbus: could not add child %s unit %d\n", dname, dunit);
+-	}
+-
+-	if (bootverbose)
+-		device_printf(bus, "Adding hinted child %s%d\n", dname, dunit);
+-
+-	/*
+-	 * Assign any pre-defined resources to the child.
+-	 */
+-	if (resource_long_value(dname, dunit, "msize", &msize) == 0 &&
+-	    resource_long_value(dname, dunit, "maddr", &maddr) == 0) {
+-		if (bootverbose) {
+-			device_printf(bus, "Assigning memory resource "
+-					   "0x%0lx/%ld to child %s%d\n",
+-					   maddr, msize, dname, dunit);
+-		}
+-		err = bus_set_resource(child, SYS_RES_MEMORY, 0, maddr, msize);
+-		if (err) {
+-			device_printf(bus, "Unable to set memory resource "
+-					   "0x%0lx/%ld for child %s%d: %d\n",
+-					   maddr, msize, dname, dunit, err);
+-		}
+-	}
+-
+-	if (resource_int_value(dname, dunit, "irq", &irq) == 0) {
+-		if (bootverbose) {
+-			device_printf(bus, "Assigning irq resource %d to "
+-					   "child %s%d\n", irq, dname, dunit);
+-		}
+-		err = bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1);
+-		if (err) {
+-			device_printf(bus, "Unable to set irq resource %d"
+-					   "for child %s%d: %d\n",
+-					   irq, dname, dunit, err);
+-		}
+-	}
+-}
+-
+-static struct resource *
+-zbbus_alloc_resource(device_t bus, device_t child, int type, int *rid,
+-		     rman_res_t start, rman_res_t end, rman_res_t count, u_int flags)
+-{
+-	struct resource *res;
+-	int intrnum, intsrc, isdefault;
+-	struct resource_list *rl;
+-	struct resource_list_entry *rle;
+-	struct zbbus_devinfo *dinfo;
+-
+-	isdefault = (RMAN_IS_DEFAULT_RANGE(start, end) && count == 1);
+-
+-	/*
+-	 * Our direct child is asking for a default resource allocation.
+-	 */
+-	if (device_get_parent(child) == bus) {
+-		dinfo = device_get_ivars(child);
+-		rl = &dinfo->resources;
+-		rle = resource_list_find(rl, type, *rid);
+-		if (rle) {
+-			if (rle->res)
+-				panic("zbbus_alloc_resource: resource is busy");
+-			if (isdefault) {
+-				start = rle->start;
+-				count = ulmax(count, rle->count);
+-				end = ulmax(rle->end, start + count - 1);
+-			}
+-		} else {
+-			if (isdefault) {
+-				/*
+-				 * Our child is requesting a default
+-				 * resource allocation but we don't have the
+-				 * 'type/rid' tuple in the resource list.
+-				 *
+-				 * We have to fail the resource allocation.
+-				 */
+-				return (NULL);
+-			} else {
+-				/*
+-				 * The child is requesting a non-default
+-				 * resource. We just pass the request up
+-				 * to our parent. If the resource allocation
+-				 * succeeds we will create a resource list
+-				 * entry corresponding to that resource.
+-				 */
+-			}
+-		}
+-	} else {
+-		rl = NULL;
+-		rle = NULL;
+-	}
+-
+-	/*
+-	 * nexus doesn't know about the interrupt mapper and only wants to
+-	 * see the hard irq numbers [0-6]. We translate from the interrupt
+-	 * source presented to the mapper to the interrupt number presented
+-	 * to the cpu.
+-	 */
+-	if ((count == 1) && (type == SYS_RES_IRQ)) {
+-		intsrc = start;
+-		intrnum = sb_route_intsrc(intsrc);
+-		start = end = intrnum;
+-	} else {
+-		intsrc = -1;		/* satisfy gcc */
+-		intrnum = -1;
+-	}
+-
+-	res = bus_generic_alloc_resource(bus, child, type, rid,
+- 					 start, end, count, flags);
+-
+-	/*
+-	 * Keep track of the input into the interrupt mapper that maps
+-	 * to the resource allocated by 'child' with resource id 'rid'.
+-	 *
+-	 * If we don't record the mapping here then we won't be able to
+-	 * locate the interrupt source when bus_setup_intr(child,rid) is
+-	 * called.
+-	 */
+-	if (res != NULL && intrnum != -1)
+-		sb_intmap_add(intrnum, child, rman_get_rid(res), intsrc);
+-
+-	/*
+-	 * If a non-default resource allocation by our child was successful
+-	 * then keep track of the resource in the resource list associated
+-	 * with the child.
+-	 */
+-	if (res != NULL && rle == NULL && device_get_parent(child) == bus) {
+-		resource_list_add(rl, type, *rid, start, end, count);
+-		rle = resource_list_find(rl, type, *rid);
+-		if (rle == NULL)
+-			panic("zbbus_alloc_resource: cannot find resource");
+-	}
+-
+-	if (rle != NULL) {
+-		KASSERT(device_get_parent(child) == bus,
+-			("rle should be NULL for passthru device"));
+-		rle->res = res;
+-		if (rle->res) {
+-			rle->start = rman_get_start(rle->res);
+-			rle->end = rman_get_end(rle->res);
+-			rle->count = count;
+-		}
+-	}
+-
+-	return (res);
+-}
+-
+-static int
+-zbbus_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
+-		 driver_filter_t *filter, driver_intr_t *intr, void *arg, 
+-		 void **cookiep)
+-{
+-	int error;
+-
+-	error = bus_generic_setup_intr(dev, child, irq, flags,
+-				       filter, intr, arg, cookiep);
+-	if (error == 0)
+-		sb_intmap_activate(rman_get_start(irq), child,
+-				   rman_get_rid(irq));
+-
+-	return (error);
+-}
+-
+-static device_t
+-zbbus_add_child(device_t bus, u_int order, const char *name, int unit)
+-{
+-	device_t child;
+-	struct zbbus_devinfo *dinfo;
+-
+-	child = device_add_child_ordered(bus, order, name, unit);
+-	if (child != NULL) {
+-		dinfo = malloc(sizeof(struct zbbus_devinfo), M_ZBBUSDEV,
+-			       M_WAITOK | M_ZERO);
+-		resource_list_init(&dinfo->resources);
+-		device_set_ivars(child, dinfo);
+-	}
+-
+-	return (child);
+-}
+-
+-static struct resource_list *
+-zbbus_get_resource_list(device_t dev, device_t child)
+-{
+-	struct zbbus_devinfo *dinfo = device_get_ivars(child);
+-
+-	return (&dinfo->resources);
+-}
+-
+-static device_method_t zbbus_methods[] ={
+-	/* Device interface */
+-	DEVMETHOD(device_probe,		zbbus_probe),
+-	DEVMETHOD(device_attach,	zbbus_attach),
+-	DEVMETHOD(device_detach,	bus_generic_detach),
+-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+-	DEVMETHOD(device_suspend,	bus_generic_suspend),
+-	DEVMETHOD(device_resume,	bus_generic_resume),
+-
+-	/* Bus interface */
+-	DEVMETHOD(bus_alloc_resource,	zbbus_alloc_resource),
+-	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
+-	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
+-	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
+-	DEVMETHOD(bus_get_resource_list,zbbus_get_resource_list),
+-	DEVMETHOD(bus_set_resource,	bus_generic_rl_set_resource),
+-	DEVMETHOD(bus_get_resource,	bus_generic_rl_get_resource),
+-	DEVMETHOD(bus_delete_resource,	bus_generic_rl_delete_resource),
+-	DEVMETHOD(bus_setup_intr,	zbbus_setup_intr),
+-	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+-	DEVMETHOD(bus_add_child,	zbbus_add_child),
+-	DEVMETHOD(bus_hinted_child,	zbbus_hinted_child),
+-	
+-	{ 0, 0 }
+-};
+-
+-static driver_t zbbus_driver = {
+-	"zbbus",
+-	zbbus_methods
+-};
+-
+-static devclass_t zbbus_devclass;
+-
+-DRIVER_MODULE(zbbus, nexus, zbbus_driver, zbbus_devclass, 0, 0);
+
+Property changes on: head/sys/mips/sibyte/sb_zbbus.c
+___________________________________________________________________
+Deleted: svn:eol-style
+## -1 +0,0 ##
+-native
+\ No newline at end of property
+Deleted: svn:keywords
+## -1 +0,0 ##
+-FreeBSD=%H
+\ No newline at end of property
+Deleted: svn:mime-type
+## -1 +0,0 ##
+-text/plain
+\ No newline at end of property
