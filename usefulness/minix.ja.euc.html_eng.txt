@@ -1,0 +1,932 @@
+Identity authentication service Value-Auth that can be used from ¥ 0
+[ :Yana: Index ]
+:Yana:Computer: MINIX (2012-05-11)
+MINIX 3.1.3rc1 and YanaKernel0 (2012-05-11)
+Overview (2012-05-11)
+Download (2010-12-11)
+Execution example (2010-12-11)
+MINIX 3.13a and YanaKernel0 (2012-05-11)
+Overview (2012-05-11)
+Download (2010-12-11)
+Execution example (2010-12-11)
+MINIX 3.2.0 and YanaKernel0 (2012-05-11)
+Overview (2012-05-11)
+Download (2012-05-11)
+Execution example (2012-05-11)
+MINIX 3.1.3rc1 and YanaKernel0 (2012-05-11)
+Overview (2012-05-11)
+Following MINIX that uses YanaKernel0, MINIX that does not use YanaKernel0 was able to execute the boot image, although there are various problems (or restrictions) in ARM and MIPS.
+Download (2010-12-11)
+The following archive files should be used personally, without liability or warranty.
+yanakernel0prototype20100311.zip
+yanakernel0prototypeminix20101211a.zip
+Check the license of the file "minix-ppc-port-release-1.tgz" and use the following difference file in the same way.
+yanakernel0prototypeminix20101111aminix.txt
+Execution example (2010-12-11)
+I was able to run the boot image in the following environment, although there are various problems (or restrictions).
+Windows XP
+Cygwin Information and Installation setup.exe
+Zylin AS - open source arm-elf.tar.bz2 (Cygwin)
+Zylin AS - open source mips-elf.tar.bz2 (Cygwin)
+GXemul - Download gxemul-0.6.0.tar.gz
+The MINIX 3 Operating System minix-ppc-port-release-1.tgz (Google Search)
+For building the boot image, first prepare the files as follows:
+yana@cygwin ~
+$ tar xzf minix-ppc-port-release-1.tgz
+
+yana@cygwin ~
+$ tar xzf release/1/minix.src.tgz
+
+yana@cygwin ~
+$ rm minix/src/commands/ash/bltin/*.o minix/src/drivers/libdriver/*.o
+
+yana@cygwin ~
+$ patch -p0 <yanakernel0prototypeminix20101111aminix.txt
+patching file minix/src/arch/ppc/aconst.h
+patching file minix/src/arch/ppc/asm.h
+patching file minix/src/arch/ppc/atypes.h
+patching file minix/src/commands/ash/Makefile
+patching file minix/src/drivers/arch/ppc/at_wini/Makefile
+patching file minix/src/drivers/arch/ppc/at_wini/at_wini.c
+patching file minix/src/drivers/arch/ppc/at_wini/ata.c
+patching file minix/src/drivers/arch/ppc/kscreen/Makefile
+patching file minix/src/drivers/arch/ppc/libpci/Makefile
+patching file minix/src/drivers/arch/ppc/macio/Makefile
+patching file minix/src/drivers/arch/ppc/macio/macio.c
+patching file minix/src/drivers/arch/ppc/macio/via.c
+patching file minix/src/drivers/arch/ppc/pcim/Makefile
+patching file minix/src/drivers/arch/ppc/pcim/pcim.c
+patching file minix/src/drivers/arch/ppc/pcim/uni-north.c
+patching file minix/src/drivers/arch/ppc/tty/Makefile
+patching file minix/src/drivers/arch/ppc/tty/console.c
+patching file minix/src/drivers/arch/ppc/tty/keyboard.c
+patching file minix/src/drivers/arch/ppc/tty/tty.c
+patching file minix/src/drivers/libdriver/Makefile
+patching file minix/src/drivers/log/Makefile
+patching file minix/src/drivers/memory/Makefile
+patching file minix/src/image/Makefile
+patching file minix/src/include/minix/ipc.h
+patching file minix/src/include/setjmp.h
+patching file minix/src/kernel/Makefile
+patching file minix/src/kernel/arch/ppc/Makefile
+patching file minix/src/kernel/arch/ppc/debug/debug_mem.c
+patching file minix/src/kernel/arch/ppc/debug/debug_stack.c
+patching file minix/src/kernel/glo.h
+patching file minix/src/kernel/main.c
+patching file minix/src/kernel/start.c
+patching file minix/src/kernel/system/Makefile
+patching file minix/src/kernel/system/do_debug.c
+patching file minix/src/kernel/system/do_nice.c
+patching file minix/src/kernel/system/do_sigsend.c
+patching file minix/src/lib/Makefile
+patching file minix/src/lib/ansi/Makefile
+patching file minix/src/lib/editline/Makefile
+patching file minix/src/lib/gnu/ieee_float/Makefile
+patching file minix/src/lib/math/Makefile
+patching file minix/src/lib/other/Makefile
+patching file minix/src/lib/posix/Makefile
+patching file minix/src/lib/posix/_sigreturn.ppc.S
+patching file minix/src/lib/ppc/int64/Makefile
+patching file minix/src/lib/ppc/rts/Makefile
+patching file minix/src/lib/ppc/rts/_loadsize.S
+patching file minix/src/lib/ppc/rts/_longjmp.S
+patching file minix/src/lib/ppc/rts/_setjmp.S
+patching file minix/src/lib/ppc/rts/brksize.S
+patching file minix/src/lib/ppc/rts/crtso.S
+patching file minix/src/lib/ppc/rts/ipc.S
+patching file minix/src/lib/ppc/syscall/Makefile
+patching file minix/src/lib/regex/Makefile
+patching file minix/src/lib/stdio/Makefile
+patching file minix/src/lib/syslib/Makefile
+patching file minix/src/lib/sysutil/Makefile
+patching file minix/src/lib/sysutil/param.c
+patching file minix/src/lib/timers/Makefile
+patching file minix/src/servers/dbg/Makefile
+patching file minix/src/servers/ds/Makefile
+patching file minix/src/servers/fs/Makefile
+patching file minix/src/servers/fs/dmap.c
+patching file minix/src/servers/fs/exec.c
+patching file minix/src/servers/init/Makefile
+patching file minix/src/servers/is/Makefile
+patching file minix/src/servers/pm/Makefile
+patching file minix/src/servers/pm/exec.c
+patching file minix/src/servers/pm/main.c
+patching file minix/src/servers/pm/misc.c
+patching file minix/src/servers/pm/mproc.h
+patching file minix/src/servers/rs/Makefile
+patching file minix/src/util/elf2aout/Makefile
+patching file minix/src/util/elf2aout/elf2aout.c
+patching file minix / src / util / libabi / libabi.c
+patching file minix/src/util/mkfs/Makefile
+patching file minix/src/util/mkfs/mkffs.c
+patching file minix/src/util/mkimage/Makefile
+
+yana@cygwin ~
+$ unzip -q yanakernel0prototypeminix20101211a.zip
+
+yana@cygwin ~
+$ cp -pr yanakernel0prototypeminix/disable/* minix/src
+
+yana@cygwin ~
+$ unzip -q yanakernel0prototype20100311.zip
+
+yana@cygwin ~
+$
+Next, build elf2aout, mkffs, and mkimage as follows, and then enable them to be executed with the environment variable "PATH".
+yana@cygwin ~
+$ cd minix / src / util / libabi
+
+has @ cygwin ~ / minix / src / util / libabi
+$ cc -c libabi.c
+
+has @ cygwin ~ / minix / src / util / libabi
+$ cd ..
+
+yana@cygwin ~/minix/src/util
+$ make all
+cd ./elf2aout && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/elf2aout'
+cc -c elf2aout.c -o elf2aout.o
+cc -o elf2aout elf2aout.o ../libabi/libabi.o
+cc -c readaout.c -o readaout.o
+cc -o readaout readaout.o ../libabi/libabi.o
+make[1]: Leaving directory `/home/yana/minix/src/util/elf2aout'
+cd ./mkfs && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/mkfs'
+cc -c mkffs.c -o mkffs.o
+cc -o mkffs mkffs.o
+make[1]: Leaving directory `/home/yana/minix/src/util/mkfs'
+cd ./mkimage && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/mkimage'
+cc   -c -o mkimage.o mkimage.c
+cc  -o mkimage ../libabi/libabi.o mkimage.o
+make[1]: Leaving directory `/home/yana/minix/src/util/mkimage'
+
+yana@cygwin ~/minix/src/util
+$
+Also, in the case of ARM, build as follows in the directory "minix / src / arm".
+Build for ARM of MINIX 3.1.3rc1
+minix/src/arm
+CC="arm-elf-gcc -mlittle-endian -O2" MINIX_KERNEL=0x00100000 make
+minix/src/lib
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/drivers
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/kernel
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/servers
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make all
+minix/src/image
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/commands/ash
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/arm
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs
+Also, in the case of MIPS, build as follows in the directory "minix / src / mips".
+Note: For the directory "minix / src / kernel", use the option "-march = mips32r2" instead of the option "-march = mips32".
+Build for MIPS of MINIX 3.1.3rc1
+minix/src/mips
+CC="mips-elf-gcc -EL -O2" MINIX_KERNEL=0x80100000 make
+minix/src/lib
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/drivers
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/kernel
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32r2 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/servers
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make all
+minix/src/image
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/commands/ash
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make
+minix/src/mips
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs
+Regarding the execution of the boot image, first of all, in the case of ARM, although there are various problems (or restrictions), the output is as follows.
+yana@cygwin ~/minix/src/arm
+$ gxemul -q -E testarm -d i:../image/minixppc -d i:root.img manager
+
+NOTE: This is a LEGACY emulation mode.
+
+System.restart()
+"PowerPC console interface, v0.01bu (console.c)" ready (0x0 characters).
+
+MINIX 3.1.3rc1. Copyright 2006, Free University, Amsterdam, The Netherlands
+Build: "PowerPC (iBook G4)"
+
+PM: loaded process: pm fs rs ds tty memory log dbg pcim at_win macio init.
+Physical memory: total 15360 KB, system 6940 KB, free 8420 KB.
+PCIM: found 0 PCI devices in system.
+Boot medium driver: label driver mapped onto controller c0.
+FS: opening root device 0x301
+FS: MINIX V3 file system found on minor device 0x1, block size 4096 bytes.
+Debug observer(s) registered with TTY process.
+hello, world
+# echo console
+console
+#
+Next, in the case of MIPS, although there are various problems (or restrictions), the output is as follows.
+yana@cygwin ~/minix/src/mips
+$ gxemul -q -E oldtestmips -C 4kec -d i:../image/minixppc -d i:root.img manager
+
+NOTE: This is a LEGACY emulation mode.
+
+System.restart()
+"PowerPC console interface, v0.01bu (console.c)" ready (0x0 characters).
+
+MINIX 3.1.3rc1. Copyright 2006, Free University, Amsterdam, The Netherlands
+Build: "PowerPC (iBook G4)"
+
+PM: loaded process: pm fs rs ds tty memory log dbg pcim at_win macio init.
+Physical memory: total 15360 KB, system 6556 KB, free 8804 KB.
+PCIM: found 0 PCI devices in system.
+Boot medium driver: label driver mapped onto controller c0.
+FS: opening root device 0x301
+FS: MINIX V3 file system found on minor device 0x1, block size 4096 bytes.
+Debug observer(s) registered with TTY process.
+hello, world
+# echo console
+console
+#
+MINIX 3.13a and YanaKernel0 (2012-05-11)
+Overview (2012-05-11)
+Following MINIX that uses YanaKernel0, MINIX that does not use YanaKernel0 was able to execute the boot image, although there are various problems (or restrictions) in ARM and MIPS.
+Download (2010-12-11)
+The following archive files should be used personally, without liability or warranty.
+yanakernel0prototype20100311.zip
+yanakernel0prototypeminix20101211b.zip
+Check the license of the file "minix-ppc-port-release-1.tgz" and use the following difference file in the same way.
+yanakernel0prototypeminix20101111aminix.txt
+Check the license of the file "minix3_1_3a_ide_r2964.iso.bz2" and use the following difference file in the same way.
+yanakernel0prototypeminix20101211minix.txt
+Execution example (2010-12-11)
+I was able to run the boot image in the following environment, although there are various problems (or restrictions).
+Windows XP
+Cygwin Information and Installation setup.exe
+Zylin AS - open source arm-elf.tar.bz2 (Cygwin)
+Zylin AS - open source mips-elf.tar.bz2 (Cygwin)
+GXemul - Download gxemul-0.6.0.tar.gz
+The MINIX 3 Operating System minix-ppc-port-release-1.tgz (Google Search)
+Previous Versions minix3_1_3a_ide_r2964.iso.bz2
+ブート・イメージのビルドについては、まず、ｅｌｆ２ａｏｕｔとｍｋｆｆｓとｍｋｉｍａｇｅについて、次のようにビルドしてから、環境変数「PATH」で実行できるようにします。
+yana@cygwin ~
+$ tar xzf minix-ppc-port-release-1.tgz
+
+yana@cygwin ~
+$ tar xzf release/1/minix.src.tgz
+
+yana@cygwin ~
+$ patch -p0 <yanakernel0prototypeminix20101111aminix.txt
+patching file minix/src/arch/ppc/aconst.h
+patching file minix/src/arch/ppc/asm.h
+patching file minix/src/arch/ppc/atypes.h
+patching file minix/src/commands/ash/Makefile
+patching file minix/src/drivers/arch/ppc/at_wini/Makefile
+patching file minix/src/drivers/arch/ppc/at_wini/at_wini.c
+patching file minix/src/drivers/arch/ppc/at_wini/ata.c
+patching file minix/src/drivers/arch/ppc/kscreen/Makefile
+patching file minix/src/drivers/arch/ppc/libpci/Makefile
+patching file minix/src/drivers/arch/ppc/macio/Makefile
+patching file minix/src/drivers/arch/ppc/macio/macio.c
+patching file minix/src/drivers/arch/ppc/macio/via.c
+patching file minix/src/drivers/arch/ppc/pcim/Makefile
+patching file minix/src/drivers/arch/ppc/pcim/pcim.c
+patching file minix/src/drivers/arch/ppc/pcim/uni-north.c
+patching file minix/src/drivers/arch/ppc/tty/Makefile
+patching file minix/src/drivers/arch/ppc/tty/console.c
+patching file minix/src/drivers/arch/ppc/tty/keyboard.c
+patching file minix/src/drivers/arch/ppc/tty/tty.c
+patching file minix/src/drivers/libdriver/Makefile
+patching file minix/src/drivers/log/Makefile
+patching file minix/src/drivers/memory/Makefile
+patching file minix/src/image/Makefile
+patching file minix/src/include/minix/ipc.h
+patching file minix/src/include/setjmp.h
+patching file minix/src/kernel/Makefile
+patching file minix/src/kernel/arch/ppc/Makefile
+patching file minix/src/kernel/arch/ppc/debug/debug_mem.c
+patching file minix/src/kernel/arch/ppc/debug/debug_stack.c
+patching file minix/src/kernel/glo.h
+patching file minix/src/kernel/main.c
+patching file minix/src/kernel/start.c
+patching file minix/src/kernel/system/Makefile
+patching file minix/src/kernel/system/do_debug.c
+patching file minix/src/kernel/system/do_nice.c
+patching file minix/src/kernel/system/do_sigsend.c
+patching file minix/src/lib/Makefile
+patching file minix/src/lib/ansi/Makefile
+patching file minix/src/lib/editline/Makefile
+patching file minix/src/lib/gnu/ieee_float/Makefile
+patching file minix/src/lib/math/Makefile
+patching file minix/src/lib/other/Makefile
+patching file minix/src/lib/posix/Makefile
+patching file minix/src/lib/posix/_sigreturn.ppc.S
+patching file minix/src/lib/ppc/int64/Makefile
+patching file minix/src/lib/ppc/rts/Makefile
+patching file minix/src/lib/ppc/rts/_loadsize.S
+patching file minix/src/lib/ppc/rts/_longjmp.S
+patching file minix/src/lib/ppc/rts/_setjmp.S
+patching file minix/src/lib/ppc/rts/brksize.S
+patching file minix/src/lib/ppc/rts/crtso.S
+patching file minix/src/lib/ppc/rts/ipc.S
+patching file minix/src/lib/ppc/syscall/Makefile
+patching file minix/src/lib/regex/Makefile
+patching file minix/src/lib/stdio/Makefile
+patching file minix/src/lib/syslib/Makefile
+patching file minix/src/lib/sysutil/Makefile
+patching file minix/src/lib/sysutil/param.c
+patching file minix/src/lib/timers/Makefile
+patching file minix/src/servers/dbg/Makefile
+patching file minix/src/servers/ds/Makefile
+patching file minix/src/servers/fs/Makefile
+patching file minix/src/servers/fs/dmap.c
+patching file minix/src/servers/fs/exec.c
+patching file minix/src/servers/init/Makefile
+patching file minix/src/servers/is/Makefile
+patching file minix/src/servers/pm/Makefile
+patching file minix/src/servers/pm/exec.c
+patching file minix/src/servers/pm/main.c
+patching file minix/src/servers/pm/misc.c
+patching file minix/src/servers/pm/mproc.h
+patching file minix/src/servers/rs/Makefile
+patching file minix/src/util/elf2aout/Makefile
+patching file minix/src/util/elf2aout/elf2aout.c
+patching file minix/src/util/libabi/libabi.c
+patching file minix/src/util/mkfs/Makefile
+patching file minix/src/util/mkfs/mkffs.c
+patching file minix/src/util/mkimage/Makefile
+
+yana@cygwin ~
+$ cd minix/src/util/libabi
+
+yana@cygwin ~/minix/src/util/libabi
+$ cc -c libabi.c
+
+yana@cygwin ~/minix/src/util/libabi
+$ cd ..
+
+yana@cygwin ~/minix/src/util
+$ make all
+cd ./elf2aout && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/elf2aout'
+cc   -c elf2aout.c -o elf2aout.o
+cc  -o elf2aout elf2aout.o ../libabi/libabi.o
+cc   -c readaout.c -o readaout.o
+cc  -o readaout readaout.o ../libabi/libabi.o
+make[1]: Leaving directory `/home/yana/minix/src/util/elf2aout'
+cd ./mkfs && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/mkfs'
+cc   -c mkffs.c -o mkffs.o
+cc  -o mkffs mkffs.o
+make[1]: Leaving directory `/home/yana/minix/src/util/mkfs'
+cd ./mkimage && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/mkimage'
+cc   -c -o mkimage.o mkimage.c
+cc  -o mkimage ../libabi/libabi.o mkimage.o
+make[1]: Leaving directory `/home/yana/minix/src/util/mkimage'
+
+yana@cygwin ~/minix/src/util
+$
+次に、ＭＩＮＩＸのデバイス「/dev/c0d2p2」などを使用して、ファイル「minix3_1_3a_ide_r2964.iso.bz2」のディレクトリ「src」を取り出してから、次のようにファイルを用意します。
+yana@cygwin ~
+$ rm src/include/stdarg.h src/lib/*/Makefile src/lib/*/*/Makefile src/lib/*/*/*
+/Makefile
+
+yana@cygwin ~
+$ touch src/commands/ash/bltin/operators.c
+
+yana@cygwin ~
+$ patch -p0 <yanakernel0prototypeminix20101211minix.txt
+patching file src/commands/ash/Makefile
+patching file src/commands/simple/Makefile
+patching file src/commands/urlget/Makefile
+patching file src/drivers/Makefile
+patching file src/drivers/bios_wini/Makefile
+patching file src/drivers/bios_wini/bios_wini.c
+patching file src/drivers/lance/Makefile
+patching file src/drivers/lance/lance.c
+patching file src/drivers/lance/lance.h
+patching file src/drivers/libdriver/Makefile
+patching file src/drivers/log/Makefile
+patching file src/drivers/memory/Makefile
+patching file src/drivers/memory/ramdisk/Makefile
+patching file src/drivers/memory/ramdisk/proto
+patching file src/drivers/memory/ramdisk/rc
+patching file src/drivers/tty/Makefile
+patching file src/drivers/tty/console.c
+patching file src/drivers/tty/keyboard.c
+patching file src/include/ibm/interrupt.h
+patching file src/include/minix/config.h
+patching file src/include/minix/ipc.h
+patching file src/include/minix/u64.h
+patching file src/include/setjmp.h
+patching file src/include/stdio.h
+patching file src/include/sys/sigcontext.h
+patching file src/include/sys/types.h
+patching file src/kernel/Makefile
+patching file src/kernel/arch/i386/include/archconst.h
+patching file src/kernel/arch/i386/include/archtypes.h
+patching file src/kernel/main.c
+patching file src/kernel/proc.c
+patching file src/kernel/start.c
+patching file src/kernel/system/Makefile
+patching file src/kernel/system/do_newmap.c
+patching file src/kernel/system/do_sigreturn.c
+patching file src/kernel/system/do_sigsend.c
+patching file src/kernel/system/do_trace.c
+patching file src/lib/Makefile
+patching file src/lib/ansi/Makefile.in
+patching file src/lib/generate.sh
+patching file src/lib/gnu/rts/Makefile.in
+patching file src/lib/gnu/rts/__setjmp.gs
+patching file src/lib/gnu/rts/longjmp.gs
+patching file src/lib/sysutil/Makefile.in
+patching file src/servers/Makefile
+patching file src/servers/ds/Makefile
+patching file src/servers/inet/Makefile
+patching file src/servers/inet/stacktrace.c
+patching file src/servers/init/Makefile
+patching file src/servers/mfs/Makefile
+patching file src/servers/mfs/path.c
+patching file src/servers/pm/Makefile
+patching file src/servers/pm/exec.c
+patching file src/servers/pm/main.c
+patching file src/servers/pm/misc.c
+patching file src/servers/pm/mproc.h
+patching file src/servers/rs/Makefile
+patching file src/servers/rs/exec.c
+patching file src/servers/rs/manager.c
+patching file src/servers/rs/service.c
+patching file src/servers/vfs/Makefile
+patching file src/servers/vfs/exec.c
+patching file src/tools/Makefile
+
+yana@cygwin ~
+$ unzip -q yanakernel0prototypeminix20101211b.zip
+
+yana@cygwin ~
+$ cp -pr yanakernel0prototypeminix/disable/* src
+
+yana@cygwin ~
+$ unzip -q yanakernel0prototype20100311.zip
+
+yana@cygwin ~
+$
+また、ＡＲＭの場合は、ディレクトリ「src/arm」などで、次のようにビルドします。
+ＭＩＮＩＸ３．１．３ａのＡＲＭの場合のビルド
+src/arm
+CC="arm-elf-gcc -mlittle-endian -O2" MINIX_KERNEL=0x00100000 make
+src/lib
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all-gnu
+src/tools
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make image
+src/commands/simple
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make add_route ifconfig wc
+src/commands/urlget
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make
+src/drivers
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all
+src/servers
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all
+src/arm
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs
+あと、ＭＩＰＳの場合は、ディレクトリ「src/mips」などで、次のようにビルドします。
+注意：ディレクトリ「src/kernel」には、オプション「-march=mips32」ではなく、オプション「-march=mips32r2」を使用します。
+ＭＩＮＩＸ３．１．３ａのＭＩＰＳの場合のビルド
+src/mips
+CC="mips-elf-gcc -EL -O2" MINIX_KERNEL=0x80100000 make
+src/lib
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all-gnu
+src/kernel
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32r2 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make
+src/tools
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make image
+src/commands/simple
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make add_route ifconfig wc
+src/commands/urlget
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make
+src/drivers
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all
+src/servers
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all
+src/mips
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs
+ブート・イメージの実行については、まず、ＡＲＭの場合は、いろいろと不具合（もしくは制限）がありますが、次のように出力します。
+yana@cygwin ~/src/arm
+$ gxemul -q -E testarm -d i:../tools/image -d i:root.img manager
+
+NOTE: This is a LEGACY emulation mode.
+
+
+
+MINIX 3.1.3a. (2964)
+Copyright 2006, Vrije Universiteit, Amsterdam, The Netherlands
+Physical memory: total 15360 KB, system 7352 KB, free 8008 KB.
+Using bios_wini.
+Root device name is /dev/c0d1
+Replacing root
+hello, world
+# echo console
+console
+# service up /bin/lance
+# service up /bin/inet
+# mknod /dev/eth0 c 7 1
+ln /dev/eth0 /dev/eth
+mknod /dev/ip0 c 7 2
+ln /dev/ip0 /dev/ip
+mknod /dev/tcp0 c 7 3
+ln /dev/tcp0 /dev/tcp
+mknod /dev/udp0 c 7 4
+ln /dev/udp0 /dev/udp
+mknod /dev/ipstat c 7 0
+unable to open random device /dev/random: No such file or directory
+using current time for random-number seed
+ifconfig -h 10.0.0.1 -n 255.0.0.0
+# add_route -g 10.0.0.254
+# echo nameserver 192.168.0.1 >/etc/resolv.conf
+# urlget http://yana.jp |wc
+     29     56   2565
+#
+次に、ＭＩＰＳの場合は、いろいろと不具合（もしくは制限）がありますが、次のように出力します。
+yana@cygwin ~/src/mips
+$ gxemul -q -E oldtestmips -C 4kec -d i:../tools/image -d i:root.img manager
+
+NOTE: This is a LEGACY emulation mode.
+
+
+
+MINIX 3.1.3a. (2964)
+Copyright 2006, Vrije Universiteit, Amsterdam, The Netherlands
+Physical memory: total 15360 KB, system 7048 KB, free 8312 KB.
+Using bios_wini.
+Root device name is /dev/c0d1
+Replacing root
+hello, world
+# echo console
+console
+# service up /bin/lance
+# service up /bin/inet
+mknod /dev/eth0 c 7 1
+ln /dev/eth0 /dev/eth
+mknod /dev/ip0 c 7 2
+ln /dev/ip0 /dev/ip
+mknod /dev/tcp0 c 7 3
+ln /dev/tcp0 /dev/tcp
+mknod /dev/udp0 c 7 4
+ln /dev/udp0 /dev/udp
+mknod /dev/ipstat c 7 0
+unable to open random device /dev/random: No such file or directory
+using current time for random-number seed
+# ifconfig -h 10.0.0.1 -n 255.0.0.0
+# add_route -g 10.0.0.254
+# echo nameserver 192.168.0.1 >/etc/resolv.conf
+# urlget http://yana.jp |wc
+     29     56   2565
+#
+ＭＩＮＩＸ３．２．０とＹａｎａＫｅｒｎｅｌ０ (2012-05-11)
+概要 (2012-05-11)
+ＹａｎａＫｅｒｎｅｌ０を使用するＭＩＮＩＸに続いて、ＹａｎａＫｅｒｎｅｌ０を使用しないＭＩＮＩＸについても、ＡＲＭとＭＩＰＳで、いろいろと不具合（もしくは制限）がありますが、ブート・イメージを実行できました。
+ダウンロード (2012-05-11)
+次のアーカイブ・ファイルは、責任や保証を求めずに、個人的に用いてください。
+yanakernel0ainc20110311.zip
+yanakernel0aincminix20120511.zip
+次の差分ファイルは、ファイル「minix-ppc-port-release-1.tgz」のライセンスなどを確認して、同じように用いてください。
+yanakernel0prototypeminix20101111aminix.txt
+次の差分ファイルは、ファイル「minix_R3.2.0-116fcea.iso.bz2」のライセンスなどを確認して、同じように用いてください。
+yanakernel0aincminix20120511minix.txt
+実行例 (2012-05-11)
+次のような環境で、いろいろと不具合（もしくは制限）がありますが、ブート・イメージを実行できました。
+Windows 7
+Cygwin setup.exe
+Zylin AS - open source arm-elf.tar.bz2 (Cygwin)
+Zylin AS - open source mips-elf.tar.bz2 (Cygwin)
+GXemul - Download gxemul-0.6.0.tar.gz
+Minix3 minix_R3.2.0-116fcea.iso.bz2
+Index of /iso minix-ppc-port-release-1.tgz
+Index of pub/NetBSD/NetBSD-6.0_BETA/source/sets/index.html syssrc.tgz
+ブート・イメージのビルドについては、まず、ｅｌｆ２ａｏｕｔとｍｋｆｆｓとｍｋｉｍａｇｅについて、次のようにビルドしてから、環境変数「PATH」で実行できるようにします。
+yana@cygwin ~
+$ tar xaf minix-ppc-port-release-1.tgz
+
+yana@cygwin ~
+$ tar xaf release/1/minix.src.tgz
+
+yana@cygwin ~
+$ patch -p0 <yanakernel0prototypeminix20101111aminix.txt
+patching file minix/src/arch/ppc/aconst.h
+patching file minix/src/arch/ppc/asm.h
+patching file minix/src/arch/ppc/atypes.h
+patching file minix/src/commands/ash/Makefile
+patching file minix/src/drivers/arch/ppc/at_wini/Makefile
+patching file minix/src/drivers/arch/ppc/at_wini/at_wini.c
+patching file minix/src/drivers/arch/ppc/at_wini/ata.c
+patching file minix/src/drivers/arch/ppc/kscreen/Makefile
+patching file minix/src/drivers/arch/ppc/libpci/Makefile
+patching file minix/src/drivers/arch/ppc/macio/Makefile
+patching file minix/src/drivers/arch/ppc/macio/macio.c
+patching file minix/src/drivers/arch/ppc/macio/via.c
+patching file minix/src/drivers/arch/ppc/pcim/Makefile
+patching file minix/src/drivers/arch/ppc/pcim/pcim.c
+patching file minix/src/drivers/arch/ppc/pcim/uni-north.c
+patching file minix/src/drivers/arch/ppc/tty/Makefile
+patching file minix/src/drivers/arch/ppc/tty/console.c
+patching file minix/src/drivers/arch/ppc/tty/keyboard.c
+patching file minix/src/drivers/arch/ppc/tty/tty.c
+patching file minix/src/drivers/libdriver/Makefile
+patching file minix/src/drivers/log/Makefile
+patching file minix/src/drivers/memory/Makefile
+patching file minix/src/image/Makefile
+patching file minix/src/include/minix/ipc.h
+patching file minix/src/include/setjmp.h
+patching file minix/src/kernel/Makefile
+patching file minix/src/kernel/arch/ppc/Makefile
+patching file minix/src/kernel/arch/ppc/debug/debug_mem.c
+patching file minix/src/kernel/arch/ppc/debug/debug_stack.c
+patching file minix/src/kernel/glo.h
+patching file minix/src/kernel/main.c
+patching file minix/src/kernel/start.c
+patching file minix/src/kernel/system/Makefile
+patching file minix/src/kernel/system/do_debug.c
+patching file minix/src/kernel/system/do_nice.c
+patching file minix/src/kernel/system/do_sigsend.c
+patching file minix/src/lib/Makefile
+patching file minix/src/lib/ansi/Makefile
+patching file minix/src/lib/editline/Makefile
+patching file minix/src/lib/gnu/ieee_float/Makefile
+patching file minix/src/lib/math/Makefile
+patching file minix/src/lib/other/Makefile
+patching file minix/src/lib/posix/Makefile
+patching file minix/src/lib/posix/_sigreturn.ppc.S
+patching file minix/src/lib/ppc/int64/Makefile
+patching file minix/src/lib/ppc/rts/Makefile
+patching file minix/src/lib/ppc/rts/_loadsize.S
+patching file minix/src/lib/ppc/rts/_longjmp.S
+patching file minix/src/lib/ppc/rts/_setjmp.S
+patching file minix/src/lib/ppc/rts/brksize.S
+patching file minix/src/lib/ppc/rts/crtso.S
+patching file minix/src/lib/ppc/rts/ipc.S
+patching file minix/src/lib/ppc/syscall/Makefile
+patching file minix/src/lib/regex/Makefile
+patching file minix/src/lib/stdio/Makefile
+patching file minix/src/lib/syslib/Makefile
+patching file minix/src/lib/sysutil/Makefile
+patching file minix/src/lib/sysutil/param.c
+patching file minix/src/lib/timers/Makefile
+patching file minix/src/servers/dbg/Makefile
+patching file minix/src/servers/ds/Makefile
+patching file minix/src/servers/fs/Makefile
+patching file minix/src/servers/fs/dmap.c
+patching file minix/src/servers/fs/exec.c
+patching file minix/src/servers/init/Makefile
+patching file minix/src/servers/is/Makefile
+patching file minix/src/servers/pm/Makefile
+patching file minix/src/servers/pm/exec.c
+patching file minix/src/servers/pm/main.c
+patching file minix/src/servers/pm/misc.c
+patching file minix/src/servers/pm/mproc.h
+patching file minix/src/servers/rs/Makefile
+patching file minix/src/util/elf2aout/Makefile
+patching file minix/src/util/elf2aout/elf2aout.c
+patching file minix/src/util/libabi/libabi.c
+patching file minix/src/util/mkfs/Makefile
+patching file minix/src/util/mkfs/mkffs.c
+patching file minix/src/util/mkimage/Makefile
+
+yana@cygwin ~
+$ cd minix/src/util/libabi
+
+yana@cygwin ~/minix/src/util/libabi
+$ cc -c libabi.c
+
+yana@cygwin ~/minix/src/util/libabi
+$ cd ..
+
+yana@cygwin ~/minix/src/util
+$ make all
+cd ./elf2aout && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/elf2aout'
+cc   -c elf2aout.c -o elf2aout.o
+cc  -o elf2aout elf2aout.o ../libabi/libabi.o
+cc   -c readaout.c -o readaout.o
+cc  -o readaout readaout.o ../libabi/libabi.o
+make[1]: Leaving directory `/home/yana/minix/src/util/elf2aout'
+cd ./mkfs && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/mkfs'
+cc   -c mkffs.c -o mkffs.o
+cc  -o mkffs mkffs.o
+make[1]: Leaving directory `/home/yana/minix/src/util/mkfs'
+cd ./mkimage && exec make - all
+make[1]: Entering directory `/home/yana/minix/src/util/mkimage'
+cc   -c -o mkimage.o mkimage.c
+cc  -o mkimage ../libabi/libabi.o mkimage.o
+make[1]: Leaving directory `/home/yana/minix/src/util/mkimage'
+
+yana@cygwin ~/minix/src/util
+$
+次に、ＭＩＮＩＸのデバイス「/dev/c0d2p2」などを使用して、ファイル「minix_R3.2.0-116fcea.iso.bz2」のディレクトリ「src」を取り出してから、次のようにファイルを用意します。
+yana@cygwin ~
+$ cp -p -r src/commands/make src
+
+yana@cygwin ~
+$ rm src/lib/libc/*.S
+
+yana@cygwin ~
+$ patch -p0 <yanakernel0aincminix20120511minix.txt
+patching file src/commands/ash/Makefile
+patching file src/common/include/arch/i386/interrupt.h
+patching file src/common/include/arch/i386/stackframe.h
+patching file src/common/lib/libc/Makefile.inc
+patching file src/drivers/Makefile
+patching file src/drivers/log/Makefile
+patching file src/drivers/memory/Makefile
+patching file src/drivers/ramdisk/Makefile
+patching file src/drivers/ramdisk/proto
+patching file src/drivers/ramdisk/rc
+patching file src/drivers/tty/Makefile
+patching file src/drivers/tty/console.c
+patching file src/drivers/tty/keyboard.c
+patching file src/include/arch/Makefile
+patching file src/include/minix/ansi.h
+patching file src/include/minix/config.h
+patching file src/include/minix/ipc.h
+patching file src/kernel/Makefile
+patching file src/kernel/arch/i386/include/archconst.h
+patching file src/kernel/ipc.h
+patching file src/kernel/main.c
+patching file src/kernel/proc.c
+patching file src/kernel/start.c
+patching file src/kernel/system/do_sigreturn.c
+patching file src/kernel/system/do_sigsend.c
+patching file src/kernel/system.c
+patching file src/lib/Makefile
+patching file src/lib/libc/Makefile
+patching file src/lib/libc/arch/arm/gen/Makefile.inc
+patching file src/lib/libc/arch/mips/gen/Makefile.inc
+patching file src/lib/libc/compat-minix/Makefile.inc
+patching file src/lib/libc/locale/setlocale.c
+patching file src/lib/libc/quad/Makefile.inc
+patching file src/lib/libc/sys-minix/Makefile.inc
+patching file src/lib/libc/sys-minix/_ucontext.c
+patching file src/lib/libc/sys-minix/getdents.c
+patching file src/lib/libc/sys-minix/readlink.c
+patching file src/lib/libc/sys-minix/stime.c
+patching file src/lib/libedit/editline.c
+patching file src/lib/libminc/Makefile
+patching file src/lib/libminlib/Makefile
+patching file src/lib/libsys/tickdelay.c
+patching file src/make/Makefile
+patching file src/servers/ds/Makefile
+patching file src/servers/init/Makefile
+patching file src/servers/mfs/Makefile
+patching file src/servers/mfs/read.c
+patching file src/servers/pfs/Makefile
+patching file src/servers/pm/Makefile
+patching file src/servers/pm/main.c
+patching file src/servers/pm/misc.c
+patching file src/servers/rs/Makefile
+patching file src/servers/sched/Makefile
+patching file src/servers/vfs/Makefile
+patching file src/servers/vm/Makefile
+patching file src/servers/vm/arch/i386/Makefile.inc
+patching file src/servers/vm/arch/i386/memory.h
+patching file src/servers/vm/arch/i386/pagetable.c
+patching file src/servers/vm/arch/i386/vm.c
+patching file src/servers/vm/main.c
+patching file src/share/mk/bsd.inc.mk
+patching file src/share/mk/bsd.kinc.mk
+patching file src/share/mk/bsd.lib.mk
+patching file src/share/mk/bsd.own.mk
+patching file src/share/mk/bsd.prog.mk
+patching file src/share/mk/minix.gcc.mk
+patching file src/tools/Makefile
+
+yana@cygwin ~
+$ tar xaf syssrc.tgz
+
+yana@cygwin ~
+$ unzip -q yanakernel0aincminix20120511.zip
+
+yana@cygwin ~
+$ cp -p -r yanakernel0aincminix/disable/* src
+
+yana@cygwin ~
+$ unzip -q yanakernel0ainc20110311.zip
+
+yana@cygwin ~
+$
+さらに、ｍｉｎｉｘｍａｋｅについて、次のようにビルドしてから、環境変数「PATH」で実行できるようにします。
+yana@cygwin ~
+$ cd src/make
+
+yana@cygwin ~/src/make
+$ make
+cc  -DHAVE_SETENV -DHAVE_STRERROR -DHAVE_STRDUP  -DHAVE_STRFTIME -DHAVE_VSNPRINT
+F -DUSE_SELECT -DTARGET_MACHINE=\"\"  -DTARGET_MACHINE_ARCH=\"\"  -DMAKE_MACHINE
+=\"\"  -DMAKE_MACHINE_ARCH=\"\"   make.c arch.c buf.c compat.c cond.c dir.c for.
+c hash.c job.c main.c parse.c str.c suff.c targ.c trace.c var.c util.c strlist.c
+ make_malloc.c lst.lib/lstAppend.c lst.lib/lstAtEnd.c lst.lib/lstAtFront.c lst.l
+ib/lstClose.c lst.lib/lstConcat.c lst.lib/lstDatum.c lst.lib/lstDeQueue.c lst.li
+b/lstDestroy.c lst.lib/lstDupl.c lst.lib/lstEnQueue.c lst.lib/lstFind.c lst.lib/
+lstFindFrom.c lst.lib/lstFirst.c lst.lib/lstForEach.c lst.lib/lstForEachFrom.c l
+st.lib/lstInit.c lst.lib/lstInsert.c lst.lib/lstIsAtEnd.c lst.lib/lstIsEmpty.c l
+st.lib/lstLast.c lst.lib/lstMember.c lst.lib/lstNext.c lst.lib/lstOpen.c lst.lib
+/lstRemove.c lst.lib/lstReplace.c lst.lib/lstSucc.c lst.lib/lstPrev.c   -o make
+
+yana@cygwin ~/src/make
+$ mv make minixmake
+
+yana@cygwin ~/src/make
+$
+また、ＡＲＭの場合は、ディレクトリ「src/arm」などで、次のようにビルドします。
+注意：ファイル「arm-elf.tar.bz2」はオプション「-msoft-float」に対応していないようですので、ディレクトリ「src/lib」などには、オプション「-msoft-float」を使用していません。
+ＭＩＮＩＸ３．２．０のＡＲＭの場合のビルド
+src/include
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes
+src/lib
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes
+usr/include
+cp -p -r i386 arm; ln -s arm machine; cp -p ../src/sys/arch/arm/include/*.h arm; cp -p i386/mcontext.h arm; cp -p i386/param.h arm; cp -p i386/signal.h arm
+src/arm
+CC="$HOME/opt/arm-elf/bin/arm-elf-gcc -mlittle-endian -O2" DESTDIR=$HOME MINIX_KERNEL=0x00100000 make
+src/lib
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake; mkdir $HOME/usr/lib; cp -p */*.a $HOME/usr/lib
+src/drivers
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes
+src/kernel
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake
+src/servers
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes
+src/tools
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake image
+あと、ＭＩＰＳの場合は、ディレクトリ「src/mips」などで、次のようにビルドします。
+注意：ディレクトリ「src/kernel」には、オプション「-march=mips32」ではなく、オプション「-march=mips32r2」を使用します。
+ＭＩＮＩＸ３．２．０のＭＩＰＳの場合のビルド
+src/include
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes
+src/lib
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes
+usr/include
+cp -p -r i386 mips; ln -s mips machine; cp -p ../src/sys/arch/mips/include/*.h mips; cp -p i386/mcontext.h mips; cp -p i386/signal.h mips
+src/mips
+CC="$HOME/opt/mips-elf/bin/mips-elf-gcc -EL -O2" DESTDIR=$HOME MINIX_KERNEL=0x80100000 make
+src/lib
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake; mkdir $HOME/usr/lib; cp -p */*.a $HOME/usr/lib
+src/drivers
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes
+src/kernel
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32r2 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake
+src/servers
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes
+src/tools
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake image
+ブート・イメージの実行については、まず、ＡＲＭの場合は、いろいろと不具合（もしくは制限）がありますが、次のように出力します。
+yana@cygwin ~/src/arm
+$ gxemul -q -Etestarm -di:../tools/image manager
+
+NOTE: This is a LEGACY emulation mode.
+
+{send_sig tty 0000001c (priv(rp) == NULL)}
+{send_sig log 0000001c (priv(rp) == NULL)}
+{send_sig tty 0000001c (priv(rp) == NULL)}
+{send_sig log 0000001c (priv(rp) == NULL)}
+
+MINIX 3.2.0. (116fcea)
+Copyright 2012, Free University, Amsterdam, The Netherlands
+MINIX is open source software, see http://www.minix3.org
+Started VFS: 8 worker thread(s)
+MFS: WARNING: FS 0x106 unclean, mounting readonly
+hello, world
+# echo console
+console
+#
+Next, in the case of MIPS, although there are various problems (or restrictions), the output is as follows.
+yana@cygwin ~/src/mips
+$ gxemul -q -Eoldtestmips -C4kec -di:../tools/image manager
+
+NOTE: This is a LEGACY emulation mode.
+
+{send_sig tty 0000001c (priv(rp) == NULL)}
+{send_sig log 0000001c (priv(rp) == NULL)}
+{send_sig tty 0000001c (priv(rp) == NULL)}
+{send_sig log 0000001c (priv(rp) == NULL)}
+
+MINIX 3.2.0. (116fcea)
+Copyright 2012, Free University, Amsterdam, The Netherlands
+MINIX is open source software, see http://www.minix3.org
+Started VFS: 8 worker thread(s)
+MFS: WARNING: FS 0x106 unclean, mounting readonly
+hello, world
+# echo console
+console
+#
+Credit
+(C) 2010,2012 Yana
+Direction: Yana
+HTML: Yana
+Program: Yana
+ChangeLog
+2012-05-11 release 2
+2010-12-11 release 1
+2010-11-11 release 0
+[ :Yana: Index ]
+(C) 2010,2012 Yana
+About this site

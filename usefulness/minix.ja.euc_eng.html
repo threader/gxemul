@@ -1,0 +1,1439 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0055)http://xrea.yana.jp/20160811/computer/minix.ja.euc.html -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" class="translated-ltr"><head><meta http-equiv="Content-Type" content="text/html; charset=EUC-JP">
+
+<title>:Yana:Computer: MINIX (2012-05-11)</title>
+
+<script type="text/javascript" charset="UTF-8" src="./minix.ja.euc_eng_files/xrea_header.js" async="async"></script>
+<style>@media print {#ghostery-tracker-tally {display:none !important}}</style><link type="text/css" rel="stylesheet" charset="UTF-8" href="./minix.ja.euc_eng_files/translateelement.css"></head>
+<body><div id="vdbanner" style="display:block!important;position:relative!important;top:0!important;left:0!important;margin:10px 0 !important;padding:0!important;text-align:center!important;"><a href="https://www.value-domain.com/value-auth/?adref=xrea_ad&amp;argument=w9Qy6aHQ&amp;dmai=a5f3e009b2fa09" target="_blank" rel="nofollow" style="display:inline-block!important;position:relative!important;top:0!important;left:0!important;margin:0!important;padding:0!important;"><img alt="Identity authentication service Value-Auth that can be used from \ 0" src="./minix.ja.euc_eng_files/valueauth_bnr.png" style="display:inline-block!important;position:relative!important;top:0!important;left:0!important;margin:0!important;padding:0!important;width:100%!important;max-width:468px;max-height:60px;vertical-align:bottom;"></a></div>
+
+<div><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+[ </font></font><a href="http://xrea.yana.jp/20160811/index.ja.euc.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">:Yana: Index</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> ]</font></font><br>
+</div>
+
+<h1><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">:Yana:Computer: MINIX (2012-05-11)</font></font></h1>
+<div>
+<ul>
+<li>
+<a href="http://xrea.yana.jp/20160811/computer/minix.ja.euc.html#h20100911"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MINIX 3.1.3rc1 and YanaKernel0</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> (2012-05-11)
+</font></font><ul>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Overview (2012-05-11)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Download (2010-12-11)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Execution example (2010-12-11)</font></font></li>
+</ul>
+</li>
+<li>
+<a href="http://xrea.yana.jp/20160811/computer/minix.ja.euc.html#h20101111"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MINIX 3.13a and YanaKernel0</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> (2012-05-11)
+</font></font><ul>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Overview (2012-05-11)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Download (2010-12-11)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Execution example (2010-12-11)</font></font></li>
+</ul>
+</li>
+<li>
+<a href="http://xrea.yana.jp/20160811/computer/minix.ja.euc.html#h20120511"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MINIX 3.2.0 and YanaKernel0</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> (2012-05-11)
+</font></font><ul>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Overview (2012-05-11)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Download (2012-05-11)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Execution example (2012-05-11)</font></font></li>
+</ul>
+</li>
+</ul>
+</div>
+
+<h2><a id="h20100911" name="h20100911"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MINIX 3.1.3rc1 and YanaKernel0</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> (2012-05-11)</font></font></h2>
+
+<h3><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Overview (2012-05-11)</font></font></h3>
+<div>
+<p>
+<a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0aincminix.ja.euc.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Following MINIX that uses</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> YanaKernel0, MINIX that does not use YanaKernel0 was able to execute the boot image, although there are various problems (or restrictions) in ARM and MIPS.</font></font><br>
+</p>
+</div>
+
+<h3><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Download (2010-12-11)</font></font></h3>
+<div>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+The following archive files should be used personally, without liability or warranty.</font></font><br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototype20100311.zip"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototype20100311.zip</font></font></a></li>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototypeminix20101211a.zip"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototypeminix20101211a.zip</font></font></a></li>
+</ul>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Check the license of the file "minix-ppc-port-release-1.tgz" and use the following difference file in the same way.</font></font><br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototypeminix20101111aminix.txt"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototypeminix20101111aminix.txt</font></font></a></li>
+</ul>
+</div>
+
+<h3><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Execution example (2010-12-11)</font></font></h3>
+<div>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+I was able to run the boot image in the following environment, although there are various problems (or restrictions).</font></font><br>
+</p>
+<ul>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Windows XP</font></font></li>
+<li><a href="http://cygwin.com/"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Cygwin Information and Installation</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> setup.exe</font></font></li>
+<li><a href="http://opensource.zylin.com/gccbinary.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Zylin AS - open source</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> arm-elf.tar.bz2 (Cygwin)</font></font></li>
+<li><a href="http://opensource.zylin.com/gccbinary.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Zylin AS - open source</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> mips-elf.tar.bz2 (Cygwin)</font></font></li>
+<li><a href="http://gxemul.sourceforge.net/download.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">GXemul - Download</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> gxemul-0.6.0.tar.gz</font></font></li>
+<li><a href="http://www.minix3.org/"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">The MINIX 3 Operating System</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> minix-ppc-port-release-1.tgz (Google Search)</font></font></li>
+</ul>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+For building the boot image, first prepare the files as follows:</font></font><br>
+</p>
+<pre><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ tar xzf minix-ppc-port-release-1.tgz</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ tar xzf release/1/minix.src.tgz</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ rm minix/src/commands/ash/bltin/*.o minix/src/drivers/libdriver/*.o</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ patch -p0 &lt;yanakernel0prototypeminix20101111aminix.txt</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/arch/ppc/aconst.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/arch/ppc/asm.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/arch/ppc/atypes.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/commands/ash/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/at_wini/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/at_wini/at_wini.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/at_wini/ata.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/kscreen/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/libpci/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/macio/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/macio/macio.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/macio/via.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/pcim/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/pcim/pcim.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/pcim/uni-north.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/tty/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/tty/console.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/tty/keyboard.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/arch/ppc/tty/tty.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/libdriver/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/log/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/drivers/memory/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/image/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/include/minix/ipc.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/include/setjmp.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/arch/ppc/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/arch/ppc/debug/debug_mem.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/arch/ppc/debug/debug_stack.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/glo.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/main.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/start.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/system/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/system/do_debug.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/system/do_nice.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/kernel/system/do_sigsend.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ansi/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/editline/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/gnu/ieee_float/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/math/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/other/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/posix/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/posix/_sigreturn.ppc.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/int64/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/_loadsize.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/_longjmp.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/_setjmp.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/brksize.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/crtso.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/rts/ipc.S</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/ppc/syscall/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/regex/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/stdio/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/syslib/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/sysutil/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/sysutil/param.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/lib/timers/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/dbg/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/ds/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/fs/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/fs/dmap.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/fs/exec.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/init/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/is/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/pm/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/pm/exec.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/pm/main.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/pm/misc.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/pm/mproc.h</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/servers/rs/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/util/elf2aout/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/util/elf2aout/elf2aout.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix / src / util / libabi / libabi.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/util/mkfs/Makefile</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/util/mkfs/mkffs.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+patching file minix/src/util/mkimage/Makefile</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ unzip -q yanakernel0prototypeminix20101211a.zip</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ cp -pr yanakernel0prototypeminix/disable/* minix/src</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ unzip -q yanakernel0prototype20100311.zip</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$</font></font><font></font>
+</pre>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Next, build elf2aout, mkffs, and mkimage as follows, and then enable them to be executed with the environment variable "PATH".</font></font><br>
+</p>
+<pre><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yana@cygwin ~</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ cd minix / src / util / libabi</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+has @ cygwin ~ / minix / src / util / libabi</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ cc -c libabi.c</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+has @ cygwin ~ / minix / src / util / libabi</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ cd ..</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~/minix/src/util</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ make all</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cd ./elf2aout &amp;&amp; exec make - all</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+make[1]: Entering directory `/home/yana/minix/src/util/elf2aout'</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc -c elf2aout.c -o elf2aout.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc -o elf2aout elf2aout.o ../libabi/libabi.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc -c readaout.c -o readaout.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc -o readaout readaout.o ../libabi/libabi.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+make[1]: Leaving directory `/home/yana/minix/src/util/elf2aout'</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cd ./mkfs &amp;&amp; exec make - all</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+make[1]: Entering directory `/home/yana/minix/src/util/mkfs'</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc -c mkffs.c -o mkffs.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc -o mkffs mkffs.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+make[1]: Leaving directory `/home/yana/minix/src/util/mkfs'</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cd ./mkimage &amp;&amp; exec make - all</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+make[1]: Entering directory `/home/yana/minix/src/util/mkimage'</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc   -c -o mkimage.o mkimage.c</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+cc  -o mkimage ../libabi/libabi.o mkimage.o</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+make[1]: Leaving directory `/home/yana/minix/src/util/mkimage'</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+yana@cygwin ~/minix/src/util</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$</font></font><font></font>
+</pre>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Also, in the case of ARM, build as follows in the directory "minix / src / arm".</font></font><br>
+</p>
+<table border="1">
+<caption><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Build for ARM of MINIX 3.1.3rc1</font></font></caption>
+<tbody><tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/arm</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+CC="arm-elf-gcc -mlittle-endian -O2" MINIX_KERNEL=0x00100000 make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/lib</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/drivers</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/kernel</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/servers</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make all</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/image</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/commands/ash</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=arm MINIX_GCC="arm-elf-gcc -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/arm</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs</font></font><br>
+</td>
+</tr>
+</tbody></table>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Also, in the case of MIPS, build as follows in the directory "minix / src / mips".</font></font><br>
+</p>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Note: For the directory "minix / src / kernel", use the option "-march = mips32r2" instead of the option "-march = mips32".</font></font><br>
+</p>
+<table border="1">
+<caption><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Build for MIPS of MINIX 3.1.3rc1</font></font></caption>
+<tbody><tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/mips</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+CC="mips-elf-gcc -EL -O2" MINIX_KERNEL=0x80100000 make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/lib</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/drivers</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/kernel</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32r2 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/servers</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make all</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/image</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/commands/ash</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX_CHIP=mips MINIX_GCC="mips-elf-gcc -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/minix/src make</font></font><br>
+</td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+minix/src/mips</font></font><br>
+</td>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs</font></font><br>
+</td>
+</tr>
+</tbody></table>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Regarding the execution of the boot image, first of all, in the case of ARM, although there are various problems (or restrictions), the output is as follows.</font></font><br>
+</p>
+<pre><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yana@cygwin ~/minix/src/arm</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ gxemul -q -E testarm -d i:../image/minixppc -d i:root.img manager</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+NOTE: This is a LEGACY emulation mode.</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+System.restart()</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+"PowerPC console interface, v0.01bu (console.c)" ready (0x0 characters).</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX 3.1.3rc1. </font><font style="vertical-align: inherit;">Copyright 2006, Free University, Amsterdam, The Netherlands</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Build: "PowerPC (iBook G4)"</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+PM: loaded process: pm fs rs ds tty memory log dbg pcim at_win macio init.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Physical memory: total 15360 KB, system 6940 KB, free 8420 KB.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+PCIM: found 0 PCI devices in system.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Boot medium driver: label driver mapped onto controller c0.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+FS: opening root device 0x301</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+FS: MINIX V3 file system found on minor device 0x1, block size 4096 bytes.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Debug observer(s) registered with TTY process.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+hello, world</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+# echo console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+#</font></font><font></font>
+</pre>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Next, in the case of MIPS, although there are various problems (or restrictions), the output is as follows.</font></font><br>
+</p>
+<pre><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yana@cygwin ~/minix/src/mips</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ gxemul -q -E oldtestmips -C 4kec -d i:../image/minixppc -d i:root.img manager</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+NOTE: This is a LEGACY emulation mode.</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+System.restart()</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+"PowerPC console interface, v0.01bu (console.c)" ready (0x0 characters).</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX 3.1.3rc1. </font><font style="vertical-align: inherit;">Copyright 2006, Free University, Amsterdam, The Netherlands</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Build: "PowerPC (iBook G4)"</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+PM: loaded process: pm fs rs ds tty memory log dbg pcim at_win macio init.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Physical memory: total 15360 KB, system 6556 KB, free 8804 KB.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+PCIM: found 0 PCI devices in system.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Boot medium driver: label driver mapped onto controller c0.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+FS: opening root device 0x301</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+FS: MINIX V3 file system found on minor device 0x1, block size 4096 bytes.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Debug observer(s) registered with TTY process.</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+hello, world</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+# echo console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+#</font></font><font></font>
+</pre>
+</div>
+
+<h2><a id="h20101111" name="h20101111"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MINIX 3.13a and YanaKernel0</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> (2012-05-11)</font></font></h2>
+
+<h3><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Overview (2012-05-11)</font></font></h3>
+<div>
+<p>
+<a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0aincminix.ja.euc.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Following MINIX that uses</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> YanaKernel0, MINIX that does not use YanaKernel0 was able to execute the boot image, although there are various problems (or restrictions) in ARM and MIPS.</font></font><br>
+</p>
+</div>
+
+<h3><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Download (2010-12-11)</font></font></h3>
+<div>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+The following archive files should be used personally, without liability or warranty.</font></font><br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototype20100311.zip"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototype20100311.zip</font></font></a></li>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototypeminix20101211b.zip"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototypeminix20101211b.zip</font></font></a></li>
+</ul>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Check the license of the file "minix-ppc-port-release-1.tgz" and use the following difference file in the same way.</font></font><br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototypeminix20101111aminix.txt"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototypeminix20101111aminix.txt</font></font></a></li>
+</ul>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Check the license of the file "minix3_1_3a_ide_r2964.iso.bz2" and use the following difference file in the same way.</font></font><br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototypeminix20101211minix.txt"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yanakernel0prototypeminix20101211minix.txt</font></font></a></li>
+</ul>
+</div>
+
+<h3><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Execution example (2010-12-11)</font></font></h3>
+<div>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+I was able to run the boot image in the following environment, although there are various problems (or restrictions).</font></font><br>
+</p>
+<ul>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Windows XP</font></font></li>
+<li><a href="http://cygwin.com/"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Cygwin Information and Installation</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> setup.exe</font></font></li>
+<li><a href="http://opensource.zylin.com/gccbinary.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Zylin AS - open source</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> arm-elf.tar.bz2 (Cygwin)</font></font></li>
+<li><a href="http://opensource.zylin.com/gccbinary.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Zylin AS - open source</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> mips-elf.tar.bz2 (Cygwin)</font></font></li>
+<li><a href="http://gxemul.sourceforge.net/download.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">GXemul - Download</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> gxemul-0.6.0.tar.gz</font></font></li>
+<li><a href="http://www.minix3.org/">The MINIX 3 Operating System</a> minix-ppc-port-release-1.tgz (Google Search)</li>
+<li><a href="http://www.minix3.org/previous-versions/">Previous Versions</a> minix3_1_3a_ide_r2964.iso.bz2</li>
+</ul>
+<p>
+ブート・イメージのビルドについては、まず、ｅｌｆ２ａｏｕｔとｍｋｆｆｓとｍｋｉｍａｇｅについて、次のようにビルドしてから、環境変数「PATH」で実行できるようにします。<br>
+</p>
+<pre>yana@cygwin ~<font></font>
+$ tar xzf minix-ppc-port-release-1.tgz<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ tar xzf release/1/minix.src.tgz<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ patch -p0 &lt;yanakernel0prototypeminix20101111aminix.txt<font></font>
+patching file minix/src/arch/ppc/aconst.h<font></font>
+patching file minix/src/arch/ppc/asm.h<font></font>
+patching file minix/src/arch/ppc/atypes.h<font></font>
+patching file minix/src/commands/ash/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/at_wini/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/at_wini/at_wini.c<font></font>
+patching file minix/src/drivers/arch/ppc/at_wini/ata.c<font></font>
+patching file minix/src/drivers/arch/ppc/kscreen/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/libpci/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/macio/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/macio/macio.c<font></font>
+patching file minix/src/drivers/arch/ppc/macio/via.c<font></font>
+patching file minix/src/drivers/arch/ppc/pcim/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/pcim/pcim.c<font></font>
+patching file minix/src/drivers/arch/ppc/pcim/uni-north.c<font></font>
+patching file minix/src/drivers/arch/ppc/tty/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/tty/console.c<font></font>
+patching file minix/src/drivers/arch/ppc/tty/keyboard.c<font></font>
+patching file minix/src/drivers/arch/ppc/tty/tty.c<font></font>
+patching file minix/src/drivers/libdriver/Makefile<font></font>
+patching file minix/src/drivers/log/Makefile<font></font>
+patching file minix/src/drivers/memory/Makefile<font></font>
+patching file minix/src/image/Makefile<font></font>
+patching file minix/src/include/minix/ipc.h<font></font>
+patching file minix/src/include/setjmp.h<font></font>
+patching file minix/src/kernel/Makefile<font></font>
+patching file minix/src/kernel/arch/ppc/Makefile<font></font>
+patching file minix/src/kernel/arch/ppc/debug/debug_mem.c<font></font>
+patching file minix/src/kernel/arch/ppc/debug/debug_stack.c<font></font>
+patching file minix/src/kernel/glo.h<font></font>
+patching file minix/src/kernel/main.c<font></font>
+patching file minix/src/kernel/start.c<font></font>
+patching file minix/src/kernel/system/Makefile<font></font>
+patching file minix/src/kernel/system/do_debug.c<font></font>
+patching file minix/src/kernel/system/do_nice.c<font></font>
+patching file minix/src/kernel/system/do_sigsend.c<font></font>
+patching file minix/src/lib/Makefile<font></font>
+patching file minix/src/lib/ansi/Makefile<font></font>
+patching file minix/src/lib/editline/Makefile<font></font>
+patching file minix/src/lib/gnu/ieee_float/Makefile<font></font>
+patching file minix/src/lib/math/Makefile<font></font>
+patching file minix/src/lib/other/Makefile<font></font>
+patching file minix/src/lib/posix/Makefile<font></font>
+patching file minix/src/lib/posix/_sigreturn.ppc.S<font></font>
+patching file minix/src/lib/ppc/int64/Makefile<font></font>
+patching file minix/src/lib/ppc/rts/Makefile<font></font>
+patching file minix/src/lib/ppc/rts/_loadsize.S<font></font>
+patching file minix/src/lib/ppc/rts/_longjmp.S<font></font>
+patching file minix/src/lib/ppc/rts/_setjmp.S<font></font>
+patching file minix/src/lib/ppc/rts/brksize.S<font></font>
+patching file minix/src/lib/ppc/rts/crtso.S<font></font>
+patching file minix/src/lib/ppc/rts/ipc.S<font></font>
+patching file minix/src/lib/ppc/syscall/Makefile<font></font>
+patching file minix/src/lib/regex/Makefile<font></font>
+patching file minix/src/lib/stdio/Makefile<font></font>
+patching file minix/src/lib/syslib/Makefile<font></font>
+patching file minix/src/lib/sysutil/Makefile<font></font>
+patching file minix/src/lib/sysutil/param.c<font></font>
+patching file minix/src/lib/timers/Makefile<font></font>
+patching file minix/src/servers/dbg/Makefile<font></font>
+patching file minix/src/servers/ds/Makefile<font></font>
+patching file minix/src/servers/fs/Makefile<font></font>
+patching file minix/src/servers/fs/dmap.c<font></font>
+patching file minix/src/servers/fs/exec.c<font></font>
+patching file minix/src/servers/init/Makefile<font></font>
+patching file minix/src/servers/is/Makefile<font></font>
+patching file minix/src/servers/pm/Makefile<font></font>
+patching file minix/src/servers/pm/exec.c<font></font>
+patching file minix/src/servers/pm/main.c<font></font>
+patching file minix/src/servers/pm/misc.c<font></font>
+patching file minix/src/servers/pm/mproc.h<font></font>
+patching file minix/src/servers/rs/Makefile<font></font>
+patching file minix/src/util/elf2aout/Makefile<font></font>
+patching file minix/src/util/elf2aout/elf2aout.c<font></font>
+patching file minix/src/util/libabi/libabi.c<font></font>
+patching file minix/src/util/mkfs/Makefile<font></font>
+patching file minix/src/util/mkfs/mkffs.c<font></font>
+patching file minix/src/util/mkimage/Makefile<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ cd minix/src/util/libabi<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util/libabi<font></font>
+$ cc -c libabi.c<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util/libabi<font></font>
+$ cd ..<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util<font></font>
+$ make all<font></font>
+cd ./elf2aout &amp;&amp; exec make - all<font></font>
+make[1]: Entering directory `/home/yana/minix/src/util/elf2aout'<font></font>
+cc   -c elf2aout.c -o elf2aout.o<font></font>
+cc  -o elf2aout elf2aout.o ../libabi/libabi.o<font></font>
+cc   -c readaout.c -o readaout.o<font></font>
+cc  -o readaout readaout.o ../libabi/libabi.o<font></font>
+make[1]: Leaving directory `/home/yana/minix/src/util/elf2aout'<font></font>
+cd ./mkfs &amp;&amp; exec make - all<font></font>
+make[1]: Entering directory `/home/yana/minix/src/util/mkfs'<font></font>
+cc   -c mkffs.c -o mkffs.o<font></font>
+cc  -o mkffs mkffs.o<font></font>
+make[1]: Leaving directory `/home/yana/minix/src/util/mkfs'<font></font>
+cd ./mkimage &amp;&amp; exec make - all<font></font>
+make[1]: Entering directory `/home/yana/minix/src/util/mkimage'<font></font>
+cc   -c -o mkimage.o mkimage.c<font></font>
+cc  -o mkimage ../libabi/libabi.o mkimage.o<font></font>
+make[1]: Leaving directory `/home/yana/minix/src/util/mkimage'<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util<font></font>
+$<font></font>
+</pre>
+<p>
+次に、ＭＩＮＩＸのデバイス「/dev/c0d2p2」などを使用して、ファイル「minix3_1_3a_ide_r2964.iso.bz2」のディレクトリ「src」を取り出してから、次のようにファイルを用意します。<br>
+</p>
+<pre>yana@cygwin ~<font></font>
+$ rm src/include/stdarg.h src/lib/*/Makefile src/lib/*/*/Makefile src/lib/*/*/*<font></font>
+/Makefile<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ touch src/commands/ash/bltin/operators.c<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ patch -p0 &lt;yanakernel0prototypeminix20101211minix.txt<font></font>
+patching file src/commands/ash/Makefile<font></font>
+patching file src/commands/simple/Makefile<font></font>
+patching file src/commands/urlget/Makefile<font></font>
+patching file src/drivers/Makefile<font></font>
+patching file src/drivers/bios_wini/Makefile<font></font>
+patching file src/drivers/bios_wini/bios_wini.c<font></font>
+patching file src/drivers/lance/Makefile<font></font>
+patching file src/drivers/lance/lance.c<font></font>
+patching file src/drivers/lance/lance.h<font></font>
+patching file src/drivers/libdriver/Makefile<font></font>
+patching file src/drivers/log/Makefile<font></font>
+patching file src/drivers/memory/Makefile<font></font>
+patching file src/drivers/memory/ramdisk/Makefile<font></font>
+patching file src/drivers/memory/ramdisk/proto<font></font>
+patching file src/drivers/memory/ramdisk/rc<font></font>
+patching file src/drivers/tty/Makefile<font></font>
+patching file src/drivers/tty/console.c<font></font>
+patching file src/drivers/tty/keyboard.c<font></font>
+patching file src/include/ibm/interrupt.h<font></font>
+patching file src/include/minix/config.h<font></font>
+patching file src/include/minix/ipc.h<font></font>
+patching file src/include/minix/u64.h<font></font>
+patching file src/include/setjmp.h<font></font>
+patching file src/include/stdio.h<font></font>
+patching file src/include/sys/sigcontext.h<font></font>
+patching file src/include/sys/types.h<font></font>
+patching file src/kernel/Makefile<font></font>
+patching file src/kernel/arch/i386/include/archconst.h<font></font>
+patching file src/kernel/arch/i386/include/archtypes.h<font></font>
+patching file src/kernel/main.c<font></font>
+patching file src/kernel/proc.c<font></font>
+patching file src/kernel/start.c<font></font>
+patching file src/kernel/system/Makefile<font></font>
+patching file src/kernel/system/do_newmap.c<font></font>
+patching file src/kernel/system/do_sigreturn.c<font></font>
+patching file src/kernel/system/do_sigsend.c<font></font>
+patching file src/kernel/system/do_trace.c<font></font>
+patching file src/lib/Makefile<font></font>
+patching file src/lib/ansi/Makefile.in<font></font>
+patching file src/lib/generate.sh<font></font>
+patching file src/lib/gnu/rts/Makefile.in<font></font>
+patching file src/lib/gnu/rts/__setjmp.gs<font></font>
+patching file src/lib/gnu/rts/longjmp.gs<font></font>
+patching file src/lib/sysutil/Makefile.in<font></font>
+patching file src/servers/Makefile<font></font>
+patching file src/servers/ds/Makefile<font></font>
+patching file src/servers/inet/Makefile<font></font>
+patching file src/servers/inet/stacktrace.c<font></font>
+patching file src/servers/init/Makefile<font></font>
+patching file src/servers/mfs/Makefile<font></font>
+patching file src/servers/mfs/path.c<font></font>
+patching file src/servers/pm/Makefile<font></font>
+patching file src/servers/pm/exec.c<font></font>
+patching file src/servers/pm/main.c<font></font>
+patching file src/servers/pm/misc.c<font></font>
+patching file src/servers/pm/mproc.h<font></font>
+patching file src/servers/rs/Makefile<font></font>
+patching file src/servers/rs/exec.c<font></font>
+patching file src/servers/rs/manager.c<font></font>
+patching file src/servers/rs/service.c<font></font>
+patching file src/servers/vfs/Makefile<font></font>
+patching file src/servers/vfs/exec.c<font></font>
+patching file src/tools/Makefile<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ unzip -q yanakernel0prototypeminix20101211b.zip<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ cp -pr yanakernel0prototypeminix/disable/* src<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ unzip -q yanakernel0prototype20100311.zip<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$<font></font>
+</pre>
+<p>
+また、ＡＲＭの場合は、ディレクトリ「src/arm」などで、次のようにビルドします。<br>
+</p>
+<table border="1">
+<caption>ＭＩＮＩＸ３．１．３ａのＡＲＭの場合のビルド</caption>
+<tbody><tr>
+<td>
+src/arm<br>
+</td>
+<td>
+CC="arm-elf-gcc -mlittle-endian -O2" MINIX_KERNEL=0x00100000 make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/lib<br>
+</td>
+<td>
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all-gnu<br>
+</td>
+</tr>
+<tr>
+<td>
+src/tools<br>
+</td>
+<td>
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make image<br>
+</td>
+</tr>
+<tr>
+<td>
+src/commands/simple<br>
+</td>
+<td>
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make add_route ifconfig wc<br>
+</td>
+</tr>
+<tr>
+<td>
+src/commands/urlget<br>
+</td>
+<td>
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/drivers<br>
+</td>
+<td>
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all<br>
+</td>
+</tr>
+<tr>
+<td>
+src/servers<br>
+</td>
+<td>
+MINIX_CHIP=arm MINIX_GAR=arm-elf-ar MINIX_GCC="arm-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0 -O2" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all<br>
+</td>
+</tr>
+<tr>
+<td>
+src/arm<br>
+</td>
+<td>
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs<br>
+</td>
+</tr>
+</tbody></table>
+<p>
+あと、ＭＩＰＳの場合は、ディレクトリ「src/mips」などで、次のようにビルドします。<br>
+</p>
+<p>
+注意：ディレクトリ「src/kernel」には、オプション「-march=mips32」ではなく、オプション「-march=mips32r2」を使用します。<br>
+</p>
+<table border="1">
+<caption>ＭＩＮＩＸ３．１．３ａのＭＩＰＳの場合のビルド</caption>
+<tbody><tr>
+<td>
+src/mips<br>
+</td>
+<td>
+CC="mips-elf-gcc -EL -O2" MINIX_KERNEL=0x80100000 make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/lib<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all-gnu<br>
+</td>
+</tr>
+<tr>
+<td>
+src/kernel<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32r2 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/tools<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make image<br>
+</td>
+</tr>
+<tr>
+<td>
+src/commands/simple<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make add_route ifconfig wc<br>
+</td>
+</tr>
+<tr>
+<td>
+src/commands/urlget<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/drivers<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all<br>
+</td>
+</tr>
+<tr>
+<td>
+src/servers<br>
+</td>
+<td>
+MINIX_CHIP=mips MINIX_GAR=mips-elf-ar MINIX_GCC="mips-elf-gcc -ffreestanding -std=c89 -Wall -Wpointer-arith -Wstrict-prototypes -D__minix -D_EM_WSIZE=4 -march=mips32 -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16 -O2" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MINIX_SOURCE=$HOME/src make all<br>
+</td>
+</tr>
+<tr>
+<td>
+src/mips<br>
+</td>
+<td>
+dd if=/dev/zero of=root.img count=2048; mkffs -l root.img proto.fs<br>
+</td>
+</tr>
+</tbody></table>
+<p>
+ブート・イメージの実行については、まず、ＡＲＭの場合は、いろいろと不具合（もしくは制限）がありますが、次のように出力します。<br>
+</p>
+<pre>yana@cygwin ~/src/arm<font></font>
+$ gxemul -q -E testarm -d i:../tools/image -d i:root.img manager<font></font>
+<font></font>
+NOTE: This is a LEGACY emulation mode.<font></font>
+<font></font>
+<font></font>
+<font></font>
+MINIX 3.1.3a. (2964)<font></font>
+Copyright 2006, Vrije Universiteit, Amsterdam, The Netherlands<font></font>
+Physical memory: total 15360 KB, system 7352 KB, free 8008 KB.<font></font>
+Using bios_wini.<font></font>
+Root device name is /dev/c0d1<font></font>
+Replacing root<font></font>
+hello, world<font></font>
+# echo console<font></font>
+console<font></font>
+# service up /bin/lance<font></font>
+# service up /bin/inet<font></font>
+# mknod /dev/eth0 c 7 1<font></font>
+ln /dev/eth0 /dev/eth<font></font>
+mknod /dev/ip0 c 7 2<font></font>
+ln /dev/ip0 /dev/ip<font></font>
+mknod /dev/tcp0 c 7 3<font></font>
+ln /dev/tcp0 /dev/tcp<font></font>
+mknod /dev/udp0 c 7 4<font></font>
+ln /dev/udp0 /dev/udp<font></font>
+mknod /dev/ipstat c 7 0<font></font>
+unable to open random device /dev/random: No such file or directory<font></font>
+using current time for random-number seed<font></font>
+ifconfig -h 10.0.0.1 -n 255.0.0.0<font></font>
+# add_route -g 10.0.0.254<font></font>
+# echo nameserver 192.168.0.1 &gt;/etc/resolv.conf<font></font>
+# urlget http://yana.jp |wc<font></font>
+     29     56   2565<font></font>
+#<font></font>
+</pre>
+<p>
+次に、ＭＩＰＳの場合は、いろいろと不具合（もしくは制限）がありますが、次のように出力します。<br>
+</p>
+<pre>yana@cygwin ~/src/mips<font></font>
+$ gxemul -q -E oldtestmips -C 4kec -d i:../tools/image -d i:root.img manager<font></font>
+<font></font>
+NOTE: This is a LEGACY emulation mode.<font></font>
+<font></font>
+<font></font>
+<font></font>
+MINIX 3.1.3a. (2964)<font></font>
+Copyright 2006, Vrije Universiteit, Amsterdam, The Netherlands<font></font>
+Physical memory: total 15360 KB, system 7048 KB, free 8312 KB.<font></font>
+Using bios_wini.<font></font>
+Root device name is /dev/c0d1<font></font>
+Replacing root<font></font>
+hello, world<font></font>
+# echo console<font></font>
+console<font></font>
+# service up /bin/lance<font></font>
+# service up /bin/inet<font></font>
+mknod /dev/eth0 c 7 1<font></font>
+ln /dev/eth0 /dev/eth<font></font>
+mknod /dev/ip0 c 7 2<font></font>
+ln /dev/ip0 /dev/ip<font></font>
+mknod /dev/tcp0 c 7 3<font></font>
+ln /dev/tcp0 /dev/tcp<font></font>
+mknod /dev/udp0 c 7 4<font></font>
+ln /dev/udp0 /dev/udp<font></font>
+mknod /dev/ipstat c 7 0<font></font>
+unable to open random device /dev/random: No such file or directory<font></font>
+using current time for random-number seed<font></font>
+# ifconfig -h 10.0.0.1 -n 255.0.0.0<font></font>
+# add_route -g 10.0.0.254<font></font>
+# echo nameserver 192.168.0.1 &gt;/etc/resolv.conf<font></font>
+# urlget http://yana.jp |wc<font></font>
+     29     56   2565<font></font>
+#<font></font>
+</pre>
+</div>
+
+<h2><a id="h20120511" name="h20120511">ＭＩＮＩＸ３．２．０とＹａｎａＫｅｒｎｅｌ０</a> (2012-05-11)</h2>
+
+<h3>概要 (2012-05-11)</h3>
+<div>
+<p>
+<a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0aincminix.ja.euc.html">ＹａｎａＫｅｒｎｅｌ０を使用するＭＩＮＩＸ</a>に続いて、ＹａｎａＫｅｒｎｅｌ０を使用しないＭＩＮＩＸについても、ＡＲＭとＭＩＰＳで、いろいろと不具合（もしくは制限）がありますが、ブート・イメージを実行できました。<br>
+</p>
+</div>
+
+<h3>ダウンロード (2012-05-11)</h3>
+<div>
+<p>
+次のアーカイブ・ファイルは、責任や保証を求めずに、個人的に用いてください。<br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0ainc20110311.zip">yanakernel0ainc20110311.zip</a></li>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0aincminix20120511.zip">yanakernel0aincminix20120511.zip</a></li>
+</ul>
+<p>
+次の差分ファイルは、ファイル「minix-ppc-port-release-1.tgz」のライセンスなどを確認して、同じように用いてください。<br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0prototypeminix20101111aminix.txt">yanakernel0prototypeminix20101111aminix.txt</a></li>
+</ul>
+<p>
+次の差分ファイルは、ファイル「minix_R3.2.0-116fcea.iso.bz2」のライセンスなどを確認して、同じように用いてください。<br>
+</p>
+<ul>
+<li><a href="http://xrea.yana.jp/20160811/yanakernel/yanakernel0aincminix20120511minix.txt">yanakernel0aincminix20120511minix.txt</a></li>
+</ul>
+</div>
+
+<h3>実行例 (2012-05-11)</h3>
+<div>
+<p>
+次のような環境で、いろいろと不具合（もしくは制限）がありますが、ブート・イメージを実行できました。<br>
+</p>
+<ul>
+<li>Windows 7</li>
+<li><a href="http://cygwin.com/">Cygwin</a> setup.exe</li>
+<li><a href="http://opensource.zylin.com/gccbinary.html">Zylin AS - open source</a> arm-elf.tar.bz2 (Cygwin)</li>
+<li><a href="http://opensource.zylin.com/gccbinary.html">Zylin AS - open source</a> mips-elf.tar.bz2 (Cygwin)</li>
+<li><a href="http://gxemul.sourceforge.net/download.html">GXemul - Download</a> gxemul-0.6.0.tar.gz</li>
+<li><a href="http://www.minix3.org/download/">Minix3</a> minix_R3.2.0-116fcea.iso.bz2</li>
+<li><a href="http://www.minix3.org/iso/">Index of /iso</a> minix-ppc-port-release-1.tgz</li>
+<li><a href="http://ftp.netbsd.org/pub/NetBSD/NetBSD-6.0_BETA/source/sets/">Index of pub/NetBSD/NetBSD-6.0_BETA/source/sets/index.html</a> syssrc.tgz</li>
+</ul>
+<p>
+ブート・イメージのビルドについては、まず、ｅｌｆ２ａｏｕｔとｍｋｆｆｓとｍｋｉｍａｇｅについて、次のようにビルドしてから、環境変数「PATH」で実行できるようにします。<br>
+</p>
+<pre>yana@cygwin ~<font></font>
+$ tar xaf minix-ppc-port-release-1.tgz<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ tar xaf release/1/minix.src.tgz<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ patch -p0 &lt;yanakernel0prototypeminix20101111aminix.txt<font></font>
+patching file minix/src/arch/ppc/aconst.h<font></font>
+patching file minix/src/arch/ppc/asm.h<font></font>
+patching file minix/src/arch/ppc/atypes.h<font></font>
+patching file minix/src/commands/ash/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/at_wini/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/at_wini/at_wini.c<font></font>
+patching file minix/src/drivers/arch/ppc/at_wini/ata.c<font></font>
+patching file minix/src/drivers/arch/ppc/kscreen/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/libpci/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/macio/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/macio/macio.c<font></font>
+patching file minix/src/drivers/arch/ppc/macio/via.c<font></font>
+patching file minix/src/drivers/arch/ppc/pcim/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/pcim/pcim.c<font></font>
+patching file minix/src/drivers/arch/ppc/pcim/uni-north.c<font></font>
+patching file minix/src/drivers/arch/ppc/tty/Makefile<font></font>
+patching file minix/src/drivers/arch/ppc/tty/console.c<font></font>
+patching file minix/src/drivers/arch/ppc/tty/keyboard.c<font></font>
+patching file minix/src/drivers/arch/ppc/tty/tty.c<font></font>
+patching file minix/src/drivers/libdriver/Makefile<font></font>
+patching file minix/src/drivers/log/Makefile<font></font>
+patching file minix/src/drivers/memory/Makefile<font></font>
+patching file minix/src/image/Makefile<font></font>
+patching file minix/src/include/minix/ipc.h<font></font>
+patching file minix/src/include/setjmp.h<font></font>
+patching file minix/src/kernel/Makefile<font></font>
+patching file minix/src/kernel/arch/ppc/Makefile<font></font>
+patching file minix/src/kernel/arch/ppc/debug/debug_mem.c<font></font>
+patching file minix/src/kernel/arch/ppc/debug/debug_stack.c<font></font>
+patching file minix/src/kernel/glo.h<font></font>
+patching file minix/src/kernel/main.c<font></font>
+patching file minix/src/kernel/start.c<font></font>
+patching file minix/src/kernel/system/Makefile<font></font>
+patching file minix/src/kernel/system/do_debug.c<font></font>
+patching file minix/src/kernel/system/do_nice.c<font></font>
+patching file minix/src/kernel/system/do_sigsend.c<font></font>
+patching file minix/src/lib/Makefile<font></font>
+patching file minix/src/lib/ansi/Makefile<font></font>
+patching file minix/src/lib/editline/Makefile<font></font>
+patching file minix/src/lib/gnu/ieee_float/Makefile<font></font>
+patching file minix/src/lib/math/Makefile<font></font>
+patching file minix/src/lib/other/Makefile<font></font>
+patching file minix/src/lib/posix/Makefile<font></font>
+patching file minix/src/lib/posix/_sigreturn.ppc.S<font></font>
+patching file minix/src/lib/ppc/int64/Makefile<font></font>
+patching file minix/src/lib/ppc/rts/Makefile<font></font>
+patching file minix/src/lib/ppc/rts/_loadsize.S<font></font>
+patching file minix/src/lib/ppc/rts/_longjmp.S<font></font>
+patching file minix/src/lib/ppc/rts/_setjmp.S<font></font>
+patching file minix/src/lib/ppc/rts/brksize.S<font></font>
+patching file minix/src/lib/ppc/rts/crtso.S<font></font>
+patching file minix/src/lib/ppc/rts/ipc.S<font></font>
+patching file minix/src/lib/ppc/syscall/Makefile<font></font>
+patching file minix/src/lib/regex/Makefile<font></font>
+patching file minix/src/lib/stdio/Makefile<font></font>
+patching file minix/src/lib/syslib/Makefile<font></font>
+patching file minix/src/lib/sysutil/Makefile<font></font>
+patching file minix/src/lib/sysutil/param.c<font></font>
+patching file minix/src/lib/timers/Makefile<font></font>
+patching file minix/src/servers/dbg/Makefile<font></font>
+patching file minix/src/servers/ds/Makefile<font></font>
+patching file minix/src/servers/fs/Makefile<font></font>
+patching file minix/src/servers/fs/dmap.c<font></font>
+patching file minix/src/servers/fs/exec.c<font></font>
+patching file minix/src/servers/init/Makefile<font></font>
+patching file minix/src/servers/is/Makefile<font></font>
+patching file minix/src/servers/pm/Makefile<font></font>
+patching file minix/src/servers/pm/exec.c<font></font>
+patching file minix/src/servers/pm/main.c<font></font>
+patching file minix/src/servers/pm/misc.c<font></font>
+patching file minix/src/servers/pm/mproc.h<font></font>
+patching file minix/src/servers/rs/Makefile<font></font>
+patching file minix/src/util/elf2aout/Makefile<font></font>
+patching file minix/src/util/elf2aout/elf2aout.c<font></font>
+patching file minix/src/util/libabi/libabi.c<font></font>
+patching file minix/src/util/mkfs/Makefile<font></font>
+patching file minix/src/util/mkfs/mkffs.c<font></font>
+patching file minix/src/util/mkimage/Makefile<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ cd minix/src/util/libabi<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util/libabi<font></font>
+$ cc -c libabi.c<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util/libabi<font></font>
+$ cd ..<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util<font></font>
+$ make all<font></font>
+cd ./elf2aout &amp;&amp; exec make - all<font></font>
+make[1]: Entering directory `/home/yana/minix/src/util/elf2aout'<font></font>
+cc   -c elf2aout.c -o elf2aout.o<font></font>
+cc  -o elf2aout elf2aout.o ../libabi/libabi.o<font></font>
+cc   -c readaout.c -o readaout.o<font></font>
+cc  -o readaout readaout.o ../libabi/libabi.o<font></font>
+make[1]: Leaving directory `/home/yana/minix/src/util/elf2aout'<font></font>
+cd ./mkfs &amp;&amp; exec make - all<font></font>
+make[1]: Entering directory `/home/yana/minix/src/util/mkfs'<font></font>
+cc   -c mkffs.c -o mkffs.o<font></font>
+cc  -o mkffs mkffs.o<font></font>
+make[1]: Leaving directory `/home/yana/minix/src/util/mkfs'<font></font>
+cd ./mkimage &amp;&amp; exec make - all<font></font>
+make[1]: Entering directory `/home/yana/minix/src/util/mkimage'<font></font>
+cc   -c -o mkimage.o mkimage.c<font></font>
+cc  -o mkimage ../libabi/libabi.o mkimage.o<font></font>
+make[1]: Leaving directory `/home/yana/minix/src/util/mkimage'<font></font>
+<font></font>
+yana@cygwin ~/minix/src/util<font></font>
+$<font></font>
+</pre>
+<p>
+次に、ＭＩＮＩＸのデバイス「/dev/c0d2p2」などを使用して、ファイル「minix_R3.2.0-116fcea.iso.bz2」のディレクトリ「src」を取り出してから、次のようにファイルを用意します。<br>
+</p>
+<pre>yana@cygwin ~<font></font>
+$ cp -p -r src/commands/make src<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ rm src/lib/libc/*.S<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ patch -p0 &lt;yanakernel0aincminix20120511minix.txt<font></font>
+patching file src/commands/ash/Makefile<font></font>
+patching file src/common/include/arch/i386/interrupt.h<font></font>
+patching file src/common/include/arch/i386/stackframe.h<font></font>
+patching file src/common/lib/libc/Makefile.inc<font></font>
+patching file src/drivers/Makefile<font></font>
+patching file src/drivers/log/Makefile<font></font>
+patching file src/drivers/memory/Makefile<font></font>
+patching file src/drivers/ramdisk/Makefile<font></font>
+patching file src/drivers/ramdisk/proto<font></font>
+patching file src/drivers/ramdisk/rc<font></font>
+patching file src/drivers/tty/Makefile<font></font>
+patching file src/drivers/tty/console.c<font></font>
+patching file src/drivers/tty/keyboard.c<font></font>
+patching file src/include/arch/Makefile<font></font>
+patching file src/include/minix/ansi.h<font></font>
+patching file src/include/minix/config.h<font></font>
+patching file src/include/minix/ipc.h<font></font>
+patching file src/kernel/Makefile<font></font>
+patching file src/kernel/arch/i386/include/archconst.h<font></font>
+patching file src/kernel/ipc.h<font></font>
+patching file src/kernel/main.c<font></font>
+patching file src/kernel/proc.c<font></font>
+patching file src/kernel/start.c<font></font>
+patching file src/kernel/system/do_sigreturn.c<font></font>
+patching file src/kernel/system/do_sigsend.c<font></font>
+patching file src/kernel/system.c<font></font>
+patching file src/lib/Makefile<font></font>
+patching file src/lib/libc/Makefile<font></font>
+patching file src/lib/libc/arch/arm/gen/Makefile.inc<font></font>
+patching file src/lib/libc/arch/mips/gen/Makefile.inc<font></font>
+patching file src/lib/libc/compat-minix/Makefile.inc<font></font>
+patching file src/lib/libc/locale/setlocale.c<font></font>
+patching file src/lib/libc/quad/Makefile.inc<font></font>
+patching file src/lib/libc/sys-minix/Makefile.inc<font></font>
+patching file src/lib/libc/sys-minix/_ucontext.c<font></font>
+patching file src/lib/libc/sys-minix/getdents.c<font></font>
+patching file src/lib/libc/sys-minix/readlink.c<font></font>
+patching file src/lib/libc/sys-minix/stime.c<font></font>
+patching file src/lib/libedit/editline.c<font></font>
+patching file src/lib/libminc/Makefile<font></font>
+patching file src/lib/libminlib/Makefile<font></font>
+patching file src/lib/libsys/tickdelay.c<font></font>
+patching file src/make/Makefile<font></font>
+patching file src/servers/ds/Makefile<font></font>
+patching file src/servers/init/Makefile<font></font>
+patching file src/servers/mfs/Makefile<font></font>
+patching file src/servers/mfs/read.c<font></font>
+patching file src/servers/pfs/Makefile<font></font>
+patching file src/servers/pm/Makefile<font></font>
+patching file src/servers/pm/main.c<font></font>
+patching file src/servers/pm/misc.c<font></font>
+patching file src/servers/rs/Makefile<font></font>
+patching file src/servers/sched/Makefile<font></font>
+patching file src/servers/vfs/Makefile<font></font>
+patching file src/servers/vm/Makefile<font></font>
+patching file src/servers/vm/arch/i386/Makefile.inc<font></font>
+patching file src/servers/vm/arch/i386/memory.h<font></font>
+patching file src/servers/vm/arch/i386/pagetable.c<font></font>
+patching file src/servers/vm/arch/i386/vm.c<font></font>
+patching file src/servers/vm/main.c<font></font>
+patching file src/share/mk/bsd.inc.mk<font></font>
+patching file src/share/mk/bsd.kinc.mk<font></font>
+patching file src/share/mk/bsd.lib.mk<font></font>
+patching file src/share/mk/bsd.own.mk<font></font>
+patching file src/share/mk/bsd.prog.mk<font></font>
+patching file src/share/mk/minix.gcc.mk<font></font>
+patching file src/tools/Makefile<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ tar xaf syssrc.tgz<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ unzip -q yanakernel0aincminix20120511.zip<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ cp -p -r yanakernel0aincminix/disable/* src<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$ unzip -q yanakernel0ainc20110311.zip<font></font>
+<font></font>
+yana@cygwin ~<font></font>
+$<font></font>
+</pre>
+<p>
+さらに、ｍｉｎｉｘｍａｋｅについて、次のようにビルドしてから、環境変数「PATH」で実行できるようにします。<br>
+</p>
+<pre>yana@cygwin ~<font></font>
+$ cd src/make<font></font>
+<font></font>
+yana@cygwin ~/src/make<font></font>
+$ make<font></font>
+cc  -DHAVE_SETENV -DHAVE_STRERROR -DHAVE_STRDUP  -DHAVE_STRFTIME -DHAVE_VSNPRINT<font></font>
+F -DUSE_SELECT -DTARGET_MACHINE=\"\"  -DTARGET_MACHINE_ARCH=\"\"  -DMAKE_MACHINE<font></font>
+=\"\"  -DMAKE_MACHINE_ARCH=\"\"   make.c arch.c buf.c compat.c cond.c dir.c for.<font></font>
+c hash.c job.c main.c parse.c str.c suff.c targ.c trace.c var.c util.c strlist.c<font></font>
+ make_malloc.c lst.lib/lstAppend.c lst.lib/lstAtEnd.c lst.lib/lstAtFront.c lst.l<font></font>
+ib/lstClose.c lst.lib/lstConcat.c lst.lib/lstDatum.c lst.lib/lstDeQueue.c lst.li<font></font>
+b/lstDestroy.c lst.lib/lstDupl.c lst.lib/lstEnQueue.c lst.lib/lstFind.c lst.lib/<font></font>
+lstFindFrom.c lst.lib/lstFirst.c lst.lib/lstForEach.c lst.lib/lstForEachFrom.c l<font></font>
+st.lib/lstInit.c lst.lib/lstInsert.c lst.lib/lstIsAtEnd.c lst.lib/lstIsEmpty.c l<font></font>
+st.lib/lstLast.c lst.lib/lstMember.c lst.lib/lstNext.c lst.lib/lstOpen.c lst.lib<font></font>
+/lstRemove.c lst.lib/lstReplace.c lst.lib/lstSucc.c lst.lib/lstPrev.c   -o make<font></font>
+<font></font>
+yana@cygwin ~/src/make<font></font>
+$ mv make minixmake<font></font>
+<font></font>
+yana@cygwin ~/src/make<font></font>
+$<font></font>
+</pre>
+<p>
+また、ＡＲＭの場合は、ディレクトリ「src/arm」などで、次のようにビルドします。<br>
+</p>
+<p>
+注意：ファイル「arm-elf.tar.bz2」はオプション「-msoft-float」に対応していないようですので、ディレクトリ「src/lib」などには、オプション「-msoft-float」を使用していません。<br>
+</p>
+<table border="1">
+<caption>ＭＩＮＩＸ３．２．０のＡＲＭの場合のビルド</caption>
+<tbody><tr>
+<td>
+src/include<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes<br>
+</td>
+</tr>
+<tr>
+<td>
+src/lib<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes<br>
+</td>
+</tr>
+<tr>
+<td>
+usr/include<br>
+</td>
+<td>
+cp -p -r i386 arm; ln -s arm machine; cp -p ../src/sys/arch/arm/include/*.h arm; cp -p i386/mcontext.h arm; cp -p i386/param.h arm; cp -p i386/signal.h arm<br>
+</td>
+</tr>
+<tr>
+<td>
+src/arm<br>
+</td>
+<td>
+CC="$HOME/opt/arm-elf/bin/arm-elf-gcc -mlittle-endian -O2" DESTDIR=$HOME MINIX_KERNEL=0x00100000 make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/lib<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake; mkdir $HOME/usr/lib; cp -p */*.a $HOME/usr/lib<br>
+</td>
+</tr>
+<tr>
+<td>
+src/drivers<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes<br>
+</td>
+</tr>
+<tr>
+<td>
+src/kernel<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake<br>
+</td>
+</tr>
+<tr>
+<td>
+src/servers<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes<br>
+</td>
+</tr>
+<tr>
+<td>
+src/tools<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=arm DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/arm-elf MACHINE=arm MACHINE_ARCH=arm MACHINE_GNU_PLATFORM=arm-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D_EM_WSIZE=4 -march=armv4 -mabi=aapcs -mlittle-endian -DMINIX_ARGUMENT=0" MINIX_KERNEL=0x00100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake image<br>
+</td>
+</tr>
+</tbody></table>
+<p>
+あと、ＭＩＰＳの場合は、ディレクトリ「src/mips」などで、次のようにビルドします。<br>
+</p>
+<p>
+注意：ディレクトリ「src/kernel」には、オプション「-march=mips32」ではなく、オプション「-march=mips32r2」を使用します。<br>
+</p>
+<table border="1">
+<caption>ＭＩＮＩＸ３．２．０のＭＩＰＳの場合のビルド</caption>
+<tbody><tr>
+<td>
+src/include<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes<br>
+</td>
+</tr>
+<tr>
+<td>
+src/lib<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src ARCH=i386 DESTDIR=$HOME MACHINE=i386 MACHINE_ARCH=i386 MAKESYSPATH=$HOME/src/share/mk minixmake includes<br>
+</td>
+</tr>
+<tr>
+<td>
+usr/include<br>
+</td>
+<td>
+cp -p -r i386 mips; ln -s mips machine; cp -p ../src/sys/arch/mips/include/*.h mips; cp -p i386/mcontext.h mips; cp -p i386/signal.h mips<br>
+</td>
+</tr>
+<tr>
+<td>
+src/mips<br>
+</td>
+<td>
+CC="$HOME/opt/mips-elf/bin/mips-elf-gcc -EL -O2" DESTDIR=$HOME MINIX_KERNEL=0x80100000 make<br>
+</td>
+</tr>
+<tr>
+<td>
+src/lib<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake; mkdir $HOME/usr/lib; cp -p */*.a $HOME/usr/lib<br>
+</td>
+</tr>
+<tr>
+<td>
+src/drivers<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes<br>
+</td>
+</tr>
+<tr>
+<td>
+src/kernel<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32r2 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake<br>
+</td>
+</tr>
+<tr>
+<td>
+src/servers<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake MKIMAGEONLY=yes<br>
+</td>
+</tr>
+<tr>
+<td>
+src/tools<br>
+</td>
+<td>
+_SRC_TOP_=$HOME/src _TOOL_PREFIX= ARCH=mips DESTDIR=$HOME EXTERNAL_TOOLCHAIN=$HOME/opt/mips-elf MACHINE=mips MACHINE_ARCH=mipsel MACHINE_GNU_PLATFORM=mips-elf MAKESYSPATH=$HOME/src/share/mk MINIX_FLAG="-D__minix -D__mips_o32 -D_BYTE_ORDER=_LITTLE_ENDIAN -D_EM_WSIZE=4 -march=mips32 -msoft-float -mabi=32 -EL -G0 -DMINIX_ARGUMENT=16" MINIX_KERNEL=0x80100000 MINIX_PROCESS=0x20000000 MKACPI=no MKAPIC=no MKBOOTPARAM=no MKDEBUGREG=no MKLIVEUPDATE=no MKMCONTEXT=no MKSTATECTL=no MKSYSDEBUG=no MKTRACE=no MKWATCHDOG=no TOOLDIR=/usr minixmake image<br>
+</td>
+</tr>
+</tbody></table>
+<p>
+ブート・イメージの実行については、まず、ＡＲＭの場合は、いろいろと不具合（もしくは制限）がありますが、次のように出力します。<br>
+</p>
+<pre>yana@cygwin ~/src/arm<font></font>
+$ gxemul -q -Etestarm -di:../tools/image manager<font></font>
+<font></font>
+NOTE: This is a LEGACY emulation mode.<font></font>
+<font></font>
+{send_sig tty 0000001c (priv(rp) == NULL)}<font></font>
+{send_sig log 0000001c (priv(rp) == NULL)}<font></font>
+{send_sig tty 0000001c (priv(rp) == NULL)}<font></font>
+{send_sig log 0000001c (priv(rp) == NULL)}<font></font>
+<font></font>
+MINIX 3.2.0. (116fcea)<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Copyright 2012, Free University, Amsterdam, The Netherlands</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX is open source software, see http://www.minix3.org</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Started VFS: 8 worker thread(s)</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MFS: WARNING: FS 0x106 unclean, mounting readonly</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+hello, world</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+# echo console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+#</font></font><font></font>
+</pre>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Next, in the case of MIPS, although there are various problems (or restrictions), the output is as follows.</font></font><br>
+</p>
+<pre><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">yana@cygwin ~/src/mips</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+$ gxemul -q -Eoldtestmips -C4kec -di:../tools/image manager</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+NOTE: This is a LEGACY emulation mode.</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+{send_sig tty 0000001c (priv(rp) == NULL)}</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+{send_sig log 0000001c (priv(rp) == NULL)}</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+{send_sig tty 0000001c (priv(rp) == NULL)}</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+{send_sig log 0000001c (priv(rp) == NULL)}</font></font><font></font>
+<font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX 3.2.0. (116fcea)</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Copyright 2012, Free University, Amsterdam, The Netherlands</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MINIX is open source software, see http://www.minix3.org</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Started VFS: 8 worker thread(s)</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+MFS: WARNING: FS 0x106 unclean, mounting readonly</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+hello, world</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+# echo console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+console</font></font><font></font><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+#</font></font><font></font>
+</pre>
+</div>
+
+<h2><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Credit</font></font></h2>
+<div>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+(C) 2010,2012 Yana</font></font><br>
+</p>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Direction: Yana </font></font><br><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+HTML: Yana </font></font><br><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+Program: Yana</font></font><br>
+</p>
+</div>
+
+<h2><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">ChangeLog</font></font></h2>
+<div>
+<p><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+2012-05-11 release 2</font></font><br><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+2010-12-11 release 1</font></font><br><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+2010-11-11 release 0</font></font><br>
+</p>
+</div>
+
+<div><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+[ </font></font><a href="http://xrea.yana.jp/20160811/index.ja.euc.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">:Yana: Index</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> ]</font></font><br>
+</div>
+
+<address><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">
+(C) 2010,2012 Yana </font></font><br>
+<a href="http://xrea.yana.jp/20160811/readme.ja.euc.html"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">About this site</font></font></a><br>
+</address><div id="goog-gt-tt" class="skiptranslate" dir="ltr"><div style="padding: 8px;"><div><div class="logo"><img src="./minix.ja.euc_eng_files/translate_24dp.png" width="20" height="20" alt="Google Translate"></div></div></div><div class="top" style="padding: 8px; float: left; width: 100%;"><h1 class="title gray">Original text</h1></div><div class="middle" style="padding: 8px;"><div class="original-text"></div></div><div class="bottom" style="padding: 8px;"><div class="activity-links"><span class="activity-link">Contribute a better translation</span><span class="activity-link"></span></div><div class="started-activity-container"><hr style="color: #CCC; background-color: #CCC; height: 1px; border: none;"><div class="activity-root"></div></div></div><div class="status-message" style="display: none;"></div></div>
+
+
+
+<div class="goog-te-spinner-pos"><div class="goog-te-spinner-animation"><svg xmlns="http://www.w3.org/2000/svg" class="goog-te-spinner" width="96px" height="96px" viewBox="0 0 66 66"><circle class="goog-te-spinner-path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle></svg></div></div></body></html>
