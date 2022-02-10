@@ -225,10 +225,10 @@ static void start_xterm(int handle)
 	snprintf(a[7], 80, "-WW@S%i,%i", filedes[0], filedesB[1]);
 	a[8] = NULL;
 
-	p = fork();
+	p = vfork();
 	if (p == -1) {
 		printf("[ start_xterm(): ERROR while trying to "
-		    "fork(): %i ]\n", errno);
+		    "vfork(): %i ]\n", errno);
 		exit(1);
 	} else if (p == 0) {
 		close(filedes[1]);
